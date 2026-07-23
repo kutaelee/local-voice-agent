@@ -39,7 +39,7 @@ progress. No product acceptance test has run.
 | 31B W4A16 parallel range transfer | Passed | Resumed at 147/347 chunks; completed 347/347 at approximately 13.06 MiB/s near transfer end |
 | 31B W4A16 SHA-256 | Passed | Downloader and wrapper both matched `1b9b1d622a93f02c0d33f98e502f233b5d707443af6ddc464ed0bf5498506c20`; partial finalized atomically |
 | 31B W4A16 safetensors structure | Passed | 23,265,352,448-byte file, 2,009 tensors; final tensor offset exactly matches file end; compressed-tensors W4 group size 32 |
-| 31B MTP assistant SHA-256 | Passed | 939,042,560-byte weight matched `50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9`; exact 31B Q4_0 target remains not downloaded |
+| 31B exact MTP pair SHA-256 | Passed (download integrity) | 939,042,560-byte assistant matched `50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9`; exact Q4_0 target shards matched `8ad3c67895dca6184c70d88a31f042eca42971728782dfb2c18edb736f3060a0` (49,784,788,364 bytes) and `a373e71426e369a2498a7a69793ce9ccdb07d2c96aa807c6baf675520f9add87` (12,761,549,884 bytes). CPU-offload runtime feasibility and MTP output validation remain open |
 | vLLM 31B first text-only load | Failed, corrected | W4A16 weights loaded in 110.04 s using 18.7 GiB, but the shared-host 0.72 utilization budget left -3.17 GiB for KV cache; the owned processes exited and GPU memory returned before retry |
 | vLLM 31B explicit-KV load/health | Passed | V1 runner, text-only, eager, 256-token context, one sequence, and 384 MiB explicit KV cache; weights loaded in 106.34 s, model load used 18.7 GiB, engine initialization took 2.31 s, and health returned HTTP 200 |
 | vLLM 31B text API smoke | Passed | Korean text, `inspect_gpu({})`, strict JSON Schema, and 51-chunk streaming passed; streaming TTFT 67.33 ms; evidence `vllm-31b-textonly-smoke.json` SHA-256 `987b979d…` |
@@ -86,7 +86,7 @@ progress. No product acceptance test has run.
 | Application and pairing security defaults | Passed | Public bind, raw-audio retention, cleartext pairing, and plaintext token storage cases rejected |
 | Network-free repository validation using PC-server env | Passed after dependency addition | Initial run stopped at missing `jsonschema`; the runtime tool registry now requires official stable 4.26.0, and all 10 validators passed in 3,927.26 ms |
 | Network-free repository validation suite | Passed | Latest run: 10 validators completed in 4,093.36 ms using the isolated validation-capable WSL runtime; configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
-| Read-only health check | Passed | Detected both isolated vLLM versions, two finalized 12B artifacts, active partial MTP target, RTX 5090/WSL GPU state, canonical paths, and stopped server without mutation |
+| Read-only health check | Passed | Detects both isolated vLLM versions, all six selected Gemma target/assistant roles including both exact 31B MTP shards, RTX 5090/WSL GPU state, canonical paths, and stopped server without mutation. It verifies each expected weight's presence and byte length without rehashing |
 | Event payload contract coverage | Passed | All 24 catalog events have closed, bounded Draft 2020-12 payload definitions |
 | Explicit cancellation protocol | Passed (static) | Idempotent request/result events distinguish cancelled, draining, non-cancellable, already-terminal, and missing operations |
 | Observability contracts | Passed | 18 required metrics, histogram p50/p95 coverage, and closed structured-log schema validated |
