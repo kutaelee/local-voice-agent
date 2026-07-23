@@ -80,7 +80,7 @@ runtimes:
   - id: pc-server-0.1.0
     role: pc_server
     version: 0.1.0
-    status: installed_live_voice_and_approved_tool_loop_smokes_passed
+    status: installed_live_voice_durable_tool_lifecycle_and_approved_tool_loop_smokes_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/pc-server
     python: "3.12.13"
     installed_at: "2026-07-23T18:49:55+09:00"
@@ -101,6 +101,13 @@ runtimes:
       output_pcm_bytes: 215040
       output_chunks: 7
       evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\audio\voice-websocket-e2e.json'
+    registered_lifecycle_smoke:
+      status: passed
+      host: 127.0.0.1
+      port: 8787
+      health: pc-server_ok
+      graceful_linux_stop: passed
+      listener_absent_after_stop: true
     rollback: stop the registered server and switch away before archiving only this environment
   - id: tool-executor-0.1.0
     role: tool_executor

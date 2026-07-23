@@ -173,6 +173,25 @@ python scripts/smoke-voice-websocket.py \
   --evidence /mnt/e/Data/LocalVoiceAgent/runtime/evidence/audio/voice-websocket-e2e.json
 ```
 
+For the registered loopback PC-server process, start PostgreSQL and apply
+migrations first. Keep every token in the invoking process environment or an
+OS-backed secret store; neither launcher writes token values to its status or
+log files.
+
+```powershell
+$env:LVA_PAIRING_TOKEN = '<at-least-32-random-characters>'
+$env:LVA_VOICE_ENABLED = '0' # Set to 1 only after workers and vLLM are healthy.
+$env:LVA_TOOLS_ENABLED = '0' # Set to 1 only with an authenticated executor.
+.\scripts\start-server.ps1
+Invoke-RestMethod http://127.0.0.1:8765/health
+.\scripts\stop-server.ps1
+```
+
+The launcher binds only `127.0.0.1`, derives the loopback PostgreSQL URL from
+the external password file, records verified Windows/WSL PIDs and log paths,
+and sends `SIGTERM` to the registered Linux server before stopping its owned
+launcher. It does not create a firewall rule or an Android/LAN listener.
+
 Stop only registered project processes:
 
 ```bash
@@ -180,8 +199,9 @@ bash scripts/stop-vllm.sh
 bash scripts/stop-audio-workers.sh
 ```
 
-`scripts/start-server.ps1` remains fail-closed until registered PID/status
-handling and the Android-facing TLS termination path are implemented.
+Android-facing TLS/private-network termination is still separate from the
+loopback PC-server lifecycle; do not bind the server to a LAN address until its
+pairing and TLS boundary has been explicitly configured and verified.
 
 ## Tool Executor
 
@@ -247,9 +267,11 @@ must be given the executor URL, exact WSL host IP, and the same transient
 token; its final output includes the metadata-only evidence ID.
 
 A restart still clears the Tool Executor's response-body cache. The PC-server
-PostgreSQL adapter durably preserves normalized execution identity, state,
-versioned events, and outbox records; live composition must consult it before
-reissuing an execution.
+requires PostgreSQL when tools are enabled, creates a durable session on
+WebSocket acceptance, commits `RUNNING` before dispatch, and preserves
+normalized execution identity, approval binding, versioned events, audit, and
+outbox records. A leftover `RUNNING` record requires evidence reconciliation;
+the server must not reissue it automatically.
 
 ## PostgreSQL
 
