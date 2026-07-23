@@ -31,26 +31,44 @@ models=(
   "mtp_target_31b|google/gemma-4-31B-it-qat-q4_0-unquantized|1e4d8beecacb8b7590c1d8bedd7335f687bf311f|${model_root}/gemma4/31b/mtp-target/1e4d8beecacb8b7590c1d8bedd7335f687bf311f|model-00002-of-00002.safetensors|a373e71426e369a2498a7a69793ce9ccdb07d2c96aa807c6baf675520f9add87|12761549884"
 )
 
-required_bytes=125000000000
-available_bytes="$(df -B1 --output=avail /mnt/e | tail -1 | tr -d ' ')"
-
 [[ "${download_workers}" =~ ^([1-9]|1[0-6])$ ]] || {
   echo "MODEL_DOWNLOAD_WORKERS must be an integer from 1 to 16." >&2
   exit 3
 }
+
+selected_weight_bytes=0
+selected_file_count=0
+for entry in "${models[@]}"; do
+  IFS='|' read -r role _model _revision _target _filename _sha bytes <<<"${entry}"
+  [[ -z "${download_only}" || "${download_only}" == "${role}" ]] || continue
+  selected_weight_bytes=$((selected_weight_bytes + bytes))
+  selected_file_count=$((selected_file_count + 1))
+done
+
+metadata_headroom_bytes=1073741824
+required_bytes=$((selected_weight_bytes + metadata_headroom_bytes))
+read -r volume_bytes available_bytes < <(
+  df -B1 --output=size,avail /mnt/e | tail -1 | xargs
+)
+reserve_bytes=$((volume_bytes / 5))
+projected_available_bytes=$((available_bytes - required_bytes))
+
+if (( projected_available_bytes < reserve_bytes )); then
+  echo "Refusing: projected free space would cross the 20% reserve." >&2
+  exit 4
+fi
 
 echo "Official source: https://huggingface.co/google"
 echo "License: Apache-2.0"
 echo "Canonical target: ${model_root}"
 echo "Cache: ${cache_root}"
 echo "Parallel range workers: ${download_workers}"
-echo "Required download estimate: ${required_bytes} bytes"
+echo "Selected weight files: ${selected_file_count}"
+echo "Selected weight bytes: ${selected_weight_bytes}"
+echo "Metadata headroom: ${metadata_headroom_bytes} bytes"
 echo "Available on E: ${available_bytes} bytes"
-
-if (( available_bytes < required_bytes * 5 )); then
-  echo "Refusing: download would violate the 20% operational reserve policy." >&2
-  exit 4
-fi
+echo "Projected available on E: ${projected_available_bytes} bytes"
+echo "Required 20% reserve on E: ${reserve_bytes} bytes"
 
 for entry in "${models[@]}"; do
   IFS='|' read -r role model revision target filename sha bytes <<<"${entry}"
