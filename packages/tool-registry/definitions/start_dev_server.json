@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "name": "start_dev_server",
+  "description": "Start a registered development server bound to an approved local interface.",
+  "risk_level": 1,
+  "timeout_seconds": 120,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": ["workspace_id", "profile_id", "host", "port", "idempotency_key"],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "profile_id": {"type": "string", "minLength": 1, "maxLength": 128},
+      "host": {"type": "string", "enum": ["127.0.0.1", "localhost", "::1"]},
+      "port": {"type": "integer", "minimum": 1024, "maximum": 65535},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

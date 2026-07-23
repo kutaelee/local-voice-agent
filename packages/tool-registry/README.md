@@ -11,6 +11,8 @@ The current definitions are contracts, not an executable registry:
 - workspace mutation: write, patch, copy, move, create directory, bounded ZIP
   archive creation, and bounded ZIP extraction at Level 1
 - deletion: one hash-pinned file or one empty directory at Level 2
+- development: registered test, lint, format, build, and loopback-only
+  development-server profiles; logs are retrieved by evidence ID
 
 Path normalization, workspace containment, reparse-point defense, approval,
 execution, and rollback remain executor responsibilities; JSON Schema alone
@@ -20,3 +22,7 @@ is not treated as a security boundary.
 extraction must reject absolute members, `..` traversal, links/reparse points,
 duplicate normalized names, and declared or observed expansion-limit
 violations. Recursive directory deletion is intentionally not exposed.
+
+Development tools accept a `profile_id`, never a command string or arbitrary
+flags. `stop_dev_server` accepts only an executor-issued process handle, so it
+cannot be used as a general process-kill primitive.

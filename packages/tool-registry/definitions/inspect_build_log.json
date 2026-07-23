@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "name": "inspect_build_log",
+  "description": "Read a bounded range from a build evidence record created by the executor.",
+  "risk_level": 0,
+  "timeout_seconds": 10,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["workspace_id", "evidence_id"],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "evidence_id": {"type": "string", "format": "uuid"},
+      "offset_bytes": {"type": "integer", "minimum": 0, "default": 0},
+      "max_bytes": {"type": "integer", "minimum": 1, "maximum": 262144, "default": 65536}
+    },
+    "additionalProperties": false
+  }
+}

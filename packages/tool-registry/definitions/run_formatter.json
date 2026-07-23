@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "name": "run_formatter",
+  "description": "Run a registered workspace formatter and capture its resulting diff.",
+  "risk_level": 1,
+  "timeout_seconds": 1800,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "workspace_id",
+      "profile_id",
+      "expected_worktree_fingerprint",
+      "idempotency_key"
+    ],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "profile_id": {"type": "string", "minLength": 1, "maxLength": 128},
+      "expected_worktree_fingerprint": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

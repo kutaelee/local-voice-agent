@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "name": "run_test_file",
+  "description": "Run one workspace-relative test file through a registered test profile.",
+  "risk_level": 1,
+  "timeout_seconds": 1800,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "workspace_id",
+      "profile_id",
+      "relative_path",
+      "idempotency_key"
+    ],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "profile_id": {"type": "string", "minLength": 1, "maxLength": 128},
+      "relative_path": {"type": "string", "minLength": 1, "maxLength": 1024},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}
