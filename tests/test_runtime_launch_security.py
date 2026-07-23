@@ -109,6 +109,8 @@ def test_31b_mtp_probe_is_bounded_and_yields_to_comfyui() -> None:
     assert "Get-FreeGpuMemoryMiB" in shared
     assert "freeMemory -lt 28500" in shared
     assert "Stop-OwnedProbe" in shared
+    assert "stop script's 30-second" in shared
+    assert "if (-not $pidExists -and -not $healthy)" in shared
     assert "$Process.WaitForExit()" in shared
     assert "independent health probe failed" in shared
     assert "Test-Path -LiteralPath $evidence" in shared

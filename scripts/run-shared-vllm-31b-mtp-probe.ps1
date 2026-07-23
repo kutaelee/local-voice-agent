@@ -121,9 +121,38 @@ function Stop-OwnedProbe {
         -File $stopScript `
         -ExpectedModelSize 31b |
         Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw "Registered vLLM stop exited $LASTEXITCODE."
+    $stopExitCode = $LASTEXITCODE
+    if ($stopExitCode -eq 0) {
+        return
     }
+
+    # A large offloaded process can cross the stop script's 30-second
+    # boundary while still completing its requested TERM shutdown. Confirm
+    # both ownership state and listener closure before treating that race as
+    # a stop failure.
+    $pidPath = (
+        '/home/kutae/.local/share/local-voice-agent/run/vllm.pid'
+    )
+    for ($attempt = 1; $attempt -le 30; $attempt += 1) {
+        & wsl.exe -d Ubuntu -- test -f $pidPath
+        $pidExists = $LASTEXITCODE -eq 0
+        $healthy = $false
+        try {
+            Invoke-RestMethod `
+                -Uri "http://127.0.0.1:$Port/health" `
+                -TimeoutSec 1 |
+                Out-Null
+            $healthy = $true
+        }
+        catch {
+            $healthy = $false
+        }
+        if (-not $pidExists -and -not $healthy) {
+            return
+        }
+        Start-Sleep -Seconds 1
+    }
+    throw "Registered vLLM stop exited $stopExitCode and remained active."
 }
 
 function Wait-ChildOrYield {
