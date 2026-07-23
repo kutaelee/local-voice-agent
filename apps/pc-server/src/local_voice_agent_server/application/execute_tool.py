@@ -50,12 +50,34 @@ class ExecuteQueuedTool:
             reason="executor_dispatch_started",
             now=observed_at,
         )
-        dispatch_plan = replace(plan, execution=running)
+        return self.execute_running(
+            replace(plan, execution=running),
+            now=observed_at,
+        )
+
+    def execute_running(
+        self,
+        plan: ToolPlan,
+        *,
+        now: datetime | None = None,
+    ) -> ToolExecutionOutcome:
+        """Dispatch a plan already durably marked ``RUNNING``.
+
+        The durable lifecycle commits the transition to ``RUNNING`` before it
+        invokes this method.  Keeping dispatch separate prevents a process
+        crash from leaving a side effect that a restarted server mistakes for
+        an unstarted queued request.
+        """
+        if plan.execution is None:
+            raise InvalidTransition("plan has no execution")
+        if plan.execution.state is not ToolExecutionState.RUNNING:
+            raise InvalidTransition("only RUNNING plans may be dispatched")
+        observed_at = now or datetime.now(timezone.utc)
+        if observed_at.tzinfo is None or observed_at.utcoffset() is None:
+            raise ValueError("now must be timezone-aware")
+        running = plan.execution
         try:
-            receipt = self._port.execute(
-                dispatch_plan,
-                requested_at=observed_at,
-            )
+            receipt = self._port.execute(plan, requested_at=observed_at)
         except ToolExecutionPortError:
             return ToolExecutionOutcome(
                 execution=running.transition(

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
 import hmac
 import os
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, AsyncIterator, Callable, Literal
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -21,6 +22,7 @@ from .application.session_events import (
     VoiceSessionEventHandler,
 )
 from .application.execute_tool import ExecuteQueuedTool
+from .application.tool_execution_lifecycle import DurableToolExecutionLifecycle
 from .application.tool_planner import ToolPlanner
 from .application.voice_turn import VoiceTurnService
 from .infrastructure.audio_workers import (
@@ -37,6 +39,7 @@ from .infrastructure.tool_executor_client import (
     ToolExecutorClientSettings,
 )
 from .infrastructure.tool_registry import ToolRegistry
+from .infrastructure.persistence import PostgresStateStore
 from .protocol.client_events import (
     AudioInputEndPayload,
     ApprovalResponsePayload,
@@ -129,13 +132,24 @@ def create_app(
     *,
     event_handler: SessionEventHandler | None = None,
     agent_status_provider: Callable[[], list[dict[str, object]]] | None = None,
+    state_store: PostgresStateStore | None = None,
 ) -> FastAPI:
     handler = event_handler or UnavailableSessionEventHandler()
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        try:
+            yield
+        finally:
+            if state_store is not None:
+                await state_store.close()
+
     app = FastAPI(
         title="Local Voice Agent PC Server",
         version="0.1.0",
         docs_url=None,
         redoc_url=None,
+        lifespan=lifespan,
     )
 
     @app.get("/health")
@@ -172,6 +186,13 @@ def create_app(
         if not _authorized(websocket, settings.pairing_token):
             await websocket.close(code=4401, reason="invalid pairing token")
             return
+
+        if state_store is not None:
+            try:
+                await state_store.ensure_session(session_id)
+            except Exception:
+                await websocket.close(code=1013, reason="durable session unavailable")
+                return
 
         await websocket.accept()
         server_sequence = 0
@@ -315,11 +336,22 @@ def create_app(
 def create_app_from_environment() -> FastAPI:
     """Uvicorn factory; startup fails if no non-placeholder token is set."""
 
+    state_store = _state_store_from_environment()
     return create_app(
         ServerSettings.from_environment(),
-        event_handler=_event_handler_from_environment(),
+        event_handler=_event_handler_from_environment(state_store=state_store),
         agent_status_provider=_agent_status_provider_from_environment(),
+        state_store=state_store,
     )
+
+
+def _state_store_from_environment() -> PostgresStateStore | None:
+    if os.environ.get("LVA_TOOLS_ENABLED", "0") != "1":
+        return None
+    database_url = os.environ.get("LVA_DATABASE_URL", "")
+    if not database_url:
+        raise RuntimeError("LVA_DATABASE_URL is required when tools are enabled")
+    return PostgresStateStore.from_url(database_url)
 
 
 def _agent_status_provider_from_environment(
@@ -340,7 +372,10 @@ def _agent_status_provider_from_environment(
     return observe
 
 
-def _event_handler_from_environment() -> SessionEventHandler:
+def _event_handler_from_environment(
+    *,
+    state_store: PostgresStateStore | None = None,
+) -> SessionEventHandler:
     if os.environ.get("LVA_VOICE_ENABLED", "0") != "1":
         return UnavailableSessionEventHandler()
     worker_token = os.environ.get("LVA_AUDIO_WORKER_TOKEN", "")
@@ -392,6 +427,7 @@ def _event_handler_from_environment() -> SessionEventHandler:
     registry: ToolRegistry | None = None
     planner: ToolPlanner | None = None
     tool_executor: ExecuteQueuedTool | None = None
+    tool_lifecycle: DurableToolExecutionLifecycle | None = None
     if tools_enabled:
         executor_token = os.environ.get("LVA_TOOL_EXECUTOR_TOKEN", "")
         repo_root = Path(
@@ -425,6 +461,12 @@ def _event_handler_from_environment() -> SessionEventHandler:
                 )
             )
         )
+        if state_store is None:
+            raise RuntimeError("durable state is required when tools are enabled")
+        tool_lifecycle = DurableToolExecutionLifecycle(
+            store=state_store,
+            executor=tool_executor,
+        )
 
     def turn_factory(
         session_id: UUID,
@@ -435,6 +477,7 @@ def _event_handler_from_environment() -> SessionEventHandler:
             and registry is not None
             and planner is not None
             and tool_executor is not None
+            and tool_lifecycle is not None
         ):
             conversation = ToolAgentConversation(
                 base_url=base_url,
@@ -445,6 +488,7 @@ def _event_handler_from_environment() -> SessionEventHandler:
                 registry=registry,
                 planner=planner,
                 executor=tool_executor,
+                lifecycle=tool_lifecycle,
             )
         else:
             conversation = VllmConversationAdapter(

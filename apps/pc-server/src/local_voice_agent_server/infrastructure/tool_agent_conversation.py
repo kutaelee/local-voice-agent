@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 from uuid import UUID, uuid4
 
 from ..application.execute_tool import ExecuteQueuedTool, ToolExecutionOutcome
+from ..application.tool_execution_lifecycle import DurableToolExecutionLifecycle
 from ..application.tool_planner import ToolPlan, ToolPlanner
 from ..application.voice_turn import ConversationReply, VoiceEvent
 from ..domain.policy import PolicyAction, RiskLevel
@@ -101,6 +102,7 @@ class ToolAgentConversation:
         registry: ToolRegistry,
         planner: ToolPlanner,
         executor: ExecuteQueuedTool,
+        lifecycle: DurableToolExecutionLifecycle | None = None,
         timeout_seconds: float = 120,
         transport: ChatTransport | None = None,
     ) -> None:
@@ -134,6 +136,7 @@ class ToolAgentConversation:
         self._registry = registry
         self._planner = planner
         self._executor = executor
+        self._lifecycle = lifecycle
         self._timeout_seconds = timeout_seconds
         self._transport = transport or self._post
         self._tools = tuple(
@@ -183,6 +186,13 @@ class ToolAgentConversation:
             precondition_version=approval.precondition_version,
             expected_version=approval.version,
         )
+        if self._lifecycle is not None:
+            await self._lifecycle.decide_approval(
+                pending.plan,
+                approved=approved,
+                arguments_digest=arguments_digest,
+                reason=reason,
+            )
         self._pending = None
         if not approved:
             return ConversationReply(
@@ -292,6 +302,8 @@ class ToolAgentConversation:
                 ),
                 events=tuple(plan_events),
             )
+        if self._lifecycle is not None:
+            await self._lifecycle.persist_plan(plan)
         if plan.policy.action is PolicyAction.REQUIRE_APPROVAL:
             if plan.approval is None:
                 raise ToolAgentError("approval-bound plan has no approval")
@@ -352,11 +364,14 @@ class ToolAgentConversation:
                 ),
             ]
         )
-        outcome = await asyncio.to_thread(
-            self._executor.execute,
-            plan,
-            expected_execution_version=plan.execution.version,
-        )
+        if self._lifecycle is not None:
+            outcome = await self._lifecycle.execute(plan)
+        else:
+            outcome = await asyncio.to_thread(
+                self._executor.execute,
+                plan,
+                expected_execution_version=plan.execution.version,
+            )
         if not outcome.succeeded or outcome.receipt is None:
             events.append(self._failure_event(plan, outcome))
             return ConversationReply(

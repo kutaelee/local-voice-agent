@@ -58,10 +58,18 @@ approval binding and resumes the same voice turn only after approval. The
 WSL-to-Windows process smoke completed a model-selected `read_file` and
 persisted metadata-only evidence. The executor revalidates those bindings,
 serializes duplicate keys in process, and returns the prior terminal response
-without repeating a successful call. The PostgreSQL adapter now durably
-recovers exact idempotent tool records and rejects stale versions across new
-connections; wiring every live WebSocket transition through that adapter is
-the next composition milestone.
+without repeating a successful call. The PostgreSQL adapter durably recovers
+exact idempotent tool records and rejects stale versions across new
+connections. When tools are enabled the PC server now requires
+`LVA_DATABASE_URL`, creates the authenticated session on WebSocket acceptance,
+and fails closed if that durable session cannot be created. Planning writes
+`PLANNED` and its first policy transition together; an approval decision
+atomically updates both the approval and its execution; and a Tool Executor
+dispatch occurs only after `RUNNING` is committed. Receipt verification and
+terminal state are then written as separate ordered events with bounded
+evidence metadata. A restarted server must reconcile a leftover `RUNNING`
+record from executor evidence before any manual retry; it never blindly
+replays a side effect.
 
 Registered development profiles are an additional Level 1 boundary. The model
 may select only a profile ID from the allowlisted workspace configuration; it

@@ -1,6 +1,6 @@
 # ADR-0003: State store
 
-Status: Accepted and initial migration applied
+Status: Accepted; migrations `0001_initial` and `0002_approval_recovery` applied
 
 Use PostgreSQL 18 with SQLAlchemy 2.0 async, asyncpg, and Alembic for durable
 conversation, approval, execution, audit, and outbox state. Keep core state in
@@ -16,3 +16,8 @@ approval.
 The selected deployment is the existing Docker Desktop backend using
 PostgreSQL 18.4 by exact image digest, a bind mount under the approved database
 root, a Docker secret sourced outside Git, and a loopback-only host port.
+
+The composition root requires this store whenever Tool Executor access is
+enabled. It fail-closes a new WebSocket session if durable storage is
+unavailable, persists plan/approval/execution state before side effects, and
+disposes the engine in the FastAPI lifespan shutdown hook.

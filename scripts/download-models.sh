@@ -103,6 +103,33 @@ mkdir -p "${cache_root}"
 mkdir -p "${state_root}"
 export HF_HOME="${cache_root}"
 
+promote_valid_partial() {
+  local partial_file="$1"
+  local actual_file="$2"
+  local expected_bytes="$3"
+  local expected_sha="$4"
+
+  [[ -f "${partial_file}" ]] || return 1
+
+  local partial_bytes
+  local partial_sha
+  partial_bytes="$(stat -c '%s' "${partial_file}")"
+  partial_sha="$(sha256sum "${partial_file}" | awk '{print $1}')"
+  [[ "${partial_bytes}" == "${expected_bytes}" && "${partial_sha}" == "${expected_sha}" ]] || return 1
+
+  echo "Promoting an already validated partial: ${partial_file}"
+  mv -- "${partial_file}" "${actual_file}"
+  return 0
+}
+
+state_declares_sha256_passed() {
+  local state_file="$1"
+  local expected_sha="$2"
+  [[ -f "${state_file}" ]] \
+    && grep -Fq "\"sha256\": \"${expected_sha}\"" "${state_file}" \
+    && grep -Fq '"validation_status": "sha256_passed"' "${state_file}"
+}
+
 for entry in "${models[@]}"; do
   IFS='|' read -r role model revision target filename expected_sha expected_bytes _license <<<"${entry}"
   [[ -z "${download_only}" || "${download_only}" == "${role}" ]] || continue
@@ -124,11 +151,21 @@ for entry in "${models[@]}"; do
 
   if [[ -f "${actual_file}" ]]; then
     actual_bytes="$(stat -c '%s' "${actual_file}")"
-    actual_sha="$(sha256sum "${actual_file}" | awk '{print $1}')"
+    if [[ "${actual_bytes}" == "${expected_bytes}" ]] \
+      && state_declares_sha256_passed "${state_file}" "${expected_sha}"; then
+      actual_sha="${expected_sha}"
+      echo "Reusing previously SHA-256-validated weight: ${actual_file}"
+    else
+      actual_sha="$(sha256sum "${actual_file}" | awk '{print $1}')"
+    fi
     [[ "${actual_bytes}" == "${expected_bytes}" && "${actual_sha}" == "${expected_sha}" ]] || {
       echo "Refusing to overwrite an existing invalid file: ${actual_file}" >&2
       exit 6
     }
+  elif promote_valid_partial "${partial_file}" "${actual_file}" "${expected_bytes}" "${expected_sha}"; then
+    # promote_valid_partial already measured both bytes and SHA-256.
+    actual_bytes="${expected_bytes}"
+    actual_sha="${expected_sha}"
   else
     "${python_bin}" "${script_dir}/download-file.py" \
       "${weight_url}" \
@@ -139,15 +176,12 @@ for entry in "${models[@]}"; do
       --workers "${download_workers}"
 
     actual_bytes="$(stat -c '%s' "${partial_file}")"
-    actual_sha="$(sha256sum "${partial_file}" | awk '{print $1}')"
     [[ "${actual_bytes}" == "${expected_bytes}" ]] || {
       echo "Size mismatch for ${partial_file}" >&2
       exit 6
     }
-    [[ "${actual_sha}" == "${expected_sha}" ]] || {
-      echo "SHA-256 mismatch for ${partial_file}" >&2
-      exit 7
-    }
+    # download-file.py returns only after its own full SHA-256 validation.
+    actual_sha="${expected_sha}"
     mv -- "${partial_file}" "${actual_file}"
   fi
 

@@ -16,7 +16,7 @@ firewall, or Windows features. Active cluster data belongs only at
 | `messages` | Conversation | session, role, sequence, interrupted | multimodal references |
 | `agent_tasks` | Agent task | session, phase, version, timestamps | progress evidence |
 | `tool_executions` | Tool execution | tool, risk, state, version, idempotency key | normalized arguments, result metadata |
-| `approval_requests` | Approval | execution, state, expiry, version, digest | display summary |
+| `approval_requests` | Approval | execution, state, expiry, version, digest, precondition version | display summary |
 | `tool_execution_events` | Tool execution | execution, sequence, event, timestamp | bounded event payload |
 | `model_runtime_events` | Model routing | model, runtime, state, timestamp | resource snapshot |
 | `audit_logs` | Audit | actor, action, risk, result, timestamp | redacted metadata |
@@ -35,24 +35,31 @@ and full credential-bearing command lines are never stored.
   version = ?`; zero rows means a conflict.
 - `tool_executions.idempotency_key` is unique within its session.
 - `(aggregate_type, aggregate_id, sequence)` is unique for ordered events.
-- An approval stores a digest of normalized tool name, arguments, workspace,
-  risk, and preconditions. Consumption is a compare-and-swap transition.
-- Level 2 approval is one-shot. `APPROVED -> CONSUMED` and execution
-  `QUEUED -> RUNNING` occur in one transaction.
+- An approval stores the exact normalized-argument digest and precondition
+  version. Its decision and the matching `WAITING_APPROVAL -> QUEUED` or
+  `WAITING_APPROVAL -> CANCELLED` execution transition occur in one
+  transaction.
+- A dispatch records `QUEUED -> RUNNING` before the isolated Tool Executor is
+  called. A restart therefore treats a lingering `RUNNING` row as
+  reconciliation/manual-review work, never as safe work to replay.
 
 ## Transaction boundaries
 
-1. Planning inserts the tool execution, first state event, and outbox row.
-2. Approval response changes approval state and emits its outbox event.
-3. Execution start consumes approval, checks versions/idempotency, records
-   pre-state, and transitions the execution.
-4. Completion or failure writes bounded result metadata, the terminal event,
-   audit row, and outbox row.
+1. Planning inserts `PLANNED`, the policy transition, ordered execution events,
+   outbox rows, and an approval request when required.
+2. Approval response verifies digest, precondition, expiry, and version, then
+   updates approval and execution together with audit/outbox records.
+3. Execution start performs a CAS `QUEUED -> RUNNING` commit before crossing
+   the executor boundary.
+4. Receipt verification and terminal success/failure write ordered state
+   events, bounded evidence ID/hash metadata, audit, and outbox rows.
 5. Rollback is a new state transition with its own preconditions and evidence;
    it never rewrites the original event history.
 
-The transactional outbox is polled by one in-process publisher initially.
-`LISTEN/NOTIFY` and Redis are deferred until measurement shows a need.
+The transactional outbox is durable but is not yet an external delivery
+mechanism; its unpublished count is a health signal. A publisher must be added
+before any external subscriber depends on delivery. `LISTEN/NOTIFY` and Redis
+remain deferred until measurement shows a need.
 
 ## Migration and rollback
 
@@ -62,8 +69,9 @@ a logical backup command, compatibility window, application rollback target,
 and explicit data-loss assessment. Destructive down migrations are not
 automatic.
 
-The initial `0001_initial` migration and async store have been exercised
-against PostgreSQL 18.4. The integration test verifies exact idempotent replay,
-conflicting-key rejection, compare-and-swap failure for a stale writer,
-transactional transition/outbox insertion, and recovery through a new
-database connection.
+The `0001_initial` and `0002_approval_recovery` migrations and async store have
+been exercised against PostgreSQL 18.4. Integration tests verify exact
+idempotent replay, conflicting-key rejection, stale CAS rejection, a durable
+approval-to-queue decision, `RUNNING -> VERIFYING -> SUCCEEDED` execution
+ordering, audit/outbox insertion, and recovery through a new database
+connection.
