@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T23:55:31+09:00"
+generated_at: "2026-07-24T07:35:13+09:00"
 installation:
   sdk_root: 'C:\Dev\SDK\Android'
   cache_root: 'E:\Cache\LocalVoiceAgent\android-sdk'
@@ -24,6 +24,25 @@ packages:
     api_level: "37.0"
     platform_version: "17"
     status: installed_and_compile_passed
+  - id: emulator
+    version: "36.6.11"
+    status: installed_and_api36_cold_boot_passed
+    source: Android SDK Manager official repository
+    package_metadata_sha256: a0cdf354b08f5d21b426dd6d8d58a3c6e5d1527d84740bba1df88b4249ca32e4
+  - id: system-images/android-36/google_apis/x86_64
+    version: "revision 7"
+    api_level: 36
+    extension_level: 17
+    status: installed_and_0_6_2_app_qa_passed
+    source: Android SDK Manager official repository
+    package_metadata_sha256: edfc961bd9128fbfea84b4c61aac3a72ea270ca286425e22b3ed01ac759b1fc3
+avd:
+  name: lva_api36
+  data_path: 'E:\Data\LocalVoiceAgent\runtime\android-avd\lva_api36.avd'
+  device: pixel_8
+  rendering: swiftshader_indirect
+  snapshot: disabled_for_qa
+  evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\android\android-0.6.2-emulator-qa.json'
 build_runtime:
   jdk:
     version: "17.0.20"

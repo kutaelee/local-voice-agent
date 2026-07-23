@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T06:52:00+09:00"
+generated_at: "2026-07-24T07:35:13+09:00"
 application_id: dev.localvoiceagent.android
 version_code: 10
 version_name: "0.6.2"
@@ -26,12 +26,13 @@ validation:
   unit_test_failures: 0
   lint_findings_after_fix: 0
   package_metadata: compile_sdk_37_target_sdk_37_verified_with_aapt2
-  device_install_test: api37_emulator_launch_navigation_rotation_relaunch_passed
+  device_install_test: api36_emulator_0_6_2_install_navigation_rotation_relaunch_passed
   interruption_queue_test: prior_generation_chunks_invalidated_and_normal_drain_preserved
   reconnect_test: same_session_resume_sequence_and_expired_replay_terminal_rejection_passed
   ui_evidence:
     initial_issue: status_bar_overlap_and_eight_item_bottom_row_clipping
-    corrected_screenshot: 'E:\Data\LocalVoiceAgent\runtime\evidence\android\lva-041-main.png'
-    corrected_screenshot_sha256: 1260304aa3b7b5cd9da3bd7fd9f825fe1582116e341a204874835fb85f0c720e
-    landscape_hierarchy: 'E:\Data\LocalVoiceAgent\runtime\evidence\android\lva-landscape-ui.xml'
-    more_hierarchy: 'E:\Data\LocalVoiceAgent\runtime\evidence\android\lva-more.xml'
+    current_qa: 'E:\Data\LocalVoiceAgent\runtime\evidence\android\android-0.6.2-emulator-qa.json'
+    main_screenshot: 'E:\Data\LocalVoiceAgent\runtime\evidence\android\lva-062-main.png'
+    main_screenshot_sha256: 12814c34e603f68aeba828018d0d16ef4a704d0cefd12ea3dac9de866f8ce596
+    landscape_hierarchy: 'E:\Data\LocalVoiceAgent\runtime\evidence\android\lva-062-landscape.xml'
+    historical_corrected_screenshot: 'E:\Data\LocalVoiceAgent\runtime\evidence\android\lva-041-main.png'

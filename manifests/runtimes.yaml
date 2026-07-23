@@ -36,7 +36,7 @@ runtimes:
     kotlin_symbol_processing: "2.3.10"
     room: "2.8.4"
     room_schema: apps/android-client/app/schemas/dev.localvoiceagent.android.storage.LocalStateDatabase/1.json
-    test_status: 15_passed_lint_zero_findings_reconnect_resume_expiry_room_ksp_bluetooth_and_playback_generation_build_passed_emulator_ui_0_4_1_historical
+    test_status: 15_passed_lint_zero_findings_reconnect_resume_expiry_room_ksp_bluetooth_playback_generation_build_and_0_6_2_emulator_ui_passed
     artifact_manifest: manifests/android-artifacts.yaml
     rollback: remove only isolated SDK/cache after inventory; revert tracked client changes
   - id: huggingface-hub-1.24.0

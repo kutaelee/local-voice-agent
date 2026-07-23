@@ -15,8 +15,9 @@ microphone foreground-service boundary. Four primary destinations fit the
 bottom bar; History, Execution, Evidence, and Settings remain reachable from
 More without clipping compact screens.
 
-Version 0.4.1 was installed on an API 37 emulator. Version 0.4.2 adds the
-private-CA network configuration. Version 0.5.0 persists an unresolved
+Version 0.4.1 was first installed on an API 37 emulator and exposed two layout
+issues that were corrected. Version 0.4.2 adds the private-CA network
+configuration. Version 0.5.0 persists an unresolved
 approval and bounded execution summaries through Room, without retaining raw
 audio or transcript text. Version 0.6.0 requests Bluetooth-connect permission
 with microphone capture and selects an available modern communication device
@@ -24,10 +25,10 @@ for the foreground voice session. Version 0.6.1 separates normal playback
 drain from interruption: barge-in immediately flushes the active track and
 invalidates all queued chunks from the prior response generation. Version
 0.6.2 resumes a disconnected session from the last accepted server sequence
-and stops automatic retries when the bounded replay window has expired. Launch,
-status/navigation
-insets, the More destination list, portrait/landscape recreation, and
-force-stop/relaunch passed without an AndroidRuntime error. Physical-device
+and stops automatic retries when the bounded replay window has expired. The
+0.6.2 debug APK was installed on an API 36 x86_64 emulator and passed cold
+launch, all primary destinations, portrait/landscape recreation, and
+force-stop/relaunch without a crash-buffer entry. Physical-device
 private-CA installation, microphone, Bluetooth, Room process-recovery on a
 physical device, and end-to-end voice timing remain separate acceptance tests.
 
