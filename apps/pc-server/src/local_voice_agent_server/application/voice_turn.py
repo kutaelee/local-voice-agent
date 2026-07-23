@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
+import inspect
 from typing import Protocol
 from uuid import UUID, uuid4
 
@@ -208,7 +209,12 @@ class VoiceTurnService:
     def pending_approval_id(self) -> UUID | None:
         return self._pending_approval_id
 
-    def cancel_pending_approval(self) -> None:
+    async def cancel_pending_approval(self) -> None:
+        cancel = getattr(self._conversation, "cancel_pending_approval", None)
+        if cancel is not None:
+            result = cancel()
+            if inspect.isawaitable(result):
+                await result
         self._pending_language = None
         self._pending_approval_id = None
 

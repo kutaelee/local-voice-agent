@@ -228,6 +228,21 @@ class ToolAgentConversation:
             language=pending.language,
         )
 
+    async def cancel_pending_approval(self) -> None:
+        """Durably reject an unconsumed approval before discarding local state."""
+        pending = self._pending
+        if pending is None or pending.plan.approval is None:
+            return
+        approval = pending.plan.approval
+        if self._lifecycle is not None:
+            await self._lifecycle.decide_approval(
+                pending.plan,
+                approved=False,
+                arguments_digest=approval.normalized_arguments_sha256,
+                reason="cancelled_before_execution",
+            )
+        self._pending = None
+
     async def _advance(
         self,
         messages: list[dict[str, object]],

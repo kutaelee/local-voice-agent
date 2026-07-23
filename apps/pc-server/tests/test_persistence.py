@@ -201,6 +201,35 @@ async def _exercise_durable_lifecycle() -> None:
         assert approved.state == "QUEUED"
         assert approved.version == 2
 
+        cancelled_plan = planner.plan(
+            session_id=str(session_id),
+            request_id=str(uuid4()),
+            tool_call_id=str(uuid4()),
+            tool_name="write_file",
+            arguments={
+                "workspace_id": "local_voice_agent",
+                "relative_path": "tests/cancelled-durable.txt",
+                "expected_sha256": None,
+                "content": "not-written",
+            },
+            idempotency_key=str(uuid4()),
+            precondition_version=0,
+        )
+        await store.persist_planned_plan(cancelled_plan)
+        assert cancelled_plan.execution is not None
+        assert cancelled_plan.approval is not None
+        execution_ids.add(UUID(cancelled_plan.execution.execution_id))
+        cancelled = await store.decide_approval(
+            approval_id=cancelled_plan.approval.approval_id,
+            approved=False,
+            arguments_digest=cancelled_plan.approval.normalized_arguments_sha256,
+            precondition_version=cancelled_plan.approval.precondition_version,
+            expected_approval_version=cancelled_plan.approval.version,
+            reason="cancelled_before_execution",
+        )
+        assert cancelled.state == "CANCELLED"
+        assert cancelled.version == 2
+
         observe_plan = planner.plan(
             session_id=str(session_id),
             request_id=str(uuid4()),

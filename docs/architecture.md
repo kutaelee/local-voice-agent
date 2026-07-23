@@ -69,7 +69,9 @@ dispatch occurs only after `RUNNING` is committed. Receipt verification and
 terminal state are then written as separate ordered events with bounded
 evidence metadata. A restarted server must reconcile a leftover `RUNNING`
 record from executor evidence before any manual retry; it never blindly
-replays a side effect.
+replays a side effect. Cancelling a pending approval durably performs the
+same exact reject-and-`CANCELLED` transition before the voice turn drops its
+in-memory approval reference.
 
 Registered development profiles are an additional Level 1 boundary. The model
 may select only a profile ID from the allowlisted workspace configuration; it

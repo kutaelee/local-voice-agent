@@ -210,7 +210,7 @@ class VoiceSessionEventHandler:
                 await processing[1].close_vad(stream_id=stream_id)
         pending = self._pending_approval.pop(session_id, None)
         if pending is not None:
-            pending[1].cancel_pending_approval()
+            await pending[1].cancel_pending_approval()
         self._cancel_results = {
             key: value
             for key, value in self._cancel_results.items()
@@ -256,7 +256,7 @@ class VoiceSessionEventHandler:
             and pending[0] == payload.target_id
         ):
             self._pending_approval.pop(session_id, None)
-            pending[1].cancel_pending_approval()
+            await pending[1].cancel_pending_approval()
             status = "cancelled"
             final_state = "interrupted"
             summary = "The pending approval and response were cancelled."
