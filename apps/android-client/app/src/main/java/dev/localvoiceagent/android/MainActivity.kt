@@ -89,6 +89,9 @@ class MainActivity : ComponentActivity() {
                                     if (Build.VERSION.SDK_INT >= 33) {
                                         add(Manifest.permission.POST_NOTIFICATIONS)
                                     }
+                                    if (Build.VERSION.SDK_INT >= 31) {
+                                        add(Manifest.permission.BLUETOOTH_CONNECT)
+                                    }
                                 }.toTypedArray(),
                             )
                         } else {

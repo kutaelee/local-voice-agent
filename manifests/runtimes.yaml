@@ -1,10 +1,10 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T03:40:00+09:00"
+generated_at: "2026-07-24T03:52:00+09:00"
 runtimes:
-  - id: android-client-build-0.5.0
+  - id: android-client-build-0.6.0
     role: android_client_build
-    version: "0.5.0"
-    status: api37_debug_release_build_room_state_cache_and_private_ca_debug_override_passed
+    version: "0.6.0"
+    status: api37_debug_release_build_room_state_cache_private_ca_debug_override_and_bluetooth_route_selection_compiled
     environment: 'C:\Dev\SDK\Android'
     jdk: "17.0.20"
     android_gradle_plugin: "9.3.0"
@@ -16,7 +16,7 @@ runtimes:
     kotlin_symbol_processing: "2.3.10"
     room: "2.8.4"
     room_schema: apps/android-client/app/schemas/dev.localvoiceagent.android.storage.LocalStateDatabase/1.json
-    test_status: 11_passed_lint_zero_findings_room_ksp_build_passed_emulator_ui_0_4_1_historical
+    test_status: 11_passed_lint_zero_findings_room_ksp_and_bluetooth_route_build_passed_emulator_ui_0_4_1_historical
     artifact_manifest: manifests/android-artifacts.yaml
     rollback: remove only isolated SDK/cache after inventory; revert tracked client changes
   - id: huggingface-hub-1.24.0

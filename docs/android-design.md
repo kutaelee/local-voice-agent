@@ -3,8 +3,10 @@
 Status: Kotlin/Compose client builds successfully for Android 17 / API 37 with
 the isolated command-line SDK. Android Studio is not installed. Authenticated
 WebSocket, PCM capture/playback, Room-backed approval/execution metadata,
-foreground service, and basic emulator UI QA are implemented. Physical-device
-Bluetooth, private-CA, process-recovery, and end-to-end voice QA remain.
+foreground service, and basic emulator UI QA are implemented. The foreground
+voice session requests the modern Android communication-device route for an
+available Bluetooth/LE/hearing-aid endpoint. Physical-device Bluetooth,
+private-CA, process-recovery, and end-to-end voice QA remain.
 
 ## Application structure
 

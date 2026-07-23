@@ -18,7 +18,9 @@ More without clipping compact screens.
 Version 0.4.1 was installed on an API 37 emulator. Version 0.4.2 adds the
 private-CA network configuration. Version 0.5.0 persists an unresolved
 approval and bounded execution summaries through Room, without retaining raw
-audio or transcript text. Launch, status/navigation
+audio or transcript text. Version 0.6.0 requests Bluetooth-connect permission
+with microphone capture and selects an available modern communication device
+for the foreground voice session. Launch, status/navigation
 insets, the More destination list, portrait/landscape recreation, and
 force-stop/relaunch passed without an AndroidRuntime error. Physical-device
 private-CA installation, microphone, Bluetooth, Room process-recovery on a
