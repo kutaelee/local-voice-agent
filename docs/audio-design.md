@@ -52,13 +52,15 @@ Blackwell-compatible environment. The built-in condition data may be used for
 testing; no personal or third-party voice is cloned without explicit
 authorization and provided reference audio.
 
-Stable model text is segmented at sentence/meaning boundaries. The WebSocket
-emitter sends the first sentence's audio before synthesizing later sentences,
+The plain-conversation vLLM adapter consumes bounded UTF-8 SSE deltas. Stable
+sentence/meaning boundaries are synthesized as soon as they arrive, without
+waiting for the complete model answer. The WebSocket emitter sends text
+deltas and the first sentence's audio before later model text is complete,
 uses one ordered output-stream ID across segments, and closes a partially
-emitted stream with `cancelled` or `error`. The current model adapters still
-return a stable final answer before this segmentation; incremental LLM
-sentence detection remains a measured latency improvement rather than a
-completed claim.
+emitted stream with `cancelled` or `error`. Tool-enabled conversations keep
+the non-streaming structured-response path so the complete tool name and
+arguments can be validated before planning or execution. Physical-device
+first-audio timing remains a required measurement.
 
 ## Barge-in sequence
 

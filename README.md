@@ -21,7 +21,10 @@ worker; its authenticated streaming smoke detected speech and a 500 ms
 endpoint, and Android stops capture when the server reports that endpoint.
 The WebSocket response path accepts and deduplicates cancellation while
 STT/LLM/TTS processing is still active, emits events before the turn handler
-returns, and sends one sentence's TTS audio before synthesizing the next.
+returns, streams plain-conversation model deltas, and starts first-sentence
+TTS before later model text is complete. Tool-enabled turns remain on the
+non-streaming structured path so a complete tool call is validated before any
+execution.
 Gemma's model-visible tool loop now
 limits itself to 47 implemented tools, validates every call through
 the planner/policy engine, pauses Level 1 work for an exact approval, resumes

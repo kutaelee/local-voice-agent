@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import base64
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import inspect
 import re
-from typing import Awaitable, Callable, Protocol
+from typing import AsyncIterator, Awaitable, Callable, Protocol
 from uuid import UUID, uuid4
 
 from ..domain.audio_stream import AudioStream
@@ -34,6 +34,14 @@ class VoiceEvent:
 
 
 VoiceEventEmitter = Callable[[VoiceEvent], Awaitable[None]]
+
+
+@dataclass(slots=True)
+class _AudioOutputState:
+    stream_id: UUID = field(default_factory=uuid4)
+    output_format: tuple[int, int] | None = None
+    chunk_index: int = 0
+    started: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -277,6 +285,19 @@ class VoiceTurnService:
             emit=emit,
         )
 
+        stream_response = getattr(self._conversation, "stream", None)
+        if emit is not None and callable(stream_response):
+            stream = stream_response(
+                transcript.text,
+                language=transcript.language,
+            )
+            return await self._complete_streamed_response(
+                events,
+                stream=stream,
+                language=transcript.language,
+                emit=emit,
+            )
+
         response_value = await self._conversation.respond(
             transcript.text,
             language=transcript.language,
@@ -371,102 +392,232 @@ class VoiceTurnService:
             emit=emit,
         )
 
-        output_stream_id = uuid4()
-        output_format: tuple[int, int] | None = None
-        chunk_index = 0
-        audio_started = False
+        state = _AudioOutputState()
         try:
             for speech_unit in _speech_units(response):
-                output = await self._tts.synthesize(
-                    speech_unit,
+                await self._synthesize_speech_unit(
+                    events,
+                    state=state,
+                    speech_unit=speech_unit,
                     language=language,
+                    emit=emit,
                 )
-                current_format = (output.sample_rate_hz, output.channels)
-                if output_format is None:
-                    output_format = current_format
-                elif output_format != current_format:
-                    raise ValueError("TTS output format changed within one response")
-                if not audio_started:
+        except asyncio.CancelledError:
+            await self._close_partial_output(
+                state,
+                emit=emit,
+                reason="cancelled",
+            )
+            raise
+        except Exception:
+            await self._close_partial_output(state, emit=emit, reason="error")
+            raise
+        await self._end_audio_output(
+            events,
+            state=state,
+            reason="completed",
+            emit=emit,
+        )
+        return events
+
+    async def _complete_streamed_response(
+        self,
+        events: list[VoiceEvent],
+        *,
+        stream: AsyncIterator[str],
+        language: str,
+        emit: VoiceEventEmitter,
+    ) -> list[VoiceEvent]:
+        state = _AudioOutputState()
+        response_parts: list[str] = []
+        pending_speech = ""
+        synthesis_announced = False
+        total_characters = 0
+        try:
+            async for delta in stream:
+                if not isinstance(delta, str):
+                    raise ValueError("conversation stream returned invalid text")
+                if not delta:
+                    continue
+                total_characters += len(delta)
+                if total_characters > 2 * 1024 * 1024:
+                    raise ValueError("conversation stream is too large")
+                response_parts.append(delta)
+                pending_speech += delta
+                await self._deliver(
+                    events,
+                    VoiceEvent("assistant.text.delta", {"text": delta}),
+                    emit=emit,
+                )
+                ready, pending_speech = _take_complete_speech_units(
+                    pending_speech
+                )
+                if ready and not synthesis_announced:
                     await self._deliver(
                         events,
                         VoiceEvent(
                             "assistant.state",
-                            {"state": "speaking"},
+                            {"state": "synthesizing"},
                         ),
                         emit=emit,
                     )
-                    audio_started = True
-                bytes_per_second = output.sample_rate_hz * output.channels * 2
-                for offset in range(
-                    0,
-                    len(output.pcm_s16le),
-                    self._output_chunk_bytes,
-                ):
-                    chunk = output.pcm_s16le[
-                        offset : offset + self._output_chunk_bytes
-                    ]
-                    duration_ms = max(
-                        1,
-                        round(len(chunk) * 1_000 / bytes_per_second),
+                    synthesis_announced = True
+                for speech_unit in ready:
+                    await self._synthesize_speech_unit(
+                        events,
+                        state=state,
+                        speech_unit=speech_unit,
+                        language=language,
+                        emit=emit,
                     )
+
+            response = "".join(response_parts).strip()
+            if not response:
+                raise ValueError("conversation stream returned no text")
+            await self._deliver(
+                events,
+                VoiceEvent(
+                    "assistant.text.final",
+                    {"text": response, "interrupted": False},
+                ),
+                emit=emit,
+            )
+            remaining = pending_speech.strip()
+            if remaining:
+                if not synthesis_announced:
                     await self._deliver(
                         events,
                         VoiceEvent(
-                            "audio.output.chunk",
-                            {
-                                "audio_stream_id": str(output_stream_id),
-                                "chunk_index": chunk_index,
-                                "encoding": "pcm_s16le",
-                                "sample_rate_hz": output.sample_rate_hz,
-                                "channels": output.channels,
-                                "duration_ms": duration_ms,
-                                "data_base64": base64.b64encode(chunk).decode(
-                                    "ascii"
-                                ),
-                            },
+                            "assistant.state",
+                            {"state": "synthesizing"},
                         ),
                         emit=emit,
                     )
-                    chunk_index += 1
-        except asyncio.CancelledError:
-            if audio_started and emit is not None:
-                await emit(
-                    VoiceEvent(
-                        "audio.output.end",
-                        {
-                            "audio_stream_id": str(output_stream_id),
-                            "reason": "cancelled",
-                        },
-                    )
+                await self._synthesize_speech_unit(
+                    events,
+                    state=state,
+                    speech_unit=remaining,
+                    language=language,
+                    emit=emit,
                 )
+            await self._end_audio_output(
+                events,
+                state=state,
+                reason="completed",
+                emit=emit,
+            )
+        except asyncio.CancelledError:
+            await self._close_partial_output(
+                state,
+                emit=emit,
+                reason="cancelled",
+            )
             raise
         except Exception:
-            if audio_started and emit is not None:
-                try:
-                    await emit(
-                        VoiceEvent(
-                            "audio.output.end",
-                            {
-                                "audio_stream_id": str(output_stream_id),
-                                "reason": "error",
-                            },
-                        )
-                    )
-                except Exception:
-                    pass
+            await self._close_partial_output(state, emit=emit, reason="error")
             raise
+        return events
+
+    async def _synthesize_speech_unit(
+        self,
+        events: list[VoiceEvent],
+        speech_unit: str,
+        *,
+        state: _AudioOutputState,
+        language: str,
+        emit: VoiceEventEmitter | None,
+    ) -> None:
+        output = await self._tts.synthesize(
+            speech_unit,
+            language=language,
+        )
+        current_format = (output.sample_rate_hz, output.channels)
+        if state.output_format is None:
+            state.output_format = current_format
+        elif state.output_format != current_format:
+            raise ValueError("TTS output format changed within one response")
+        if not state.started:
+            await self._deliver(
+                events,
+                VoiceEvent(
+                    "assistant.state",
+                    {"state": "speaking"},
+                ),
+                emit=emit,
+            )
+            state.started = True
+        bytes_per_second = output.sample_rate_hz * output.channels * 2
+        for offset in range(
+            0,
+            len(output.pcm_s16le),
+            self._output_chunk_bytes,
+        ):
+            chunk = output.pcm_s16le[
+                offset : offset + self._output_chunk_bytes
+            ]
+            duration_ms = max(
+                1,
+                round(len(chunk) * 1_000 / bytes_per_second),
+            )
+            await self._deliver(
+                events,
+                VoiceEvent(
+                    "audio.output.chunk",
+                    {
+                        "audio_stream_id": str(state.stream_id),
+                        "chunk_index": state.chunk_index,
+                        "encoding": "pcm_s16le",
+                        "sample_rate_hz": output.sample_rate_hz,
+                        "channels": output.channels,
+                        "duration_ms": duration_ms,
+                        "data_base64": base64.b64encode(chunk).decode("ascii"),
+                    },
+                ),
+                emit=emit,
+            )
+            state.chunk_index += 1
+
+    async def _end_audio_output(
+        self,
+        events: list[VoiceEvent],
+        *,
+        state: _AudioOutputState,
+        reason: str,
+        emit: VoiceEventEmitter | None,
+    ) -> None:
         await self._deliver(
             events,
             VoiceEvent(
                 "audio.output.end",
                 {
-                    "audio_stream_id": str(output_stream_id),
-                    "reason": "completed",
+                    "audio_stream_id": str(state.stream_id),
+                    "reason": reason,
                 },
             ),
             emit=emit,
         )
-        return events
+
+    async def _close_partial_output(
+        self,
+        state: _AudioOutputState,
+        *,
+        emit: VoiceEventEmitter | None,
+        reason: str,
+    ) -> None:
+        if not state.started or emit is None:
+            return
+        try:
+            await emit(
+                VoiceEvent(
+                    "audio.output.end",
+                    {
+                        "audio_stream_id": str(state.stream_id),
+                        "reason": reason,
+                    },
+                )
+            )
+        except Exception:
+            pass
 
     @staticmethod
     async def _deliver(
@@ -490,3 +641,17 @@ def _speech_units(text: str) -> tuple[str, ...]:
     if not units:
         raise ValueError("conversation model returned no speech units")
     return units
+
+
+def _take_complete_speech_units(text: str) -> tuple[tuple[str, ...], str]:
+    units: list[str] = []
+    start = 0
+    for boundary in re.finditer(
+        r"(?:(?<=[.!?。！？])\s+|\n{2,})",
+        text,
+    ):
+        unit = text[start : boundary.start()].strip()
+        if unit:
+            units.append(unit)
+        start = boundary.end()
+    return tuple(units), text[start:]

@@ -40,8 +40,11 @@ stopped by the router. The FastAPI composition root exposes a read-only health
 route and a bearer-token-authenticated WebSocket gateway. It rejects
 missing/short tokens, closed-schema violations, session mismatches, and
 replayed sequence numbers. Its incremental outbound emitter can send state and
-transcript events before a handler returns, then synthesize stable model text
-one sentence at a time so first-sentence audio precedes later synthesis.
+transcript events before a handler returns. The plain-conversation vLLM
+adapter consumes bounded SSE deltas and synthesizes complete sentence units as
+they arrive, so first-sentence audio need not wait for the full model answer.
+Tool-enabled turns deliberately retain the complete structured-response path
+so tool names and arguments are validated before planning or execution.
 
 The environment and lock are isolated from model runtimes:
 

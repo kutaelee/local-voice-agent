@@ -212,6 +212,92 @@ def test_streamed_tts_failure_terminates_the_open_audio_stream() -> None:
     asyncio.run(scenario())
 
 
+def test_streamed_llm_emits_text_deltas_and_first_audio_without_waiting() -> None:
+    timeline: list[str] = []
+
+    class StreamingConversation:
+        async def respond(self, text: str, *, language: str) -> str:
+            del text, language
+            raise AssertionError("streaming path must not call respond")
+
+        async def stream(self, text: str, *, language: str):
+            assert text
+            assert language == "ko"
+            yield "첫 문장입니다. "
+            yield "두 번째 "
+            yield "문장입니다."
+
+    class StreamingTts:
+        async def synthesize(
+            self,
+            text: str,
+            *,
+            language: str,
+        ) -> SynthesizedAudio:
+            assert language == "ko"
+            timeline.append(f"tts:{text}")
+            return SynthesizedAudio(
+                text.encode("utf-8") * 4,
+                sample_rate_hz=24_000,
+            )
+
+    async def scenario() -> None:
+        service = VoiceTurnService(
+            stt=FakeStt(),
+            conversation=StreamingConversation(),
+            tts=StreamingTts(),
+            output_chunk_bytes=32,
+        )
+        stream_id = uuid4()
+        service.start(
+            stream_id=stream_id,
+            encoding="pcm_s16le",
+            sample_rate_hz=16_000,
+            channels=1,
+        )
+        service.append(
+            stream_id=stream_id,
+            chunk_index=0,
+            encoding="pcm_s16le",
+            data=b"\x00\x00" * 160,
+            duration_ms=10,
+        )
+        emitted = []
+
+        async def emit(event) -> None:
+            emitted.append(event)
+            suffix = (
+                f":{event.payload['text']}"
+                if event.type == "assistant.text.delta"
+                else ""
+            )
+            timeline.append(f"event:{event.type}{suffix}")
+
+        assert await service.finish(stream_id=stream_id, emit=emit) == []
+        assert timeline.index("event:audio.output.chunk") < timeline.index(
+            "event:assistant.text.delta:두 번째 "
+        )
+        assert [
+            event.payload["text"]
+            for event in emitted
+            if event.type == "assistant.text.delta"
+        ] == ["첫 문장입니다. ", "두 번째 ", "문장입니다."]
+        final = next(
+            event
+            for event in emitted
+            if event.type == "assistant.text.final"
+        )
+        assert final.payload["text"] == "첫 문장입니다. 두 번째 문장입니다."
+        assert [item for item in timeline if item.startswith("tts:")] == [
+            "tts:첫 문장입니다.",
+            "tts:두 번째 문장입니다.",
+        ]
+        assert emitted[-1].type == "audio.output.end"
+        assert emitted[-1].payload["reason"] == "completed"
+
+    asyncio.run(scenario())
+
+
 def test_voice_turn_emits_vad_end_and_closes_worker_state() -> None:
     class FakeVad:
         closed = False

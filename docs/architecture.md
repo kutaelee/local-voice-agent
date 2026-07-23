@@ -155,8 +155,10 @@ and sends the terminal input event. Voice-response completion runs as a
 background task so a monotonic cancellation event can be processed while
 STT, model inference, or TTS is pending. Cancellation IDs are bounded and
 deduplicated per session; later output from a cancelled task is discarded.
-The gateway also accepts emitted events before the handler returns. Stable
-response text is split into sentence units, and each unit is synthesized and
-sent before the next unit begins. Chunk indexes remain monotonic across the
-single output stream; cancellation and TTS failure explicitly terminate an
-already-open stream.
+The gateway also accepts emitted events before the handler returns. For plain
+conversation, the vLLM adapter consumes SSE text deltas and synthesizes each
+complete sentence unit before the remaining answer is available. Tool-enabled
+turns keep the full structured response so the policy path never executes a
+partial tool call. Chunk indexes remain monotonic across the single output
+stream; cancellation and TTS failure explicitly terminate an already-open
+stream.
