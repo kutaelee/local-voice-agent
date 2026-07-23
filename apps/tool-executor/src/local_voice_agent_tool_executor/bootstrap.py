@@ -18,6 +18,7 @@ from .browser import BrowserAutomation
 from .errors import WorkspaceConfigurationError
 from .executor import ReadOnlyToolExecutor
 from .service import BoundExecutionService
+from .system import WindowsSystemInspector
 from .workspaces import (
     Workspace,
     WorkspaceAccess,
@@ -74,6 +75,7 @@ def create_app_from_environment() -> FastAPI:
             if os.name == "nt"
             else None
         ),
+        system_inspector=WindowsSystemInspector() if os.name == "nt" else None,
     )
     service = BoundExecutionService(
         executor=executor,

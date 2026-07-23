@@ -122,8 +122,8 @@ runtimes:
     playwright: "1.61.0"
     pywinauto: "0.6.9"
     pillow: "12.3.0"
-    windows_test_status: 68_passed_one_symlink_test_skipped_with_browser_and_ui_smokes
-    wsl_test_status: 67_passed_two_windows_only_tests_skipped
+    windows_test_status: 76_passed_one_symlink_test_skipped_with_browser_ui_and_system_smokes
+    wsl_test_status: 73_passed_four_windows_only_tests_skipped
     enabled_tools:
       - calculate_hash
       - list_files
@@ -160,6 +160,16 @@ runtimes:
       - ui_list_windows
       - ui_press_key
       - ui_type_text
+      - check_port
+      - inspect_cpu
+      - inspect_disk
+      - inspect_gpu
+      - inspect_memory
+      - inspect_network
+      - inspect_process
+      - inspect_service
+      - list_processes
+      - list_services
     connection_status: live_model_tool_loop_read_file_smoke_passed
     ipc:
       default_host: 127.0.0.1

@@ -21,11 +21,11 @@ worker; its authenticated streaming smoke detected speech and a 500 ms
 endpoint, and Android stops capture when the server reports that endpoint.
 The WebSocket response path accepts and deduplicates cancellation while
 STT/LLM/TTS processing is still active. Gemma's model-visible tool loop now
-limits itself to the sixteen implemented tools, validates every call through
+limits itself to 45 implemented tools, validates every call through
 the planner/policy engine, pauses Level 1 work for an exact approval, resumes
 the same turn, and returns verified results to the model. A separate Tool
-Executor implements thirteen bounded
-Level 0 filesystem/Git observation tools plus approval-bound Level 1
+Executor implements bounded filesystem, Git, browser, Windows UI, and ten
+Windows system observation tools plus approval-bound Level 1
 `write_file`, `apply_patch`, and hash-preconditioned rollback. Its
 authenticated loopback API enforces execution binding and idempotency and
 writes metadata-only audit/evidence records plus external rollback backups.

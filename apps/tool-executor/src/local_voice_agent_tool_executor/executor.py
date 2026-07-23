@@ -19,6 +19,7 @@ from .errors import (
 from .filesystem import ReadOnlyFilesystem
 from .git import ReadOnlyGit
 from .mutations import FileMutationExecutor
+from .system import SYSTEM_TOOLS, WindowsSystemInspector
 from .windows_ui import UI_TOOLS, WindowsUiAutomation
 from .workspaces import WorkspaceRegistry
 
@@ -34,6 +35,7 @@ class ReadOnlyToolExecutor:
         backup_root: Path | None = None,
         browser: BrowserAutomation | None = None,
         windows_ui: WindowsUiAutomation | None = None,
+        system_inspector: WindowsSystemInspector | None = None,
     ) -> None:
         self._contracts = ReadToolContracts.load(
             definitions_dir=definitions_dir,
@@ -59,6 +61,7 @@ class ReadOnlyToolExecutor:
         )
         self._browser = browser
         self._windows_ui = windows_ui
+        self._system = system_inspector
 
     def execute(
         self,
@@ -87,6 +90,12 @@ class ReadOnlyToolExecutor:
             if self._windows_ui is None:
                 raise ToolNotSupported("Windows UI adapter is not configured")
             result = self._windows_ui.execute(tool_name, normalized)
+        elif tool_name in SYSTEM_TOOLS:
+            if self._system is None:
+                raise ToolNotSupported(
+                    "Windows system inspection adapter is not configured"
+                )
+            result = self._system.execute(tool_name, normalized)
         else:
             if self._git is None:
                 raise GitWorkspaceRejected("Git adapter is not configured")

@@ -27,6 +27,10 @@ class UiAutomationError(ToolExecutorError):
     code = "UI_AUTOMATION_FAILED"
 
 
+class SystemInspectionError(ToolExecutorError):
+    code = "SYSTEM_INSPECTION_FAILED"
+
+
 class WorkspaceConfigurationError(ToolExecutorError):
     code = "WORKSPACE_CONFIGURATION_INVALID"
 

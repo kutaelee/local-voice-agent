@@ -27,8 +27,9 @@ rollback, model runtime state, and agent task state.
 - Android client: only communicates with the API gateway.
 
 The current Tool Executor slice independently reloads the checked-in
-contracts and supports thirteen Level 0 filesystem and Git observations plus
-approval-bound Level 1 file write, patch, and rollback. It resolves an
+contracts and supports bounded filesystem, Git, browser, Windows UI, and
+Windows system observations plus approval-bound Level 1 file write, patch,
+and rollback. It resolves an
 explicit workspace before every operation, rejects ambiguous or escaping
 paths and link/reparse segments, verifies file identity against pre/post path
 state, and bounds traversal, subprocess time, and output. File changes bind
@@ -36,7 +37,9 @@ an exact approval, idempotency key, SHA-256 precondition, external backup, and
 verified post-state; rollback has its own approval and concurrent-change
 guard. Git uses fixed argv with external execution features disabled and
 rejects metadata escape mechanisms. Browser and Windows UI adapters now cover
-their bounded Level 0/1 subsets. Delete, Git mutation, process, coordinate UI,
+their bounded Level 0/1 subsets. Read-only CPU, memory, GPU, disk, network,
+process, service, and local-port adapters use only fixed code-owned queries
+and mask opt-in command lines. Delete, Git mutation, process mutation, coordinate UI,
 external browser submission, and shell adapters remain unavailable.
 
 The current transport boundary is an authenticated HTTP API bound by default
@@ -48,7 +51,7 @@ PC server has a hexagonal `ToolExecutionPort` and HTTP adapter that carries the 
 ID, idempotency key, argument digest, tool-definition digest, risk level,
 approval binding, and expiry. Planner-to-executor read and approved
 create/rollback paths have passed process smokes. The conversational model
-loop exposes only the sixteen implemented executor tools, rejects malformed,
+loop exposes only the 45 implemented executor tools, rejects malformed,
 parallel, or unavailable calls, and runs at most four sequential calls.
 Level 0 results return to the model immediately; Level 1 pauses with the exact
 approval binding and resumes the same voice turn only after approval. The
