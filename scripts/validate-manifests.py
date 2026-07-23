@@ -122,6 +122,7 @@ def main() -> int:
 
         require(HEX_40.fullmatch(model["revision"]) is not None, f"{role}: bad revision")
         require(model["size_bytes"] == download["size_bytes"], f"{role}: size drift")
+        require(model["license"] == download["license"], f"{role}: license drift")
         require(
             model.get("downloaded_at") == download.get("downloaded_at"),
             f"{role}: downloaded_at drift",

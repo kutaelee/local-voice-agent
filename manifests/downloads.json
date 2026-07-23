@@ -3,13 +3,12 @@
   "generated_at": "2026-07-23T17:24:00+09:00",
   "canonical_cache": "E:\\Cache\\LocalVoiceAgent\\huggingface",
   "free_space_before_bytes": 3636472119296,
-  "license": "Apache-2.0",
-  "official_owner": "google",
   "status": "partially_downloaded",
   "downloads": [
     {
       "model_id": "google/gemma-4-12B-it-qat-w4a16-ct",
       "revision": "1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee",
+      "license": "Apache-2.0",
       "size_bytes": 10296461612,
       "largest_file": {
         "path": "model.safetensors",
@@ -23,6 +22,7 @@
     {
       "model_id": "google/gemma-4-12B-it-qat-q4_0-unquantized-assistant",
       "revision": "18934064dd4c5c6cc3621f6381e7d377fc8cb7bd",
+      "license": "Apache-2.0",
       "size_bytes": 877944019,
       "largest_file": {
         "path": "model.safetensors",
@@ -36,6 +36,7 @@
     {
       "model_id": "google/gemma-4-12B-it-qat-q4_0-unquantized",
       "revision": "b6ed86275a6a5735884e208bfed95b445a684ca2",
+      "license": "Apache-2.0",
       "size_bytes": 23951777679,
       "largest_file": {
         "path": "model.safetensors",
@@ -49,6 +50,7 @@
     {
       "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
       "revision": "52f3f65bc7a02d555763bc923bd1d9094898219d",
+      "license": "Apache-2.0",
       "size_bytes": 23297596043,
       "largest_file": {
         "path": "model.safetensors",
@@ -62,6 +64,7 @@
     {
       "model_id": "google/gemma-4-31B-it-qat-q4_0-unquantized-assistant",
       "revision": "96d4c8ca3cb38c107a8478587878124895d1e844",
+      "license": "Apache-2.0",
       "size_bytes": 971267211,
       "largest_file": {
         "path": "model.safetensors",
@@ -75,6 +78,7 @@
     {
       "model_id": "google/gemma-4-31B-it-qat-q4_0-unquantized",
       "revision": "1e4d8beecacb8b7590c1d8bedd7335f687bf311f",
+      "license": "Apache-2.0",
       "size_bytes": 62578687966,
       "weight_files": [
         {
@@ -95,6 +99,7 @@
     {
       "model_id": "ResembleAI/chatterbox",
       "revision": "5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18",
+      "license": "MIT",
       "size_bytes": 3208951924,
       "weight_files": [
         {
@@ -120,6 +125,7 @@
     {
       "model_id": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
       "revision": "0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf",
+      "license": "MIT",
       "size_bytes": 1617884929,
       "largest_file": {
         "path": "model.bin",
@@ -133,6 +139,7 @@
     {
       "model_id": "Systran/faster-whisper-small",
       "revision": "536b0662742c02347bc0e980a01041f333bce120",
+      "license": "MIT",
       "size_bytes": 483546902,
       "largest_file": {
         "path": "model.bin",

@@ -53,7 +53,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | STT candidate metadata | Passed | faster-whisper 1.2.1 source/package pinned; linked large-v3-turbo and Systran small revisions, sizes, licenses, and SHA-256 values recorded |
 | OpenAI-compatible smoke client static checks | Passed | Python compile and generated 32×32 red PNG decode/pixel validation |
 | Runtime/model/GPU config references | Passed | 4 configured models, 9 manifest roles, and 9 runtime IDs cross-validated; unvalidated MTP routes remain disabled |
-| Model/download manifest metadata consistency | Passed | 9 exact model ID/revision pairs, declared sizes, weight lists, SHA-256 syntax, timestamps, and revision-pinned paths cross-validated without reading active large transfers |
+| Model/download manifest metadata consistency | Passed | 9 exact model ID/revision pairs, per-artifact licenses, sizes, weight lists, SHA-256 syntax, timestamps, and revision-pinned paths cross-validated without reading active large transfers |
 | Download state isolation | Passed | Explicit cache-side state path; 29,372-byte live transfer and 1/1 resume passed |
 | Protocol/tool contract catalog consistency | Passed | 24 events, 74 tools; all 73 required tool names present; drift checks and Draft 2020-12 schema validation passed |
 | Filesystem mutation contract safety | Passed (static) | Level 1 writes/copies/moves/archives require preconditions and idempotency; Level 2 deletion is limited to one hash-pinned file or one empty directory |
