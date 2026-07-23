@@ -72,6 +72,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Explicit cancellation protocol | Passed (static) | Idempotent request/result events distinguish cancelled, draining, non-cancellable, already-terminal, and missing operations |
 | Observability contracts | Passed | 18 required metrics, histogram p50/p95 coverage, and closed structured-log schema validated |
 | Benchmark prompt catalog | Passed | 160 unique Korean cases with required 20/30/20/20/20/20/10/20 category counts |
+| Benchmark result/report envelopes | Passed (static) | Raw result remains explicitly `not_run` with zero runs; model/runtime comparison matrices exist and every unmeasured cell is `NOT_RUN` |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 
 Exact Q4_0 MTP-target download/runtime test, 31B artifact completion, SGLang,

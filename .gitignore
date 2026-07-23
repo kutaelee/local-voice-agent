@@ -27,3 +27,4 @@ downloads/
 *.ckpt
 benchmarks/results/*
 !benchmarks/results/.gitkeep
+!benchmarks/results/raw-results.json

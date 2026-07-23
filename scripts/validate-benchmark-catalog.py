@@ -62,10 +62,46 @@ def main() -> int:
             f"benchmark counts differ: expected={EXPECTED_COUNTS}, "
             f"actual={actual_counts}"
         )
+
+    results_path = root / "benchmarks" / "results" / "raw-results.json"
+    results = json.loads(results_path.read_text(encoding="utf-8"))
+    expected_result_keys = {
+        "schema_version",
+        "status",
+        "generated_at",
+        "hardware_snapshot",
+        "fixed_conditions",
+        "runs",
+    }
+    if set(results) != expected_result_keys:
+        raise ValueError("raw result envelope keys differ")
+    if results["schema_version"] != "1.0":
+        raise ValueError("raw result schema version differs")
+    if results["status"] not in {"not_run", "running", "complete"}:
+        raise ValueError("invalid raw result status")
+    if not isinstance(results["runs"], list):
+        raise ValueError("raw result runs must be an array")
+    if results["status"] == "not_run" and results["runs"]:
+        raise ValueError("not_run raw results cannot contain runs")
+    if results["status"] == "complete":
+        if (
+            not results["runs"]
+            or results["generated_at"] is None
+            or results["hardware_snapshot"] is None
+            or results["fixed_conditions"] is None
+        ):
+            raise ValueError("complete raw results require conditions and runs")
+
+    for report_name in ("model-comparison.md", "runtime-comparison.md"):
+        report = root / "benchmarks" / "reports" / report_name
+        if not report.is_file() or "Status:" not in report.read_text(encoding="utf-8"):
+            raise ValueError(f"missing benchmark report status: {report_name}")
+
     print(
         json.dumps(
             {
                 "categories": actual_counts,
+                "raw_result_status": results["status"],
                 "status": "benchmark_catalog_passed",
                 "total_cases": sum(actual_counts.values()),
             },
