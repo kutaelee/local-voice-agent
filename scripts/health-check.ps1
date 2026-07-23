@@ -17,10 +17,42 @@ $runtimeDefinitions = @(
     [pscustomobject]@{
         id = 'vllm-0.25.1'
         python = '/home/kutae/.local/share/local-voice-agent/runtimes/vllm-0.25.1/.venv/bin/python'
+        package = 'vllm'
     },
     [pscustomobject]@{
         id = 'vllm-b2b8f679d058-cu130'
         python = '/home/kutae/.local/share/local-voice-agent/runtimes/vllm-b2b8f679d058-cu130/.venv/bin/python'
+        package = 'vllm'
+    },
+    [pscustomobject]@{
+        id = 'sglang-0.5.15.post1'
+        python = '/home/kutae/.local/share/local-voice-agent/runtimes/sglang-0.5.15.post1/.venv/bin/python'
+        package = 'sglang'
+    },
+    [pscustomobject]@{
+        id = 'pc-server-0.1.0'
+        python = '/home/kutae/.local/share/local-voice-agent/runtimes/pc-server/.venv/bin/python'
+        package = 'local-voice-agent-server'
+    },
+    [pscustomobject]@{
+        id = 'faster-whisper-1.2.1'
+        python = '/home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1/.venv/bin/python'
+        package = 'faster-whisper'
+    },
+    [pscustomobject]@{
+        id = 'silero-vad-6.2.1'
+        python = '/home/kutae/.local/share/local-voice-agent/runtimes/vad-silero-6.2.1/.venv/bin/python'
+        package = 'silero-vad'
+    },
+    [pscustomobject]@{
+        id = 'chatterbox-tts-0.1.7'
+        python = '/home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-v3-py3146/.venv/bin/python'
+        package = 'chatterbox-tts'
+    },
+    [pscustomobject]@{
+        id = 'tls-tools-49.0.0'
+        python = '/home/kutae/.local/share/local-voice-agent/runtimes/tls-tools-49.0.0/.venv/bin/python'
+        package = 'cryptography'
     }
 )
 $runtimes = @($runtimeDefinitions | ForEach-Object {
@@ -29,7 +61,15 @@ $runtimes = @($runtimeDefinitions | ForEach-Object {
     $installed = $LASTEXITCODE -eq 0
     $version = $null
     if ($installed) {
-        $versionOutput = & wsl.exe -d Ubuntu -- $definition.python -c "import importlib.metadata as m; print(m.version('vllm'))" 2>$null
+        $versionCode = (
+            'import importlib.metadata as m; ' +
+            "print(m.version('$($definition.package)'))"
+        )
+        $versionOutput = & wsl.exe -d Ubuntu -- `
+            $definition.python `
+            -c `
+            $versionCode `
+            2>$null
         if ($LASTEXITCODE -eq 0) {
             $version = ($versionOutput | Select-Object -First 1)
         }
