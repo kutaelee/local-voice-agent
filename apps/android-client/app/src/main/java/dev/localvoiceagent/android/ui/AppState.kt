@@ -66,6 +66,7 @@ sealed interface AppAction {
     data object Connect : AppAction
     data object Disconnect : AppAction
     data object StartListening : AppAction
+    data object StopListening : AppAction
     data object Interrupt : AppAction
     data class SetConnectionState(val state: ConnectionState) : AppAction
     data class SetAssistantState(val state: AssistantState) : AppAction
@@ -111,6 +112,7 @@ object AppReducer {
             assistantState = AssistantState.LISTENING,
             destination = AppDestination.VOICE,
         )
+        AppAction.StopListening -> state.copy(assistantState = AssistantState.RECOGNIZING)
         AppAction.Interrupt -> state.copy(assistantState = AssistantState.INTERRUPTED)
         is AppAction.SetConnectionState -> state.copy(
             connectionState = action.state,

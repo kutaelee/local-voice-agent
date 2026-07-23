@@ -32,6 +32,7 @@ class PcGatewayClientTest {
             .addTrustedCertificate(certificate.certificate)
             .build()
         val serverSocket = CompletableFuture<WebSocket>()
+        val serverClosed = CompletableFuture<Unit>()
         val server = MockWebServer()
         server.useHttps(serverCertificates.sslSocketFactory())
         server.enqueue(
@@ -40,6 +41,22 @@ class PcGatewayClientTest {
                     object : WebSocketListener() {
                         override fun onOpen(webSocket: WebSocket, response: Response) {
                             serverSocket.complete(webSocket)
+                        }
+
+                        override fun onClosed(
+                            webSocket: WebSocket,
+                            code: Int,
+                            reason: String,
+                        ) {
+                            serverClosed.complete(Unit)
+                        }
+
+                        override fun onClosing(
+                            webSocket: WebSocket,
+                            code: Int,
+                            reason: String,
+                        ) {
+                            webSocket.close(code, reason)
                         }
                     },
                 )
@@ -97,6 +114,7 @@ class PcGatewayClientTest {
             )
         } finally {
             gateway.disconnect()
+            runCatching { serverClosed.get(5, TimeUnit.SECONDS) }
             server.close()
         }
     }

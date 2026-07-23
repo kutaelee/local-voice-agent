@@ -92,9 +92,12 @@ class VoiceTurnService:
         *,
         stream_id: UUID,
         chunk_index: int,
+        encoding: str,
         data: bytes,
         duration_ms: int,
     ) -> list[VoiceEvent]:
+        if encoding != self._stream.encoding:
+            raise ValueError("audio chunk encoding does not match the stream")
         self._stream.append(
             stream_id=stream_id,
             chunk_index=chunk_index,
@@ -102,6 +105,17 @@ class VoiceTurnService:
             duration_ms=duration_ms,
         )
         return []
+
+    def cancel(self, *, stream_id: UUID) -> list[VoiceEvent]:
+        self._stream.cancel(stream_id=stream_id)
+        return [VoiceEvent("assistant.state", {"state": "interrupted"})]
+
+    def cancel_active(self) -> None:
+        if self._stream.stream_id is not None:
+            try:
+                self._stream.cancel(stream_id=self._stream.stream_id)
+            except ValueError:
+                pass
 
     async def finish(self, *, stream_id: UUID) -> list[VoiceEvent]:
         audio = self._stream.finish(stream_id=stream_id)

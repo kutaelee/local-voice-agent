@@ -29,7 +29,7 @@ runtimes:
   - id: vllm-0.25.1
     role: primary_candidate
     version: 0.25.1
-    status: installed_12b_multimodal_and_31b_text_api_smoke_passed
+    status: installed_12b_live_voice_api_and_31b_text_api_smoke_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/vllm-0.25.1
     python: "3.12.13"
     cuda: "13.0"
@@ -43,6 +43,11 @@ runtimes:
     package_check: 192_packages_compatible
     gpu_smoke: rtx_5090_compute_capability_12_0_cuda_matmul_passed
     gemma4_31b_status: text_tool_structured_stream_passed_multimodal_pending
+    gemma4_12b_live_api: health_and_korean_chat_passed_on_loopback_8766
+    gemma4_12b_cold_start:
+      weight_load_seconds: 132.38
+      total_seconds_approximate: 200
+      canonical_model_path_transport: wsl_9p_ntfs
     gemma4_31b_smoke_evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\vllm-31b-textonly-smoke.json'
     gemma4_31b_smoke_evidence_sha256: 987b979d458ac62b01e82c1f5e38187083e10b0bc3e7bad64c5b08268401126d
     gemma4_mtp_status: blocked_by_embedding_share_regression_fixed_after_release
@@ -75,7 +80,7 @@ runtimes:
   - id: pc-server-0.1.0
     role: pc_server
     version: 0.1.0
-    status: installed_domain_api_tool_planner_and_model_router_tests_passed
+    status: installed_live_voice_websocket_smoke_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/pc-server
     python: "3.12.13"
     installed_at: "2026-07-23T18:49:55+09:00"
@@ -89,7 +94,13 @@ runtimes:
     starlette: "1.3.1"
     uvicorn: "0.51.0"
     test_client: httpx2-2.7.0
-    test_status: 79_passed_including_tool_execution_state_orchestration
+    test_status: 95_passed_including_live_worker_protocol_composition
+    live_voice_smoke:
+      status: passed
+      input_pcm_bytes: 149760
+      output_pcm_bytes: 215040
+      output_chunks: 7
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\audio\voice-websocket-e2e.json'
     rollback: stop the registered server and switch away before archiving only this environment
   - id: tool-executor-0.1.0
     role: tool_executor
@@ -153,13 +164,25 @@ runtimes:
   - id: faster-whisper-1.2.1
     role: stt_candidate
     version: 1.2.1
-    status: planned_isolated_cuda12_or_cpu
+    status: installed_cpu_and_cuda_smoke_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1
-    python: "3.12"
+    python: "3.12.13"
     source: https://github.com/SYSTRAN/faster-whisper/tree/65882eee9f5cdbeeb2d877f1131d48cf241b327d
     package_source: https://pypi.org/project/faster-whisper/1.2.1/
     package_wheel_size_bytes: 1118909
     package_wheel_sha256: 79a66ad50688c0b794dd501dc340a736992a6342f7f95e5811be60b5224a26a7
+    installed_at: "2026-07-24T00:22:00+09:00"
+    lock_file: scripts/requirements/stt.lock
+    lock_sha256: 08c891262e701335ebf6c352f776112bad2f82074eedc5820155012f1b24df67
+    ctranslate2: "4.8.1"
+    nvidia_cublas_cu12: "12.9.2.10"
+    nvidia_cudnn_cu12: "9.25.0.15"
+    cuda_library_loading: isolated_wheel_paths_via_ld_library_path
+    small_cpu_smoke: load_3_315s_infer_0_681s_one_second_silence
+    small_cuda_smoke: load_3_325s_infer_6_366s_one_second_silence_first_run
+    large_cuda_smoke: load_10_376s_infer_0_330s_one_second_silence
+    note: single-run smoke timings are not benchmarks
+    rollback: stop the STT worker and retain or archive only this versioned environment
   - id: silero-vad-6.2.1
     role: vad_candidate
     version: 6.2.1
@@ -173,14 +196,48 @@ runtimes:
   - id: chatterbox-multilingual-v3
     role: tts_candidate
     version: chatterbox-tts-0.1.7
-    status: planned_dependency_compatibility_gate
-    environment: /home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-v3
-    python: evaluate_3_12_pinned_torch_2_6_vs_3_14_torch_2_9_plus
+    status: installed_offline_local_v3_korean_smoke_passed
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-v3-py3146
+    python: "3.14.6 uv-managed"
     source: https://github.com/resemble-ai/chatterbox/tree/5de7a54aa4e5e2baadb0182dde554908b48b85c2
     package_source: https://pypi.org/project/chatterbox-tts/0.1.7/
     package_wheel_size_bytes: 108543
     package_wheel_sha256: 83782500e3ad4e7c919132e9d7eb8755f29f57c5bde5ec48c655ca23a4eb113c
-    known_issue: python_below_3_14_pins_torch_2_6_and_torchaudio_2_6
+    source_archive: 'E:\Cache\LocalVoiceAgent\downloads\chatterbox-5de7a54aa4e5e2baadb0182dde554908b48b85c2.tar.gz'
+    source_archive_size_bytes: 1432683
+    source_archive_sha256: 003f8c85dcfeb2d91b3a6f97f43b74703d15131e987dfabb7f3d9aee7c0da2cf
+    installed_at: "2026-07-24T00:28:00+09:00"
+    lock_file: scripts/requirements/tts.lock
+    lock_sha256: 5ae385324641a24a2112cf97ece7458528e7efecc22737d75e0db7f4e90cfdf6
+    torch: 2.11.0+cu130
+    torchaudio: 2.11.0+cu130
+    transformers: "5.2.0"
+    numpy: "2.4.6"
+    numba: "0.66.0"
+    model_revision: 5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18
+    model_variant: v3
+    voice_cloning_enabled: false
+    korean_smoke:
+      text: "안녕하세요. 로컬 음성 에이전트입니다."
+      audio_seconds: 3.120
+      load_seconds: 18.080
+      synthesis_seconds: 2.331
+      realtime_factor: 0.747
+      peak_vram_bytes: 3338263040
+      output_path: 'E:\Data\LocalVoiceAgent\runtime\evidence\audio\chatterbox-v3-ko-smoke.wav'
+      output_size_bytes: 149804
+      output_sha256: b355a120627f46c09afe9007d08eee8348c037da0d347ea20b54c9b45da2376a
+    tokenizer_auxiliary_cache:
+      path: /home/kutae/.pkuseg
+      source: https://github.com/explosion/spacy-pkuseg/releases/download/v0.0.26/spacy_ontonotes.zip
+      archive_size_bytes: 34567143
+      archive_sha256: b216e7f92de7ae285aeab8feba2faa8ea8216e5995ff6fb3d391cc8356db1bfe
+    known_issues:
+      - pypi_0_1_7_wheel_lacks_v3_local_loader_exact_source_commit_override_required
+      - cangjie_mapping_warns_offline_but_korean_synthesis_passes
+      - tokenizer_initialization_downloads_spacy_ontonotes_auxiliary_cache
+      - first_failed_system_python_environment_retained_not_selected
+    rollback: rerun pinned lock sync for PyPI wheel or switch away from the versioned managed-Python environment
   - id: postgresql-18.4
     role: database
     version: "18.4"

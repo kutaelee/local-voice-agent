@@ -29,7 +29,8 @@ def event(*, session_id: str, sequence: int = 0) -> dict:
         "sequence": sequence,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "payload": {
-            "audio_format": "pcm_s16le",
+            "audio_stream_id": str(uuid4()),
+            "encoding": "pcm_s16le",
             "sample_rate_hz": 16000,
             "channels": 1,
         },
@@ -117,6 +118,22 @@ def test_websocket_rejects_replayed_sequence() -> None:
     ) as websocket:
         websocket.receive_json()
         websocket.send_json(event(session_id=str(session_id), sequence=4))
+        unavailable = websocket.receive_json()
+        assert unavailable["payload"]["error_code"] == "EVENT_HANDLER_UNAVAILABLE"
         websocket.send_json(event(session_id=str(session_id), sequence=4))
         error = websocket.receive_json()
     assert error["payload"]["error_code"] == "SEQUENCE_REPLAY"
+
+
+def test_websocket_rejects_invalid_event_payload() -> None:
+    session_id = uuid4()
+    value = event(session_id=str(session_id))
+    value["payload"]["unexpected"] = True
+    with client().websocket_connect(
+        f"/v1/sessions/{session_id}/events",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+    ) as websocket:
+        websocket.receive_json()
+        websocket.send_json(value)
+        error = websocket.receive_json()
+    assert error["payload"]["error_code"] == "PAYLOAD_INVALID"

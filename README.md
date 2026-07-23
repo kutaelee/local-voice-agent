@@ -5,22 +5,27 @@ conversation and policy-controlled computer use. The target workstation is a
 Windows 11 PC with an RTX 5090 32 GB GPU; inference runtimes run in WSL2 and
 the Android client uses Kotlin and Jetpack Compose.
 
-Current status: **Slice 2/3 validation plus an early Slice 5 server core**.
+Current status: **Slices 0-2 complete; Slices 3-9 are under integration**.
 The pinned 12B W4A16 model passed text, image, structured-output, streaming,
 and function-calling smoke tests. The exact 12B Q4_0 target/assistant pair
 also passed text-only MTP loading and API smoke on a pinned upstream-fix
 runtime; its multimodal initialization remains blocked and MTP stays disabled
 by default. The pinned 31B W4A16 model passed a constrained text, tool,
 structured-output, and streaming smoke run with an explicit small KV cache.
-A locked PC-server environment now runs the first state, approval, policy,
-protocol, model-runtime/router, authenticated FastAPI/WebSocket, and Tool
-Executor client-adapter tests. A separate read-only Tool Executor implements
+A locked PC-server environment now runs state, approval, policy, protocol,
+model-runtime/router, authenticated FastAPI/WebSocket, persistent STT/TTS
+workers, and the Tool Executor client adapter. A live Korean PCM test has
+passed WebSocket input, faster-whisper STT, Gemma 4 12B, Chatterbox V3 TTS,
+and chunked PCM output. A separate read-only Tool Executor implements
 thirteen bounded Level 0 filesystem/Git observation tools, an authenticated
 loopback API, execution-binding/idempotency checks, and metadata-only
 audit/evidence records. Windows-native and WSL suites pass, and the Windows
 process passed loopback start, authentication rejection, health, and clean
-stop smoke checks. The adapter is implemented but session orchestration does
-not invoke it yet. No end-to-end product acceptance criterion is claimed yet.
+stop smoke checks. The Android 0.3.0 client records and streams PCM, plays
+ordered PCM output, supports client-side interruption, and keeps pairing
+tokens in Android Keystore-backed storage. No full product acceptance is
+claimed until SGLang, mutation/rollback, computer-use, device audio, and the
+required failure matrix pass.
 
 ## Architecture
 
@@ -89,7 +94,7 @@ manifests. The Android API 37 command-line build is operational; see
 - Runtime evidence is written outside Git under
   `E:\Data\LocalVoiceAgent\runtime\evidence`.
 - Verified Android APKs are copied to
-  `E:\Data\LocalVoiceAgent\artifacts\android\0.2.0-api37`; hashes and signing
+  `E:\Data\LocalVoiceAgent\artifacts\android\0.3.0-api37`; hashes and signing
   state are recorded in
   [manifests/android-artifacts.yaml](manifests/android-artifacts.yaml).
 

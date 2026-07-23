@@ -100,7 +100,7 @@
       "model_id": "ResembleAI/chatterbox",
       "revision": "5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18",
       "license": "MIT",
-      "size_bytes": 3208951924,
+      "size_bytes": 3206961772,
       "weight_files": [
         {
           "path": "t3_mtl23ls_v3.safetensors",
@@ -116,11 +116,16 @@
           "path": "ve.pt",
           "size_bytes": 5698626,
           "sha256": "4b16d836bc598509860f6fa068165a8bb5e9ac84f05582dfcf278a5a372879f1"
+        },
+        {
+          "path": "conds.pt",
+          "size_bytes": 107374,
+          "sha256": "6552d70568833628ba019c6b03459e77fe71ca197d5c560cef9411bee9d87f4e"
         }
       ],
       "requires_credential": false,
-      "downloaded_at": null,
-      "validation_status": "not_downloaded_dependency_gate"
+      "downloaded_at": "2026-07-24T00:30:00+09:00",
+      "validation_status": "sha256_passed"
     },
     {
       "model_id": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
@@ -133,8 +138,8 @@
         "sha256": "e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da"
       },
       "requires_credential": false,
-      "downloaded_at": null,
-      "validation_status": "not_downloaded"
+      "downloaded_at": "2026-07-24T00:17:42+09:00",
+      "validation_status": "sha256_passed"
     },
     {
       "model_id": "Systran/faster-whisper-small",

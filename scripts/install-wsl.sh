@@ -36,9 +36,10 @@ mkdir -p "${cache_root}"
 
 create_environment() {
   local environment="$1"
+  local python_version="${2:-3.12}"
   if [[ ! -x "${environment}/.venv/bin/python" ]]; then
     mkdir -p "${environment}"
-    "${uv_bin}" venv --python 3.12 "${environment}/.venv"
+    "${uv_bin}" venv --python "${python_version}" "${environment}/.venv"
   fi
 }
 
@@ -133,6 +134,58 @@ case "${mode}" in
       "${wheel}"
     "${environment}/.venv/bin/python" -c \
       'import torch, sglang; print(f"sglang={sglang.__version__} torch={torch.__version__} cuda={torch.version.cuda} gpu={torch.cuda.get_device_name(0)}")'
+    ;;
+
+  --install-stt)
+    environment="${runtime_root}/stt-faster-whisper-1.2.1"
+    lock_file="${script_dir}/requirements/stt.lock"
+    [[ -f "${lock_file}" ]] || {
+      echo "Missing STT lock file: ${lock_file}" >&2
+      exit 6
+    }
+    create_environment "${environment}"
+    "${uv_bin}" pip sync \
+      --python "${environment}/.venv/bin/python" \
+      --require-hashes \
+      "${lock_file}"
+    nvidia_library_path="$("${environment}/.venv/bin/python" -c \
+      'import nvidia.cublas.lib, nvidia.cudnn.lib; print(next(iter(nvidia.cublas.lib.__path__)) + ":" + next(iter(nvidia.cudnn.lib.__path__)))')"
+    LD_LIBRARY_PATH="${nvidia_library_path}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
+      "${environment}/.venv/bin/python" -c \
+      'import ctranslate2, faster_whisper; print(f"faster_whisper={faster_whisper.__version__} ctranslate2={ctranslate2.__version__} cuda_devices={ctranslate2.get_cuda_device_count()}")'
+    ;;
+
+  --install-tts)
+    environment="${runtime_root}/tts-chatterbox-v3-py3146"
+    lock_file="${script_dir}/requirements/tts.lock"
+    source_archive="${cache_root}/chatterbox-5de7a54aa4e5e2baadb0182dde554908b48b85c2.tar.gz"
+    [[ -f "${lock_file}" ]] || {
+      echo "Missing TTS lock file: ${lock_file}" >&2
+      exit 7
+    }
+    download_verified \
+      "https://codeload.github.com/resemble-ai/chatterbox/tar.gz/5de7a54aa4e5e2baadb0182dde554908b48b85c2" \
+      "${source_archive}" \
+      "003f8c85dcfeb2d91b3a6f97f43b74703d15131e987dfabb7f3d9aee7c0da2cf" \
+      "1432683"
+    if [[ ! -x "${environment}/.venv/bin/python" ]]; then
+      mkdir -p "${environment}"
+      "${uv_bin}" venv \
+        --managed-python \
+        --python "3.14.6" \
+        "${environment}/.venv"
+    fi
+    "${uv_bin}" pip sync \
+      --python "${environment}/.venv/bin/python" \
+      --require-hashes \
+      --torch-backend=cu130 \
+      "${lock_file}"
+    "${uv_bin}" pip install \
+      --python "${environment}/.venv/bin/python" \
+      --no-deps \
+      "${source_archive}"
+    "${environment}/.venv/bin/python" -c \
+      'import chatterbox, torch, torchaudio; print(f"torch={torch.__version__} cuda={torch.version.cuda} torchaudio={torchaudio.__version__} gpu={torch.cuda.get_device_name(0)}")'
     ;;
 
   *)

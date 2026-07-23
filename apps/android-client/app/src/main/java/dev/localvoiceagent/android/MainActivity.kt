@@ -29,6 +29,7 @@ class MainActivity : ComponentActivity() {
             LocalVoiceAgentTheme {
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 var connectAfterPermission by remember { mutableStateOf(false) }
+                var listenAfterPermission by remember { mutableStateOf(false) }
                 val localNetworkPermission = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestPermission(),
                 ) { granted ->
@@ -40,6 +41,24 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     connectAfterPermission = false
+                }
+                val microphonePermissions = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestMultiplePermissions(),
+                ) { results ->
+                    val microphoneGranted =
+                        results[Manifest.permission.RECORD_AUDIO] == true ||
+                            ContextCompat.checkSelfPermission(
+                                this,
+                                Manifest.permission.RECORD_AUDIO,
+                            ) == PackageManager.PERMISSION_GRANTED
+                    if (microphoneGranted && listenAfterPermission) {
+                        viewModel.dispatch(AppAction.StartListening)
+                    } else if (!microphoneGranted) {
+                        viewModel.dispatch(
+                            AppAction.ReportError("Microphone permission is required"),
+                        )
+                    }
+                    listenAfterPermission = false
                 }
                 LocalVoiceAgentApp(
                     state = state,
@@ -55,6 +74,22 @@ class MainActivity : ComponentActivity() {
                             connectAfterPermission = true
                             localNetworkPermission.launch(
                                 Manifest.permission.ACCESS_LOCAL_NETWORK,
+                            )
+                        } else if (
+                            action == AppAction.StartListening &&
+                            ContextCompat.checkSelfPermission(
+                                this,
+                                Manifest.permission.RECORD_AUDIO,
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            listenAfterPermission = true
+                            microphonePermissions.launch(
+                                buildList {
+                                    add(Manifest.permission.RECORD_AUDIO)
+                                    if (Build.VERSION.SDK_INT >= 33) {
+                                        add(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                }.toTypedArray(),
                             )
                         } else {
                             viewModel.dispatch(action)

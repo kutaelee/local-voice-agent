@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import hmac
 import os
+from pathlib import Path
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
@@ -13,6 +14,22 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from .protocol.envelope import EventEnvelope
+from .application.session_events import (
+    SessionEventHandler,
+    UnavailableSessionEventHandler,
+    VoiceSessionEventHandler,
+)
+from .application.voice_turn import VoiceTurnService
+from .infrastructure.audio_workers import (
+    SttWorkerAdapter,
+    TtsWorkerAdapter,
+    UnixJsonWorkerClient,
+)
+from .infrastructure.vllm_conversation import VllmConversationAdapter
+from .protocol.client_events import (
+    ClientPayload,
+    validate_client_payload,
+)
 
 
 ClientEventType = Literal[
@@ -94,7 +111,12 @@ async def _send_error(
     await websocket.send_json(envelope.to_dict())
 
 
-def create_app(settings: ServerSettings) -> FastAPI:
+def create_app(
+    settings: ServerSettings,
+    *,
+    event_handler: SessionEventHandler | None = None,
+) -> FastAPI:
+    handler = event_handler or UnavailableSessionEventHandler()
     app = FastAPI(
         title="Local Voice Agent PC Server",
         version="0.1.0",
@@ -141,6 +163,22 @@ def create_app(settings: ServerSettings) -> FastAPI:
                     )
                     continue
 
+                try:
+                    payload: ClientPayload = validate_client_payload(
+                        incoming.type,
+                        incoming.payload,
+                    )
+                except (ValidationError, ValueError):
+                    await _send_error(
+                        websocket,
+                        session_id=session_id,
+                        request_id=incoming.request_id,
+                        sequence=server_sequence,
+                        error_code="PAYLOAD_INVALID",
+                        message="Client event payload does not match its closed schema.",
+                    )
+                    continue
+
                 if incoming.session_id != session_id:
                     await _send_error(
                         websocket,
@@ -164,9 +202,24 @@ def create_app(settings: ServerSettings) -> FastAPI:
                     continue
 
                 last_client_sequence = incoming.sequence
-                # Valid events stop at the gateway boundary in this slice.
-                # Application use cases will consume them in the next slice.
+                outbound = await handler.handle(
+                    session_id=session_id,
+                    request_id=incoming.request_id,
+                    event_type=incoming.type,
+                    payload=payload,
+                )
+                for item in outbound:
+                    server_sequence += 1
+                    envelope = EventEnvelope.create(
+                        type=item.type,
+                        session_id=session_id,
+                        request_id=incoming.request_id,
+                        sequence=server_sequence,
+                        payload=item.payload,
+                    )
+                    await websocket.send_json(envelope.to_dict())
         except WebSocketDisconnect:
+            await handler.disconnect(session_id=session_id)
             return
 
     return app
@@ -175,4 +228,53 @@ def create_app(settings: ServerSettings) -> FastAPI:
 def create_app_from_environment() -> FastAPI:
     """Uvicorn factory; startup fails if no non-placeholder token is set."""
 
-    return create_app(ServerSettings.from_environment())
+    return create_app(
+        ServerSettings.from_environment(),
+        event_handler=_event_handler_from_environment(),
+    )
+
+
+def _event_handler_from_environment() -> SessionEventHandler:
+    if os.environ.get("LVA_VOICE_ENABLED", "0") != "1":
+        return UnavailableSessionEventHandler()
+    worker_token = os.environ.get("LVA_AUDIO_WORKER_TOKEN", "")
+    vllm_api_key = os.environ.get("LVA_VLLM_API_KEY", "")
+    vllm_model = os.environ.get("LVA_VLLM_MODEL", "")
+    if len(worker_token) < 32 or len(vllm_api_key) < 32 or not vllm_model:
+        raise RuntimeError("voice worker and vLLM credentials are required")
+    stt = SttWorkerAdapter(
+        UnixJsonWorkerClient(
+            socket_path=Path(
+                os.environ.get(
+                    "LVA_STT_SOCKET",
+                    "/home/kutae/.local/share/local-voice-agent/run/stt.sock",
+                )
+            ),
+            token=worker_token,
+            timeout_seconds=60,
+        )
+    )
+    tts = TtsWorkerAdapter(
+        UnixJsonWorkerClient(
+            socket_path=Path(
+                os.environ.get(
+                    "LVA_TTS_SOCKET",
+                    "/home/kutae/.local/share/local-voice-agent/run/tts.sock",
+                )
+            ),
+            token=worker_token,
+            timeout_seconds=180,
+        )
+    )
+    conversation = VllmConversationAdapter(
+        base_url=os.environ.get("LVA_VLLM_BASE_URL", "http://127.0.0.1:8000/v1"),
+        model=vllm_model,
+        api_key=vllm_api_key,
+    )
+    return VoiceSessionEventHandler(
+        lambda: VoiceTurnService(
+            stt=stt,
+            conversation=conversation,
+            tts=tts,
+        )
+    )

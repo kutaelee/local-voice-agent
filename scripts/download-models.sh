@@ -34,6 +34,7 @@ models=(
   "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|t3_mtl23ls_v3.safetensors|5abca8321ede76f8e61f1cc0d19aea6c946b28871017ce8726f8a69203f05953|2143989928|MIT"
   "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|s3gen.pt|9b9ff07e60b20c136e2b1b3d7563a24604e8d2c4c267888d1ee929dd0151d2a3|1057165844|MIT"
   "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|ve.pt|4b16d836bc598509860f6fa068165a8bb5e9ac84f05582dfcf278a5a372879f1|5698626|MIT"
+  "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|conds.pt|6552d70568833628ba019c6b03459e77fe71ca197d5c560cef9411bee9d87f4e|107374|MIT"
 )
 
 [[ "${download_workers}" =~ ^([1-9]|1[0-6])$ ]] || {

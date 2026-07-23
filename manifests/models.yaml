@@ -118,7 +118,7 @@ models:
     weight_format: pytorch and safetensors
     variant: Chatterbox Multilingual V3
     language: ko
-    size_bytes: 3208951924
+    size_bytes: 3206961772
     primary_weights:
       - filename: t3_mtl23ls_v3.safetensors
         size_bytes: 2143989928
@@ -129,10 +129,13 @@ models:
       - filename: ve.pt
         size_bytes: 5698626
         sha256: 4b16d836bc598509860f6fa068165a8bb5e9ac84f05582dfcf278a5a372879f1
+      - filename: conds.pt
+        size_bytes: 107374
+        sha256: 6552d70568833628ba019c6b03459e77fe71ca197d5c560cef9411bee9d87f4e
     runtime_candidates: [chatterbox-tts-0.1.7]
     voice_cloning_enabled: false
-    downloaded_at: null
-    validation_status: planned_dependency_compatibility_gate
+    downloaded_at: "2026-07-24T00:30:00+09:00"
+    validation_status: sha256_and_offline_local_v3_korean_synthesis_smoke_passed
   - role: stt_gpu_candidate
     model_id: mobiuslabsgmbh/faster-whisper-large-v3-turbo
     repository: https://huggingface.co/mobiuslabsgmbh/faster-whisper-large-v3-turbo
@@ -147,8 +150,8 @@ models:
       sha256: e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da
     runtime_candidates: [faster-whisper-1.2.1]
     official_linkage: faster_whisper_1_2_1_model_alias
-    downloaded_at: null
-    validation_status: planned_korean_accuracy_latency_vram_gate
+    downloaded_at: "2026-07-24T00:17:42+09:00"
+    validation_status: sha256_cuda_float16_and_one_synthetic_korean_sample_passed
   - role: stt_cpu_fallback_candidate
     model_id: Systran/faster-whisper-small
     repository: https://huggingface.co/Systran/faster-whisper-small
@@ -163,4 +166,4 @@ models:
       sha256: 3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671
     runtime_candidates: [faster-whisper-1.2.1]
     downloaded_at: "2026-07-24T00:08:28+09:00"
-    validation_status: sha256_passed_runtime_loading_pending
+    validation_status: sha256_cpu_int8_cuda_float16_and_one_synthetic_korean_sample_passed

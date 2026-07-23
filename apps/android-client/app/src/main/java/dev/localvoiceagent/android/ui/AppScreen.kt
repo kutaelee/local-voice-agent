@@ -138,8 +138,18 @@ private fun VoiceScreen(
     }
     Spacer(Modifier.height(12.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = { onAction(AppAction.StartListening) }) {
+        Button(
+            onClick = { onAction(AppAction.StartListening) },
+            enabled = state.connectionState == ConnectionState.CONNECTED &&
+                state.assistantState != AssistantState.LISTENING,
+        ) {
             Text("Start listening")
+        }
+        Button(
+            onClick = { onAction(AppAction.StopListening) },
+            enabled = state.assistantState == AssistantState.LISTENING,
+        ) {
+            Text("Stop")
         }
         Button(onClick = { onAction(AppAction.Interrupt) }) {
             Text("Interrupt")

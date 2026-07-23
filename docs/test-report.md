@@ -93,7 +93,7 @@ progress. No product acceptance test has run.
 | Benchmark result/report envelopes | Passed (static) | Raw result remains explicitly `not_run` with zero runs; model/runtime comparison matrices exist and every unmeasured cell is `NOT_RUN` |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 | PC-server isolated dependency lock/install | Passed | Python 3.12.13 environment outside repo; FastAPI 0.139.2, JSON Schema 4.26.0, Pydantic 2.13.4, Starlette 1.3.1, Uvicorn 0.51.0; lock SHA-256 `5a223baf0ace969d7d8d35010f0a7800e99dcc27d4256bb861e533c360a74b0b` |
-| PC-server domain/API/registry/planner/router/adapter/audio unit tests | Passed | Latest run: 85 tests; prior coverage plus ordered bounded PCM input, cancellation, and the STT/conversation/TTS voice-turn event sequence |
+| PC-server domain/API/registry/planner/router/adapter/audio unit tests | Passed | Latest run: 95 tests; prior coverage plus closed client payloads, Unix worker adapters, ordered bounded PCM input, cancellation, and the STT/conversation/TTS voice-turn event sequence |
 | Runtime tool registry | Passed | Draft 2020-12 definition and argument validation; stable definition hashes; unknown tools fail closed; disabled `restricted_shell` omitted from 73 model-visible tools; server-issued approval/idempotency fields hidden from model schemas |
 | Tool planner risk routing | Passed | Level 0 queued; Level 1 waits unless a valid session grant exists; Level 2 always waits for exact approval; Level 3 and disabled tools create no execution aggregate |
 | Approval-to-queue binding | Passed | Approved exact binding queued; denied approval and mismatched approval ID were rejected; execution CAS version remained enforced |
@@ -118,8 +118,14 @@ progress. No product acceptance test has run.
 | Android package metadata | Passed | AAPT2 verified application ID `dev.localvoiceagent.android`, min SDK 26, compile/target SDK 37 |
 | Android debug signature | Passed | APK Signature Scheme v2 verified with the generated Android debug certificate |
 | Android unsigned release state | Passed | `apksigner verify` rejected the release artifact as expected; no release key was created or assumed |
-| Android 0.2.0 artifacts | Passed | Debug APK 12,440,284 bytes SHA-256 `36198e020a7b233649748e928c885b5d897b8960cf3af4c2173e9b009641064e`; unsigned release APK 8,852,939 bytes SHA-256 `1010c0da4223222decffff9c7a7b714532e0cde5de598a691c8cfd7a67a195a6` |
+| Android 0.3.0 artifacts | Passed | Debug APK 12,456,668 bytes SHA-256 `f0d1c28842cc064cbc0be284ea4990b967b30a6cfd062b011745b76679bc6ac1`; unsigned release APK 8,869,323 bytes SHA-256 `0712a9872dee885c6d3017635644352afc8c8dbb642486cdfad813fe3099ea82` |
 | faster-whisper small download integrity | Passed | Official pinned revision `536b0662742c02347bc0e980a01041f333bce120`; 483,546,902-byte `model.bin` matched SHA-256 `3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671`; runtime loading remains pending |
+| faster-whisper isolated runtime | Passed | Python 3.12.13, faster-whisper 1.2.1, CTranslate2 4.8.1, cuBLAS 12.9.2.10 and cuDNN 9.25.0.15 installed from a hash-locked dependency set; CPU and RTX 5090 CUDA paths passed |
+| faster-whisper Korean synthetic sample | Passed (smoke) | Both small and large-v3-turbo transcribed the 3.12-second Chatterbox sample as the intended Korean sentence with only spacing/punctuation differences; small GPU inference 0.354 s and large 0.341 s, excluding model load; one synthetic sample is not an accuracy benchmark |
+| Chatterbox Multilingual V3 local Korean synthesis | Passed (smoke) | Official revision `5bb1f6e…` weights and built-in conditions loaded offline using exact official source commit `5de7a54…`; 3.12-second 24 kHz output synthesized in 2.331 s after an 18.080 s load, RTF 0.747, peak allocated VRAM 3,338,263,040 bytes; one run is not a benchmark |
+| Persistent audio-worker composition | Passed (smoke) | Authenticated mode-0600 Unix-socket STT/TTS workers completed TTS-to-STT process integration; the sample recognized `통합` as `톤업`, so this is a process smoke rather than an accuracy pass |
+| Live 12B loopback API | Passed | Stable vLLM 0.25.1 returned health 200 and a Korean chat completion from `127.0.0.1:8766`; model load from the canonical NTFS path took 132.38 s and total cold initialization was about 200 s |
+| Production WebSocket voice path | Passed (smoke) | A 149,760-byte 24 kHz Korean PCM sample traversed authenticated WebSocket → faster-whisper → Gemma 4 12B → Chatterbox V3 and returned 215,040 PCM bytes in 7 chunks; evidence `voice-websocket-e2e.json` |
 | Android device install and interaction | NOT_RUN | No ADB device is connected; device permission, audio, rotation, reconnect, and Bluetooth QA remain open |
 
 Exact Q4_0 MTP multimodal compatibility, statistical MTP quality/latency

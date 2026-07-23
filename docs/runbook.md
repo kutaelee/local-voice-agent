@@ -129,9 +129,49 @@ export LVA_PAIRING_TOKEN='<at-least-32-random-characters>'
   --factory --host 127.0.0.1 --port 8787
 ```
 
-Do not put the token in a command history or tracked file in normal use.
+Do not put tokens in command history or tracked files in normal use.
+
+### Live voice workers and 12B endpoint
+
+Use independently generated values of at least 32 characters. The examples
+below are placeholders, not usable credentials:
+
+```bash
+export LVA_AUDIO_WORKER_TOKEN='<random-audio-worker-token>'
+bash scripts/start-audio-workers.sh
+python scripts/audio-worker-health.py
+
+export LVA_VLLM_API_KEY='<random-vllm-api-key>'
+bash scripts/start-vllm.sh
+```
+
+The audio workers use mode-0600 Unix sockets. vLLM binds only to
+`127.0.0.1:8766`; its first model load from the canonical NTFS model store can
+take several minutes. Startup waits up to 360 seconds by default and can be
+bounded from 60 through 900 seconds with
+`LVA_VLLM_STARTUP_TIMEOUT_SECONDS`.
+
+Run the production composition through an in-process authenticated WebSocket:
+
+```bash
+export LVA_PAIRING_TOKEN='<random-pairing-token>'
+export LVA_VOICE_ENABLED=1
+export LVA_VLLM_MODEL=gemma4-12b
+export LVA_VLLM_BASE_URL=http://127.0.0.1:8766/v1
+python scripts/smoke-voice-websocket.py \
+  --input-wav /mnt/e/Data/LocalVoiceAgent/runtime/evidence/audio/chatterbox-v3-ko-smoke.wav \
+  --evidence /mnt/e/Data/LocalVoiceAgent/runtime/evidence/audio/voice-websocket-e2e.json
+```
+
+Stop only registered project processes:
+
+```bash
+bash scripts/stop-vllm.sh
+bash scripts/stop-audio-workers.sh
+```
+
 `scripts/start-server.ps1` remains fail-closed until registered PID/status
-handling is implemented.
+handling and the Android-facing TLS termination path are implemented.
 
 ## Tool Executor
 
@@ -183,7 +223,7 @@ Install the verified debug APK only when a device is visible in
 ```powershell
 C:\Dev\SDK\Android\platform-tools\adb.exe devices
 C:\Dev\SDK\Android\platform-tools\adb.exe install -r `
-  E:\Data\LocalVoiceAgent\artifacts\android\0.1.0-api37\local-voice-agent-0.1.0-debug.apk
+  E:\Data\LocalVoiceAgent\artifacts\android\0.3.0-api37\local-voice-agent-0.3.0-debug.apk
 ```
 
 The release APK is intentionally unsigned and cannot be installed until the

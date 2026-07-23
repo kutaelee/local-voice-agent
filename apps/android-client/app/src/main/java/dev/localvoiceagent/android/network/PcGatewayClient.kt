@@ -3,6 +3,7 @@ package dev.localvoiceagent.android.network
 import dev.localvoiceagent.android.protocol.ProtocolEnvelope
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -46,7 +47,7 @@ class PcGatewayClient(
     private var endpoint: ServerEndpoint? = null
     private var pairingToken: String? = null
     private var sessionId: UUID? = null
-    private var clientSequence = 0
+    private val clientSequence = AtomicInteger(0)
     private var serverSequence = -1
     private var reconnectAttempt = 0
     private var reconnectJob: Job? = null
@@ -60,7 +61,7 @@ class PcGatewayClient(
         endpoint = ServerEndpoint.parse(serverUrl)
         pairingToken = token
         sessionId = UUID.randomUUID()
-        clientSequence = 0
+        clientSequence.set(0)
         serverSequence = -1
         reconnectAttempt = 0
         userClosed = false
@@ -88,7 +89,7 @@ class PcGatewayClient(
             type = type,
             sessionId = activeSession,
             requestId = requestId,
-            sequence = clientSequence++,
+            sequence = clientSequence.getAndIncrement(),
             payload = payload,
         )
         return socket?.send(envelope.encode()) == true

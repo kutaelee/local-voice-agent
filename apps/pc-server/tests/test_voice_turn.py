@@ -54,6 +54,7 @@ def test_voice_turn_emits_ordered_transcript_text_and_audio() -> None:
     service.append(
         stream_id=stream_id,
         chunk_index=0,
+        encoding="pcm_s16le",
         data=b"\x00\x00" * 160,
         duration_ms=10,
     )
