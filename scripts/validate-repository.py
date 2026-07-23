@@ -21,6 +21,7 @@ VALIDATORS = [
     "validate-status-contracts.py",
     "validate-approval-contracts.py",
     "validate-workspaces.py",
+    "validate-security-configs.py",
 ]
 
 

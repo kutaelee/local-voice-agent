@@ -39,6 +39,12 @@ must be under `/home/<user>/src`, never `/mnt/c` or `/mnt/e`. Registered
 command profiles store executable IDs and argv arrays, not shell strings or
 environment values.
 
+The checked-in application and pairing schemas permit only loopback server
+binding and WSS, require Android Keystore token storage, and keep cleartext,
+raw-audio retention, and full-conversation retention disabled. LAN or VPN
+binding requires a future explicit configuration and threat review rather
+than changing these baseline fields.
+
 ## Approval integrity
 
 Approvals bind to the exact tool, normalized arguments, target fingerprint,

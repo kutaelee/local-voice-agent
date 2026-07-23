@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-voice-agent.invalid/schemas/application.schema.json",
+  "title": "PC server security-sensitive application configuration",
+  "type": "object",
+  "required": ["schema_version", "server", "session", "audio", "retention", "paths"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "server": {
+      "type": "object",
+      "required": ["host", "port", "public_network_bind_allowed"],
+      "properties": {
+        "host": {"type": "string", "enum": ["127.0.0.1", "::1"]},
+        "port": {"type": "integer", "minimum": 1024, "maximum": 65535},
+        "public_network_bind_allowed": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "session": {
+      "type": "object",
+      "required": ["idle_timeout_seconds", "approval_timeout_seconds"],
+      "properties": {
+        "idle_timeout_seconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 86400
+        },
+        "approval_timeout_seconds": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 600
+        }
+      },
+      "additionalProperties": false
+    },
+    "audio": {
+      "type": "object",
+      "required": ["transport_baseline", "sample_rate_hz", "channels"],
+      "properties": {
+        "transport_baseline": {"const": "pcm_s16le"},
+        "sample_rate_hz": {"enum": [16000, 24000, 48000]},
+        "channels": {"const": 1}
+      },
+      "additionalProperties": false
+    },
+    "retention": {
+      "type": "object",
+      "required": ["raw_audio", "full_conversation", "audit_days"],
+      "properties": {
+        "raw_audio": {"const": false},
+        "full_conversation": {"const": false},
+        "audit_days": {"type": "integer", "minimum": 1, "maximum": 3650}
+      },
+      "additionalProperties": false
+    },
+    "paths": {
+      "type": "object",
+      "required": ["runtime_root", "model_root", "cache_root"],
+      "properties": {
+        "runtime_root": {
+          "const": "E:\\Data\\LocalVoiceAgent\\runtime"
+        },
+        "model_root": {
+          "const": "E:\\AI\\Models\\Standalone\\LocalVoiceAgent"
+        },
+        "cache_root": {
+          "const": "E:\\Cache\\LocalVoiceAgent"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

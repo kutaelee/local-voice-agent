@@ -65,7 +65,8 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Coding-agent status contracts | Passed | Closed optional status input and per-field provenance schemas validated; inferred fields without explanations and invented progress percentages are rejected |
 | Approval and policy contracts | Passed | Canonical argument digest/precondition binding validated; Level 2 direct allow and Level 3 approval decisions are rejected by schema |
 | Workspace configuration guard | Passed | Closed schema validated; drive root, user profile root, backup-only D:, protected E: backup root, wildcard, and WSL mounted-drive cases rejected |
-| Network-free repository validation suite | Passed | 9 validators completed in 748.27 ms: configs, manifests, protocol/tools, observability, benchmark/test catalogs, agent status, approval/policy, and workspaces |
+| Application and pairing security defaults | Passed | Public bind, raw-audio retention, cleartext pairing, and plaintext token storage cases rejected |
+| Network-free repository validation suite | Passed | 10 validators completed in 849.11 ms: configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
 | Event payload contract coverage | Passed | All 22 catalog events have closed, bounded Draft 2020-12 payload definitions |
 | Observability contracts | Passed | 18 required metrics, histogram p50/p95 coverage, and closed structured-log schema validated |
 | Benchmark prompt catalog | Passed | 160 unique Korean cases with required 20/30/20/20/20/20/10/20 category counts |

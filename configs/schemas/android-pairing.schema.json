@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-voice-agent.invalid/schemas/android-pairing.schema.json",
+  "title": "Android pairing policy",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "enabled",
+    "server_url",
+    "token_storage",
+    "token_rotation_days",
+    "allow_cleartext",
+    "local_network_permission_required_for_target_api_37"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "enabled": {"type": "boolean"},
+    "server_url": {
+      "type": "string",
+      "pattern": "^wss://(127\\.0\\.0\\.1|localhost|\\[::1\\]):[0-9]{1,5}$"
+    },
+    "token_storage": {"const": "android_keystore"},
+    "token_rotation_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365
+    },
+    "allow_cleartext": {"const": false},
+    "local_network_permission_required_for_target_api_37": {"const": true}
+  },
+  "additionalProperties": false
+}
