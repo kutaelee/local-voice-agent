@@ -150,11 +150,18 @@ Invoke-RestMethod http://127.0.0.1:8790/health
 The process-scoped execution-policy command does not change the user or
 machine policy. Runtime PID/status, logs, audit JSONL, and evidence are written
 under `E:\Data\LocalVoiceAgent\runtime`. The checked-in
-`configs/workspaces.yaml` is empty, so health can pass while all file/Git
-requests still fail closed. Register only explicit project roots before
-functional use. A restart clears the current in-memory idempotency cache;
-do not treat it as durable until PostgreSQL-backed execution persistence is
-implemented.
+`configs/workspaces.yaml` grants Windows read-only filesystem/Git observation
+only to `C:\Dev\Repos\local-voice-agent`; other paths fail closed. With the
+executor running, `smoke-tool-execution.py` validates the actual planner,
+state machine, HTTP adapter, file read, receipt hash, and evidence path:
+
+```powershell
+C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv\Scripts\python.exe `
+  .\scripts\smoke-tool-execution.py
+```
+
+A restart clears the current in-memory idempotency cache; do not treat it as
+durable until PostgreSQL-backed execution persistence is implemented.
 
 ## Installation gates
 

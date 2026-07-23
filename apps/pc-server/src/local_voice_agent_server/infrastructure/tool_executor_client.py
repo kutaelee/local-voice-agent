@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 from uuid import UUID
 
-from ..application.ports import ToolExecutionReceipt
+from ..application.ports import ToolExecutionPortError, ToolExecutionReceipt
 from ..application.tool_planner import ToolPlan
 from ..domain.policy import PolicyAction, RiskLevel
 from ..domain.tool_execution import ToolExecutionState
@@ -22,7 +22,7 @@ EXECUTION_TTL = timedelta(minutes=2)
 Transport = Callable[[str, bytes, dict[str, str], float, int], bytes]
 
 
-class ToolExecutorClientError(RuntimeError):
+class ToolExecutorClientError(ToolExecutionPortError):
     """Sanitized failure at the isolated executor boundary."""
 
 
@@ -72,12 +72,12 @@ class HttpToolExecutionAdapter:
         execution = plan.execution
         if (
             execution is None
-            or execution.state is not ToolExecutionState.QUEUED
+            or execution.state is not ToolExecutionState.RUNNING
             or plan.policy.action is not PolicyAction.ALLOW
             or plan.policy.risk_level is not RiskLevel.OBSERVE
         ):
             raise ToolExecutorClientError(
-                "only policy-allowed queued Level 0 plans may execute"
+                "only policy-allowed running Level 0 plans may execute"
             )
         observed_at = requested_at or datetime.now(timezone.utc)
         if observed_at.tzinfo is None or observed_at.utcoffset() is None:

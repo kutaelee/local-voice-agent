@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -14,6 +15,7 @@ from local_voice_agent_server.infrastructure.tool_executor_client import (
     ToolExecutorClientSettings,
 )
 from local_voice_agent_server.infrastructure.tool_registry import ToolRegistry
+from local_voice_agent_server.domain.tool_execution import ToolExecutionState
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -49,6 +51,16 @@ def make_plan(tool_name: str = "read_file"):
     )
 
 
+def running_plan():
+    plan = make_plan()
+    running = plan.execution.transition(
+        ToolExecutionState.RUNNING,
+        expected_version=plan.execution.version,
+        reason="test_dispatch",
+    )
+    return replace(plan, execution=running)
+
+
 def success_response(execution_id: str) -> bytes:
     return json.dumps(
         {
@@ -63,8 +75,8 @@ def success_response(execution_id: str) -> bytes:
     ).encode()
 
 
-def test_adapter_binds_exact_queued_plan_and_token() -> None:
-    plan = make_plan()
+def test_adapter_binds_exact_running_plan_and_token() -> None:
+    plan = running_plan()
     captured: dict = {}
 
     def transport(url, body, headers, timeout, max_response):
@@ -148,11 +160,11 @@ def test_adapter_rejects_response_for_other_execution() -> None:
         transport=lambda *_args: success_response(str(uuid4())),
     )
     with pytest.raises(ToolExecutorClientError):
-        adapter.execute(make_plan())
+        adapter.execute(running_plan())
 
 
 def test_adapter_rejects_response_with_unknown_fields() -> None:
-    plan = make_plan()
+    plan = running_plan()
     value = json.loads(success_response(plan.execution.execution_id))
     value["unexpected"] = True
     adapter = HttpToolExecutionAdapter(

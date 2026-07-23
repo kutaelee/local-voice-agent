@@ -52,8 +52,8 @@ prompts, pagers, hooks, fsmonitor, external diff, and textconv are disabled.
 The executor rejects `.git` links/reparse points, linked worktrees, alternate
 object stores, and config includes before invoking Git. Windows-native
 junction tests and WSL symlink tests pass. This does not authorize writes:
-the checked-in workspace allowlist is empty, and mutation/approval/rollback
-adapters do not exist yet.
+the checked-in workspace allowlist grants read-only access only to this public
+repository, and mutation/approval/rollback adapters do not exist yet.
 
 The implemented IPC boundary accepts only closed-schema Level 0 requests on a
 launcher-enforced loopback address. A bearer token of at least 32 characters

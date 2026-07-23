@@ -1,3 +1,9 @@
 schema_version: "1.0"
-workspaces: []
-# Add workspaces explicitly. Never use a drive root, user profile, or wildcard.
+workspaces:
+  - id: local_voice_agent
+    platform: windows_native
+    root: 'C:\Dev\Repos\local-voice-agent'
+    access: read_only
+    git: true
+    command_profiles: []
+# Add other workspaces explicitly. Never use a drive root, user profile, or wildcard.

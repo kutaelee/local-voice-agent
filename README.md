@@ -66,7 +66,7 @@ After setting an untracked `LVA_TOOL_EXECUTOR_TOKEN` with at least 32 random
 characters, the isolated executor can be started and stopped with
 `scripts\start-tool-executor.ps1` and `scripts\stop-tool-executor.ps1`.
 Both scripts keep the service on `127.0.0.1:8790`; the checked-in workspace
-allowlist is empty and therefore permits no file access by default.
+allowlist grants read-only filesystem/Git observation only to this repository.
 
 From an isolated project/runtime environment containing PyYAML and
 jsonschema, all network-free repository checks can be run with:

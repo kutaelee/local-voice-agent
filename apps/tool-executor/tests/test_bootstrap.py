@@ -9,6 +9,7 @@ import yaml
 
 from local_voice_agent_tool_executor.bootstrap import load_workspaces
 from local_voice_agent_tool_executor.errors import WorkspaceConfigurationError
+from local_voice_agent_tool_executor.workspaces import WorkspaceAccess
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -36,12 +37,21 @@ def record(*, workspace_id: str, root: str, platform: str) -> dict:
     }
 
 
-def test_empty_checked_in_workspace_config_loads_fail_closed() -> None:
+def test_checked_in_workspace_config_is_host_scoped() -> None:
     loaded = load_workspaces(
         config_path=REPO_ROOT / "configs/workspaces.yaml",
         schema_path=SCHEMA,
     )
-    assert loaded == ()
+    if os.name == "nt":
+        assert tuple(workspace.workspace_id for workspace in loaded) == (
+            "local_voice_agent",
+        )
+        assert all(
+            workspace.access is WorkspaceAccess.READ_ONLY
+            for workspace in loaded
+        )
+    else:
+        assert loaded == ()
 
 
 def test_loader_accepts_only_current_host_platform(

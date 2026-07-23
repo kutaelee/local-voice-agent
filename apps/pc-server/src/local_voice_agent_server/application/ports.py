@@ -9,6 +9,10 @@ from typing import Any, Mapping, Protocol
 from .tool_planner import ToolPlan
 
 
+class ToolExecutionPortError(RuntimeError):
+    """Sanitized failure reported by an execution adapter."""
+
+
 @dataclass(frozen=True, slots=True)
 class ToolExecutionReceipt:
     execution_id: str
@@ -25,4 +29,4 @@ class ToolExecutionPort(Protocol):
         *,
         requested_at: datetime | None = None,
     ) -> ToolExecutionReceipt:
-        """Execute one policy-bound, already queued Level 0 plan."""
+        """Execute one policy-bound Level 0 plan marked RUNNING."""
