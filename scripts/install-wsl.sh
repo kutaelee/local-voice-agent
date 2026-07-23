@@ -168,6 +168,25 @@ case "${mode}" in
       'import ctranslate2, faster_whisper; print(f"faster_whisper={faster_whisper.__version__} ctranslate2={ctranslate2.__version__} cuda_devices={ctranslate2.get_cuda_device_count()}")'
     ;;
 
+  --install-vad)
+    environment="${runtime_root}/vad-silero-6.2.1"
+    wheel="${cache_root}/silero_vad-6.2.1-py3-none-any.whl"
+    download_verified \
+      "https://files.pythonhosted.org/packages/0b/2b/48566f29a8b53d856ceb1994f209122749b3fda0a733a07e82047257de7a/silero_vad-6.2.1-py3-none-any.whl" \
+      "${wheel}" \
+      "09de93c4d874bb19c53e62a47dd38be5f163cedad2b5599583231f2a84ef79cb" \
+      "9146242"
+    create_environment "${environment}"
+    "${uv_bin}" pip install \
+      --python "${environment}/.venv/bin/python" \
+      --torch-backend=cpu \
+      "${wheel}[onnx-cpu]" \
+      "onnxruntime==1.27.0"
+    "${uv_bin}" pip check --python "${environment}/.venv/bin/python"
+    "${environment}/.venv/bin/python" -c \
+      'import onnxruntime, silero_vad, torch; print(f"silero_vad={silero_vad.__version__} onnxruntime={onnxruntime.__version__} torch={torch.__version__} providers={onnxruntime.get_available_providers()}")'
+    ;;
+
   --install-tts)
     environment="${runtime_root}/tts-chatterbox-v3-py3146"
     lock_file="${script_dir}/requirements/tts.lock"

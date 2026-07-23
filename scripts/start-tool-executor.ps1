@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1024, 65535)]
-    [int]$Port = 8790
+    [int]$Port = 8790,
+
+    [switch]$EnableWslNatBinding
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,6 +33,33 @@ if (-not $env:LVA_TOOL_EXECUTOR_TOKEN -or $env:LVA_TOOL_EXECUTOR_TOKEN.Length -l
     throw 'Set LVA_TOOL_EXECUTOR_TOKEN to a secret containing at least 32 characters.'
 }
 
+$bindAddress = '127.0.0.1'
+$interfaceAlias = $null
+if ($EnableWslNatBinding) {
+    $wslAddresses = @(
+        Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
+            Where-Object {
+                $_.InterfaceAlias -like 'vEthernet*WSL*' -and
+                $_.IPAddress -notlike '169.254.*'
+            }
+    )
+    if ($wslAddresses.Count -ne 1) {
+        throw "Expected one WSL Hyper-V IPv4 address, found $($wslAddresses.Count)."
+    }
+    $candidate = [System.Net.IPAddress]::Parse($wslAddresses[0].IPAddress)
+    $bytes = $candidate.GetAddressBytes()
+    $isPrivate = (
+        $bytes[0] -eq 10 -or
+        ($bytes[0] -eq 172 -and $bytes[1] -ge 16 -and $bytes[1] -le 31) -or
+        ($bytes[0] -eq 192 -and $bytes[1] -eq 168)
+    )
+    if (-not $isPrivate) {
+        throw 'The WSL Hyper-V adapter does not have an RFC1918 private address.'
+    }
+    $bindAddress = $candidate.ToString()
+    $interfaceAlias = $wslAddresses[0].InterfaceAlias
+}
+
 if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
     $previous = Get-Content -LiteralPath $statusPath -Raw | ConvertFrom-Json
     if ($previous.state -eq 'running' -and $previous.pid) {
@@ -42,14 +71,14 @@ if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
 }
 
 $listener = [System.Net.Sockets.TcpListener]::new(
-    [System.Net.IPAddress]::Loopback,
+    [System.Net.IPAddress]::Parse($bindAddress),
     $Port
 )
 try {
     $listener.Start()
 }
 catch {
-    throw "Loopback port $Port is unavailable."
+    throw "Tool Executor endpoint $bindAddress`:$Port is unavailable."
 }
 finally {
     $listener.Stop()
@@ -80,7 +109,7 @@ $arguments = @(
     'local_voice_agent_tool_executor.bootstrap:create_app_from_environment',
     '--factory',
     '--host',
-    '127.0.0.1',
+    $bindAddress,
     '--port',
     "$Port",
     '--no-access-log'
@@ -94,6 +123,7 @@ $process = Start-Process `
     -RedirectStandardError $stderrPath `
     -PassThru
 
+$serverProcess = $null
 try {
     $healthy = $false
     for ($attempt = 0; $attempt -lt 40; $attempt++) {
@@ -102,7 +132,7 @@ try {
         }
         try {
             $response = Invoke-RestMethod `
-                -Uri "http://127.0.0.1:$Port/health" `
+                -Uri "http://$bindAddress`:$Port/health" `
                 -TimeoutSec 1
             if ($response.status -eq 'ok' -and $response.component -eq 'tool-executor') {
                 $healthy = $true
@@ -117,20 +147,60 @@ try {
         throw "Tool Executor failed its health check. Inspect $stderrPath."
     }
 
+    $listeners = @(
+        Get-NetTCPConnection `
+            -State Listen `
+            -LocalAddress $bindAddress `
+            -LocalPort $Port `
+            -ErrorAction Stop
+    )
+    if ($listeners.Count -ne 1) {
+        throw "Expected one Tool Executor listener, found $($listeners.Count)."
+    }
+    $serverProcess = Get-Process `
+        -Id ([int]$listeners[0].OwningProcess) `
+        -ErrorAction Stop
+    $serverCim = Get-CimInstance `
+        -ClassName Win32_Process `
+        -Filter "ProcessId = $($serverProcess.Id)"
+    if (
+        $serverProcess.Id -ne $process.Id -and
+        [int]$serverCim.ParentProcessId -ne $process.Id
+    ) {
+        throw 'The Tool Executor listener is not owned by the launched process.'
+    }
+    if (
+        $serverCim.CommandLine -notmatch
+            'local_voice_agent_tool_executor\.bootstrap:create_app_from_environment' -or
+        $serverCim.CommandLine -notmatch "--port $Port"
+    ) {
+        throw 'The Tool Executor listener command line is invalid.'
+    }
+
     [ordered]@{
         schema_version = '1.0'
         component = 'tool-executor'
         state = 'running'
-        pid = $process.Id
-        host = '127.0.0.1'
+        pid = $serverProcess.Id
+        host = $bindAddress
+        interface_alias = $interfaceAlias
         port = $Port
-        executable = (Resolve-Path -LiteralPath $python).Path
+        executable = $serverProcess.Path
+        launcher_pid = $process.Id
+        launcher_executable = $process.Path
         started_at = (Get-Date).ToUniversalTime().ToString('o')
         stdout_path = $stdoutPath
         stderr_path = $stderrPath
     } | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding utf8
 }
 catch {
+    if (
+        $serverProcess -and
+        $serverProcess.Id -ne $process.Id -and
+        -not $serverProcess.HasExited
+    ) {
+        Stop-Process -Id $serverProcess.Id -Force
+    }
     if (-not $process.HasExited) {
         Stop-Process -Id $process.Id -Force
     }

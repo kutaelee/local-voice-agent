@@ -65,8 +65,11 @@ it. Delete, Git mutation, process, browser, UI, and shell adapters remain
 unimplemented.
 
 The implemented IPC boundary accepts closed-schema Level 0 and approved Level
-1 requests on a launcher-enforced loopback address. A bearer token of at
-least 32 characters is required before request parsing. Request bodies,
+1 requests on a launcher-enforced loopback address by default. NAT-mode WSL
+may explicitly select the single RFC1918 address of the Windows Hyper-V WSL
+adapter. The server never binds a wildcard or LAN address, and the WSL client
+accepts the non-loopback URL only when it exactly matches a separately
+configured canonical IP. A bearer token of at least 32 characters is required before request parsing. Request bodies,
 response bodies, expiry, UUID canonical form, normalized-argument hashes, and
 tool-definition hashes are bounded or verified. Idempotency keys are bound to
 the complete execution fingerprint; an exact duplicate cannot repeat a
@@ -77,8 +80,10 @@ on durable storage.
 Audit JSONL and evidence files are append/no-replace and stored below
 `E:\Data\LocalVoiceAgent\runtime`. Evidence contains hashes, IDs, timings,
 status, and sanitized error codes but not tool arguments or result bodies.
-The launcher writes a registered PID/executable status record and the stop
-script refuses to stop a PID whose executable does not match.
+The launcher writes the actual listener and virtual-environment launcher
+PIDs/executables to its status record. The stop script verifies each
+executable and command line before stopping it, then confirms the listener is
+gone.
 
 The checked-in application and pairing schemas permit only loopback server
 binding and WSS, require Android Keystore token storage, and keep cleartext,

@@ -30,6 +30,21 @@ class VoiceEvent:
     payload: dict[str, object]
 
 
+@dataclass(frozen=True, slots=True)
+class ConversationReply:
+    text: str | None
+    events: tuple[VoiceEvent, ...] = ()
+    pending_approval_id: UUID | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class VoiceActivityDecision:
+    speech_started: bool
+    end_of_speech: bool
+    probability: float
+    processed_ms: int
+
+
 class SpeechToTextPort(Protocol):
     async def transcribe(
         self,
@@ -41,11 +56,38 @@ class SpeechToTextPort(Protocol):
 
 
 class ConversationPort(Protocol):
-    async def respond(self, text: str, *, language: str) -> str: ...
+    async def respond(
+        self,
+        text: str,
+        *,
+        language: str,
+    ) -> str | ConversationReply: ...
+
+    async def decide_approval(
+        self,
+        *,
+        approval_id: UUID,
+        approved: bool,
+        arguments_digest: str,
+        reason: str | None,
+    ) -> ConversationReply: ...
 
 
 class TextToSpeechPort(Protocol):
     async def synthesize(self, text: str, *, language: str) -> SynthesizedAudio: ...
+
+
+class VoiceActivityPort(Protocol):
+    async def analyze(
+        self,
+        *,
+        stream_id: UUID,
+        pcm_s16le: bytes,
+        sample_rate_hz: int,
+        channels: int,
+    ) -> VoiceActivityDecision: ...
+
+    async def close(self, *, stream_id: UUID) -> None: ...
 
 
 class VoiceTurnService:
@@ -55,6 +97,7 @@ class VoiceTurnService:
         stt: SpeechToTextPort,
         conversation: ConversationPort,
         tts: TextToSpeechPort,
+        vad: VoiceActivityPort | None = None,
         max_input_bytes: int = 8 * 1024 * 1024,
         output_chunk_bytes: int = 32 * 1024,
     ) -> None:
@@ -64,7 +107,10 @@ class VoiceTurnService:
         self._stt = stt
         self._conversation = conversation
         self._tts = tts
+        self._vad = vad
         self._output_chunk_bytes = output_chunk_bytes
+        self._pending_language: str | None = None
+        self._pending_approval_id: UUID | None = None
 
     def start(
         self,
@@ -106,9 +152,65 @@ class VoiceTurnService:
         )
         return []
 
+    async def append_with_vad(
+        self,
+        *,
+        stream_id: UUID,
+        chunk_index: int,
+        encoding: str,
+        data: bytes,
+        duration_ms: int,
+    ) -> list[VoiceEvent]:
+        self.append(
+            stream_id=stream_id,
+            chunk_index=chunk_index,
+            encoding=encoding,
+            data=data,
+            duration_ms=duration_ms,
+        )
+        if self._vad is None:
+            return []
+        sample_rate_hz = self._stream.sample_rate_hz
+        channels = self._stream.channels
+        if sample_rate_hz is None or channels is None:
+            raise RuntimeError("audio stream metadata is unavailable")
+        decision = await self._vad.analyze(
+            stream_id=stream_id,
+            pcm_s16le=data,
+            sample_rate_hz=sample_rate_hz,
+            channels=channels,
+        )
+        if not decision.end_of_speech:
+            return []
+        return [
+            VoiceEvent(
+                "assistant.state",
+                {
+                    "state": "recognizing",
+                    "detail": "vad_end_detected",
+                },
+            )
+        ]
+
     def cancel(self, *, stream_id: UUID) -> list[VoiceEvent]:
         self._stream.cancel(stream_id=stream_id)
         return [VoiceEvent("assistant.state", {"state": "interrupted"})]
+
+    async def close_vad(self, *, stream_id: UUID) -> None:
+        if self._vad is not None:
+            await self._vad.close(stream_id=stream_id)
+
+    @property
+    def stream_id(self) -> UUID | None:
+        return self._stream.stream_id
+
+    @property
+    def pending_approval_id(self) -> UUID | None:
+        return self._pending_approval_id
+
+    def cancel_pending_approval(self) -> None:
+        self._pending_language = None
+        self._pending_approval_id = None
 
     def cancel_active(self) -> None:
         if self._stream.stream_id is not None:
@@ -119,6 +221,7 @@ class VoiceTurnService:
 
     async def finish(self, *, stream_id: UUID) -> list[VoiceEvent]:
         audio = self._stream.finish(stream_id=stream_id)
+        await self.close_vad(stream_id=stream_id)
         sample_rate_hz = self._stream.sample_rate_hz
         channels = self._stream.channels
         if sample_rate_hz is None or channels is None:
@@ -151,12 +254,79 @@ class VoiceTurnService:
             ]
         )
 
-        response = await self._conversation.respond(
+        response_value = await self._conversation.respond(
             transcript.text,
             language=transcript.language,
         )
+        if isinstance(response_value, ConversationReply):
+            events.extend(response_value.events)
+            if response_value.text is None:
+                if response_value.pending_approval_id is None:
+                    raise ValueError(
+                        "conversation returned neither text nor approval"
+                    )
+                self._pending_language = transcript.language
+                self._pending_approval_id = (
+                    response_value.pending_approval_id
+                )
+                return events
+            response = response_value.text
+        else:
+            response = response_value
         if not response.strip():
             raise ValueError("conversation model returned no text")
+        return await self._complete_response(
+            events,
+            response=response,
+            language=transcript.language,
+        )
+
+    async def continue_after_approval(
+        self,
+        *,
+        approval_id: UUID,
+        approved: bool,
+        arguments_digest: str,
+        reason: str | None,
+    ) -> list[VoiceEvent]:
+        if (
+            self._pending_language is None
+            or self._pending_approval_id != approval_id
+        ):
+            raise ValueError("approval does not match the pending voice turn")
+        decide = getattr(self._conversation, "decide_approval", None)
+        if decide is None:
+            raise ValueError("conversation does not support approval")
+        reply = await decide(
+            approval_id=approval_id,
+            approved=approved,
+            arguments_digest=arguments_digest,
+            reason=reason,
+        )
+        events = list(reply.events)
+        if reply.text is None:
+            if reply.pending_approval_id is None:
+                raise ValueError(
+                    "conversation returned neither text nor approval"
+                )
+            self._pending_approval_id = reply.pending_approval_id
+            return events
+        language = self._pending_language
+        self._pending_language = None
+        self._pending_approval_id = None
+        return await self._complete_response(
+            events,
+            response=reply.text,
+            language=language,
+        )
+
+    async def _complete_response(
+        self,
+        events: list[VoiceEvent],
+        *,
+        response: str,
+        language: str,
+    ) -> list[VoiceEvent]:
         events.extend(
             [
                 VoiceEvent(
@@ -169,7 +339,7 @@ class VoiceTurnService:
 
         output = await self._tts.synthesize(
             response,
-            language=transcript.language,
+            language=language,
         )
         output_stream_id = uuid4()
         events.append(VoiceEvent("assistant.state", {"state": "speaking"}))

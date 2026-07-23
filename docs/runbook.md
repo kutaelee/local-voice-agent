@@ -139,14 +139,24 @@ below are placeholders, not usable credentials:
 ```bash
 export LVA_AUDIO_WORKER_TOKEN='<random-audio-worker-token>'
 bash scripts/start-audio-workers.sh
-python scripts/audio-worker-health.py
+python scripts/audio-worker-health.py \
+  /home/kutae/.local/share/local-voice-agent/run/vad.sock
 
 export LVA_VLLM_API_KEY='<random-vllm-api-key>'
 bash scripts/start-vllm.sh
 ```
 
-The audio workers use mode-0600 Unix sockets. vLLM binds only to
-`127.0.0.1:8766`; its first model load from the canonical NTFS model store can
+The audio workers use mode-0600 Unix sockets. The launcher health-checks VAD,
+STT, and TTS before returning. A VAD-only process smoke that does not start
+the GPU workers is available while the GPU is occupied:
+
+```bash
+export LVA_AUDIO_WORKER_TOKEN='<random-audio-worker-token>'
+bash scripts/smoke-vad-process.sh
+```
+
+vLLM binds only to `127.0.0.1:8766`; its first model load from the canonical
+NTFS model store can
 take several minutes. Startup waits up to 360 seconds by default and can be
 bounded from 60 through 900 seconds with
 `LVA_VLLM_STARTUP_TIMEOUT_SECONDS`.
@@ -175,8 +185,8 @@ handling and the Android-facing TLS termination path are implemented.
 
 ## Tool Executor
 
-The Windows-native Tool Executor is independently locked and always starts on
-loopback. Keep its IPC token in the current process environment or a future OS
+The Windows-native Tool Executor is independently locked and starts on
+loopback by default. Keep its IPC token in the current process environment or a future OS
 credential-store integration, never in Git:
 
 ```powershell
@@ -186,6 +196,25 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 Invoke-RestMethod http://127.0.0.1:8790/health
 .\scripts\stop-tool-executor.ps1
 ```
+
+For a PC server running inside NAT-mode WSL2, bind only the detected internal
+Hyper-V adapter and configure the same exact address in WSL:
+
+```powershell
+.\scripts\start-tool-executor.ps1 -EnableWslNatBinding
+Get-Content E:\Data\LocalVoiceAgent\runtime\status\tool-executor.json
+```
+
+```bash
+export LVA_TOOL_EXECUTOR_URL=http://172.18.0.1:8790
+export LVA_WINDOWS_HOST_IP=172.18.0.1
+```
+
+Replace the example address with the `host` field from the status file.
+The launcher fails unless exactly one `vEthernet (WSL ...)` RFC1918 address
+exists; it never selects a LAN interface or `0.0.0.0`. No firewall rule is
+created. If the WSL Hyper-V firewall blocks the endpoint, stop and report it
+instead of changing firewall policy automatically.
 
 The process-scoped execution-policy command does not change the user or
 machine policy. Runtime PID/status, logs, audit JSONL, and evidence are written
@@ -212,6 +241,11 @@ C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv\Scripts\python.exe `
   .\scripts\smoke-file-rollback.py
 ```
 
+From WSL, `scripts/smoke-tool-agent.py` exercises the model-facing tool loop
+with a deterministic mock model response and the real Windows executor. It
+must be given the executor URL, exact WSL host IP, and the same transient
+token; its final output includes the metadata-only evidence ID.
+
 A restart clears the current in-memory idempotency cache; do not treat it as
 durable until PostgreSQL-backed execution persistence is implemented.
 
@@ -235,7 +269,7 @@ Install the verified debug APK only when a device is visible in
 ```powershell
 C:\Dev\SDK\Android\platform-tools\adb.exe devices
 C:\Dev\SDK\Android\platform-tools\adb.exe install -r `
-  E:\Data\LocalVoiceAgent\artifacts\android\0.3.0-api37\local-voice-agent-0.3.0-debug.apk
+  E:\Data\LocalVoiceAgent\artifacts\android\0.4.0-api37\local-voice-agent-0.4.0-debug.apk
 ```
 
 The release APK is intentionally unsigned and cannot be installed until the

@@ -281,13 +281,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun handleEnvelope(envelope: ProtocolEnvelope) {
         runCatching {
             when (envelope.type) {
-                "assistant.state" -> reduce(
-                    AppAction.SetAssistantState(
-                        assistantState(
-                            envelope.payload.getValue("state").jsonPrimitive.content,
-                        ),
-                    ),
-                )
+                "assistant.state" -> {
+                    val state = envelope.payload.getValue("state").jsonPrimitive.content
+                    val detail = envelope.payload["detail"]
+                        ?.jsonPrimitive
+                        ?.contentOrNull
+                    reduce(AppAction.SetAssistantState(assistantState(state)))
+                    if (detail == "vad_end_detected" && recorder.isActive) {
+                        stopListening("vad_end")
+                    }
+                }
                 "transcript.user.partial", "transcript.user.final" -> reduce(
                     AppAction.SetUserTranscript(
                         envelope.payload.getValue("text").jsonPrimitive.content,

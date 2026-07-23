@@ -16,7 +16,15 @@ A locked PC-server environment now runs state, approval, policy, protocol,
 model-runtime/router, authenticated FastAPI/WebSocket, persistent STT/TTS
 workers, and the Tool Executor client adapter. A live Korean PCM test has
 passed WebSocket input, faster-whisper STT, Gemma 4 12B, Chatterbox V3 TTS,
-and chunked PCM output. A separate Tool Executor implements thirteen bounded
+and chunked PCM output. Silero VAD 6.2.1 now runs in an isolated CPU ONNX
+worker; its authenticated streaming smoke detected speech and a 500 ms
+endpoint, and Android stops capture when the server reports that endpoint.
+The WebSocket response path accepts and deduplicates cancellation while
+STT/LLM/TTS processing is still active. Gemma's model-visible tool loop now
+limits itself to the sixteen implemented tools, validates every call through
+the planner/policy engine, pauses Level 1 work for an exact approval, resumes
+the same turn, and returns verified results to the model. A separate Tool
+Executor implements thirteen bounded
 Level 0 filesystem/Git observation tools plus approval-bound Level 1
 `write_file`, `apply_patch`, and hash-preconditioned rollback. Its
 authenticated loopback API enforces execution binding and idempotency and
@@ -24,12 +32,12 @@ writes metadata-only audit/evidence records plus external rollback backups.
 Windows-native and WSL suites pass, and live process smokes passed both
 planner-driven reads and approved create/rollback. Coding-agent status
 adapters observe supported processes, optional strict status files, and
-workspace Git state without assuming private APIs. The Android 0.3.0 client
+workspace Git state without assuming private APIs. The Android 0.4.0 client
 records and streams PCM, plays
 ordered PCM output, supports client-side interruption, and keeps pairing
 tokens in Android Keystore-backed storage. No full product acceptance is
 claimed until the installed SGLang runtime completes model comparison,
-computer-use, server-side barge-in, device audio, and the required failure
+computer-use, physical-device barge-in/audio, and the required failure
 matrix pass.
 
 ## Architecture
@@ -75,7 +83,10 @@ pwsh -File scripts\download-models.ps1 -PlanOnly
 After setting an untracked `LVA_TOOL_EXECUTOR_TOKEN` with at least 32 random
 characters, the isolated executor can be started and stopped with
 `scripts\start-tool-executor.ps1` and `scripts\stop-tool-executor.ps1`.
-Both scripts keep the service on `127.0.0.1:8790`; the checked-in workspace
+The default is `127.0.0.1:8790`. NAT-mode WSL integration may explicitly bind
+only the detected private `vEthernet (WSL ...)` address with
+`-EnableWslNatBinding`; it never binds a LAN address or `0.0.0.0`. The
+checked-in workspace
 allowlist grants filesystem/Git observation and explicitly approved,
 preconditioned Level 1 file changes only to this repository. Backups remain
 outside the worktree under
@@ -102,17 +113,18 @@ manifests. The Android API 37 command-line build is operational; see
 - Runtime evidence is written outside Git under
   `E:\Data\LocalVoiceAgent\runtime\evidence`.
 - Verified Android APKs are copied to
-  `E:\Data\LocalVoiceAgent\artifacts\android\0.3.0-api37`; hashes and signing
+  `E:\Data\LocalVoiceAgent\artifacts\android\0.4.0-api37`; hashes and signing
   state are recorded in
   [manifests/android-artifacts.yaml](manifests/android-artifacts.yaml).
 
 ## Safety
 
 The server binds to loopback by default. Android never connects directly to
-the tool executor. Every tool call passes schema validation, workspace and
-path checks, risk classification, approval policy, execution, and
-postcondition verification. Level 2 and Level 3 actions are never
-auto-approved.
+the tool executor. The optional Tool Executor WSL endpoint is restricted to
+the exact private Hyper-V adapter and an environment-only bearer token. Every
+tool call passes schema validation, workspace and path checks, risk
+classification, approval policy, execution, and postcondition verification.
+Level 2 and Level 3 actions are never auto-approved.
 
 See [docs/security-model.md](docs/security-model.md) and
 [docs/tool-permission-model.md](docs/tool-permission-model.md).

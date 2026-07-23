@@ -1,0 +1,17 @@
+filelock==3.32.0
+flatbuffers==25.12.19
+fsspec==2026.6.0
+jinja2==3.1.6
+markupsafe==3.0.3
+mpmath==1.3.0
+networkx==3.6.1
+numpy==2.5.1
+onnxruntime==1.27.0
+packaging==26.2
+protobuf==7.35.1
+setuptools==83.0.0
+silero-vad @ file:///mnt/e/Cache/LocalVoiceAgent/downloads/silero_vad-6.2.1-py3-none-any.whl
+sympy==1.14.0
+torch==2.13.0+cpu
+torchaudio==2.11.0+cpu
+typing-extensions==4.16.0

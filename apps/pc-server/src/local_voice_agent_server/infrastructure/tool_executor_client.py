@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from ipaddress import IPv4Address, IPv4Network, ip_address
 import json
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
@@ -20,6 +21,10 @@ from ..domain.tool_execution import ToolExecutionState
 
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 EXECUTION_TTL = timedelta(minutes=2)
+RFC1918_NETWORKS = tuple(
+    IPv4Network(value)
+    for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+)
 Transport = Callable[[str, bytes, dict[str, str], float, int], bytes]
 
 
@@ -31,21 +36,43 @@ class ToolExecutorClientError(ToolExecutionPortError):
 class ToolExecutorClientSettings:
     base_url: str
     ipc_token: str
+    allowed_wsl_gateway: str | None = None
     timeout_seconds: float = 30.0
     max_response_bytes: int = MAX_RESPONSE_BYTES
 
     def __post_init__(self) -> None:
         parsed = urlparse(self.base_url)
+        allowed_hosts = {"127.0.0.1", "::1"}
+        if self.allowed_wsl_gateway is not None:
+            try:
+                gateway = ip_address(self.allowed_wsl_gateway)
+            except ValueError as error:
+                raise ValueError("WSL gateway must be an explicit IP address") from error
+            if (
+                not isinstance(gateway, IPv4Address)
+                or not any(gateway in network for network in RFC1918_NETWORKS)
+                or gateway.is_loopback
+                or gateway.is_unspecified
+                or gateway.is_multicast
+            ):
+                raise ValueError(
+                    "WSL gateway must be a private non-loopback IPv4 address"
+                )
+            if str(gateway) != self.allowed_wsl_gateway:
+                raise ValueError("WSL gateway must use canonical IPv4 notation")
+            allowed_hosts.add(str(gateway))
         if (
             parsed.scheme != "http"
-            or parsed.hostname not in {"127.0.0.1", "::1"}
+            or parsed.hostname not in allowed_hosts
             or parsed.port is None
             or parsed.path not in {"", "/"}
             or parsed.params
             or parsed.query
             or parsed.fragment
         ):
-            raise ValueError("Tool Executor URL must be an explicit loopback URL")
+            raise ValueError(
+                "Tool Executor URL must use loopback or the exact approved WSL gateway"
+            )
         if len(self.ipc_token) < 32 or self.ipc_token == "CHANGE_ME":
             raise ValueError("Tool Executor IPC token is invalid")
         if not 0.1 <= self.timeout_seconds <= 300:

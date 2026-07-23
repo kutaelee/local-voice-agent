@@ -34,4 +34,5 @@ stop_owned() {
 
 stop_owned stt "/apps/pc-server/workers/stt_worker.py"
 stop_owned tts "/apps/pc-server/workers/tts_worker.py"
+stop_owned vad "/apps/pc-server/workers/vad_worker.py"
 echo "Owned audio workers stopped."

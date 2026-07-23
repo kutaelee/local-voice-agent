@@ -20,15 +20,26 @@ from .application.session_events import (
     UnavailableSessionEventHandler,
     VoiceSessionEventHandler,
 )
+from .application.execute_tool import ExecuteQueuedTool
+from .application.tool_planner import ToolPlanner
 from .application.voice_turn import VoiceTurnService
 from .infrastructure.audio_workers import (
     SttWorkerAdapter,
     TtsWorkerAdapter,
     UnixJsonWorkerClient,
+    VadWorkerAdapter,
 )
 from .infrastructure.vllm_conversation import VllmConversationAdapter
 from .infrastructure.status_adapters import AgentStatusManager
+from .infrastructure.tool_agent_conversation import ToolAgentConversation
+from .infrastructure.tool_executor_client import (
+    HttpToolExecutionAdapter,
+    ToolExecutorClientSettings,
+)
+from .infrastructure.tool_registry import ToolRegistry
 from .protocol.client_events import (
+    AudioInputEndPayload,
+    ApprovalResponsePayload,
     ClientPayload,
     validate_client_payload,
 )
@@ -165,6 +176,8 @@ def create_app(
         await websocket.accept()
         server_sequence = 0
         last_client_sequence = -1
+        send_lock = asyncio.Lock()
+        background_tasks: set[asyncio.Task[None]] = set()
         connected = EventEnvelope.create(
             type="assistant.state",
             session_id=session_id,
@@ -174,18 +187,66 @@ def create_app(
         )
         await websocket.send_json(connected.to_dict())
 
+        async def send_error(
+            *,
+            request_id: UUID,
+            error_code: str,
+            message: str,
+        ) -> None:
+            nonlocal server_sequence
+            async with send_lock:
+                server_sequence += 1
+                await _send_error(
+                    websocket,
+                    session_id=session_id,
+                    request_id=request_id,
+                    sequence=server_sequence,
+                    error_code=error_code,
+                    message=message,
+                )
+
+        async def dispatch(
+            *,
+            request_id: UUID,
+            event_type: str,
+            payload: ClientPayload,
+        ) -> None:
+            nonlocal server_sequence
+            try:
+                outbound = await handler.handle(
+                    session_id=session_id,
+                    request_id=request_id,
+                    event_type=event_type,
+                    payload=payload,
+                )
+                async with send_lock:
+                    for item in outbound:
+                        server_sequence += 1
+                        envelope = EventEnvelope.create(
+                            type=item.type,
+                            session_id=session_id,
+                            request_id=request_id,
+                            sequence=server_sequence,
+                            payload=item.payload,
+                        )
+                        await websocket.send_json(envelope.to_dict())
+            except asyncio.CancelledError:
+                return
+            except Exception:
+                await send_error(
+                    request_id=request_id,
+                    error_code="EVENT_HANDLER_FAILED",
+                    message="The session event worker failed.",
+                )
+
         try:
             while True:
                 raw = await websocket.receive_json()
-                server_sequence += 1
                 try:
                     incoming = ClientEnvelope.model_validate(raw)
                 except ValidationError:
-                    await _send_error(
-                        websocket,
-                        session_id=session_id,
+                    await send_error(
                         request_id=uuid4(),
-                        sequence=server_sequence,
                         error_code="SCHEMA_INVALID",
                         message="Client event does not match the closed envelope.",
                     )
@@ -197,57 +258,55 @@ def create_app(
                         incoming.payload,
                     )
                 except (ValidationError, ValueError):
-                    await _send_error(
-                        websocket,
-                        session_id=session_id,
+                    await send_error(
                         request_id=incoming.request_id,
-                        sequence=server_sequence,
                         error_code="PAYLOAD_INVALID",
                         message="Client event payload does not match its closed schema.",
                     )
                     continue
 
                 if incoming.session_id != session_id:
-                    await _send_error(
-                        websocket,
-                        session_id=session_id,
+                    await send_error(
                         request_id=incoming.request_id,
-                        sequence=server_sequence,
                         error_code="SESSION_MISMATCH",
                         message="Envelope session does not match the path.",
                     )
                     continue
 
                 if incoming.sequence <= last_client_sequence:
-                    await _send_error(
-                        websocket,
-                        session_id=session_id,
+                    await send_error(
                         request_id=incoming.request_id,
-                        sequence=server_sequence,
                         error_code="SEQUENCE_REPLAY",
                         message="Client sequence must increase monotonically.",
                     )
                     continue
 
                 last_client_sequence = incoming.sequence
-                outbound = await handler.handle(
-                    session_id=session_id,
-                    request_id=incoming.request_id,
-                    event_type=incoming.type,
-                    payload=payload,
-                )
-                for item in outbound:
-                    server_sequence += 1
-                    envelope = EventEnvelope.create(
-                        type=item.type,
-                        session_id=session_id,
-                        request_id=incoming.request_id,
-                        sequence=server_sequence,
-                        payload=item.payload,
+                if (
+                    isinstance(payload, AudioInputEndPayload)
+                    and payload.reason in {"vad_end", "client_stop"}
+                ) or isinstance(payload, ApprovalResponsePayload):
+                    task = asyncio.create_task(
+                        dispatch(
+                            request_id=incoming.request_id,
+                            event_type=incoming.type,
+                            payload=payload,
+                        )
                     )
-                    await websocket.send_json(envelope.to_dict())
+                    background_tasks.add(task)
+                    task.add_done_callback(background_tasks.discard)
+                else:
+                    await dispatch(
+                        request_id=incoming.request_id,
+                        event_type=incoming.type,
+                        payload=payload,
+                    )
         except WebSocketDisconnect:
+            for task in background_tasks:
+                task.cancel()
             await handler.disconnect(session_id=session_id)
+            if background_tasks:
+                await asyncio.gather(*background_tasks, return_exceptions=True)
             return
 
     return app
@@ -301,6 +360,18 @@ def _event_handler_from_environment() -> SessionEventHandler:
             timeout_seconds=60,
         )
     )
+    vad = VadWorkerAdapter(
+        UnixJsonWorkerClient(
+            socket_path=Path(
+                os.environ.get(
+                    "LVA_VAD_SOCKET",
+                    "/home/kutae/.local/share/local-voice-agent/run/vad.sock",
+                )
+            ),
+            token=worker_token,
+            timeout_seconds=10,
+        )
+    )
     tts = TtsWorkerAdapter(
         UnixJsonWorkerClient(
             socket_path=Path(
@@ -313,15 +384,81 @@ def _event_handler_from_environment() -> SessionEventHandler:
             timeout_seconds=180,
         )
     )
-    conversation = VllmConversationAdapter(
-        base_url=os.environ.get("LVA_VLLM_BASE_URL", "http://127.0.0.1:8000/v1"),
-        model=vllm_model,
-        api_key=vllm_api_key,
+    base_url = os.environ.get(
+        "LVA_VLLM_BASE_URL",
+        "http://127.0.0.1:8000/v1",
     )
-    return VoiceSessionEventHandler(
-        lambda: VoiceTurnService(
+    tools_enabled = os.environ.get("LVA_TOOLS_ENABLED", "0") == "1"
+    registry: ToolRegistry | None = None
+    planner: ToolPlanner | None = None
+    tool_executor: ExecuteQueuedTool | None = None
+    if tools_enabled:
+        executor_token = os.environ.get("LVA_TOOL_EXECUTOR_TOKEN", "")
+        repo_root = Path(
+            os.environ.get(
+                "LVA_REPO_ROOT",
+                "/mnt/c/Dev/Repos/local-voice-agent",
+            )
+        )
+        if len(executor_token) < 32 or not repo_root.is_absolute():
+            raise RuntimeError("tool executor credentials and repo root are required")
+        registry = ToolRegistry.load(
+            definitions_dir=repo_root / "packages/tool-registry/definitions",
+            definition_schema_path=(
+                repo_root
+                / "packages/tool-registry/schemas/tool-definition.schema.json"
+            ),
+            disabled_tools={"restricted_shell"},
+        )
+        planner = ToolPlanner(registry)
+        tool_executor = ExecuteQueuedTool(
+            HttpToolExecutionAdapter(
+                ToolExecutorClientSettings(
+                    base_url=os.environ.get(
+                        "LVA_TOOL_EXECUTOR_URL",
+                        "http://127.0.0.1:8790",
+                    ),
+                    ipc_token=executor_token,
+                    allowed_wsl_gateway=(
+                        os.environ.get("LVA_WINDOWS_HOST_IP") or None
+                    ),
+                )
+            )
+        )
+
+    def turn_factory(
+        session_id: UUID,
+        request_id: UUID,
+    ) -> VoiceTurnService:
+        if (
+            tools_enabled
+            and registry is not None
+            and planner is not None
+            and tool_executor is not None
+        ):
+            conversation = ToolAgentConversation(
+                base_url=base_url,
+                model=vllm_model,
+                api_key=vllm_api_key,
+                session_id=session_id,
+                request_id=request_id,
+                registry=registry,
+                planner=planner,
+                executor=tool_executor,
+            )
+        else:
+            conversation = VllmConversationAdapter(
+                base_url=base_url,
+                model=vllm_model,
+                api_key=vllm_api_key,
+            )
+        return VoiceTurnService(
             stt=stt,
             conversation=conversation,
             tts=tts,
+            vad=vad,
         )
+
+    return VoiceSessionEventHandler(
+        turn_factory
     )

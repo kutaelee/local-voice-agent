@@ -157,6 +157,42 @@ def test_settings_reject_non_loopback_or_ambiguous_url(base_url: str) -> None:
         ToolExecutorClientSettings(base_url=base_url, ipc_token=TOKEN)
 
 
+def test_settings_allow_only_exact_private_wsl_gateway() -> None:
+    settings = ToolExecutorClientSettings(
+        base_url="http://172.18.0.1:8790",
+        ipc_token=TOKEN,
+        allowed_wsl_gateway="172.18.0.1",
+    )
+    assert settings.allowed_wsl_gateway == "172.18.0.1"
+
+    with pytest.raises(ValueError):
+        ToolExecutorClientSettings(
+            base_url="http://172.18.0.2:8790",
+            ipc_token=TOKEN,
+            allowed_wsl_gateway="172.18.0.1",
+        )
+
+
+@pytest.mark.parametrize(
+    "gateway",
+    [
+        "0.0.0.0",
+        "127.0.0.1",
+        "8.8.8.8",
+        "169.254.1.1",
+        "localhost",
+        "172.018.0.1",
+    ],
+)
+def test_settings_reject_unsafe_wsl_gateway(gateway: str) -> None:
+    with pytest.raises(ValueError):
+        ToolExecutorClientSettings(
+            base_url="http://172.18.0.1:8790",
+            ipc_token=TOKEN,
+            allowed_wsl_gateway=gateway,
+        )
+
+
 def test_adapter_rejects_non_level_zero_plan_before_transport() -> None:
     called = False
 

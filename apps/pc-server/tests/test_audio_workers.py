@@ -4,6 +4,7 @@ import asyncio
 import base64
 import json
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -12,6 +13,7 @@ from local_voice_agent_server.infrastructure.audio_workers import (
     SttWorkerAdapter,
     TtsWorkerAdapter,
     UnixJsonWorkerClient,
+    VadWorkerAdapter,
 )
 
 
@@ -103,5 +105,58 @@ def test_worker_error_is_sanitized(tmp_path: Path) -> None:
             )
             with pytest.raises(AudioWorkerError, match="REQUEST_INVALID"):
                 await client.request({"operation": "health", "request_id": "x"})
+
+    asyncio.run(scenario())
+
+
+def test_vad_worker_adapter_analyzes_and_closes_stream(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        stream_id = uuid4()
+        path = tmp_path / "vad.sock"
+        responses = [
+            {
+                "status": "ok",
+                "speech_started": True,
+                "end_of_speech": True,
+                "probability": 0.91,
+                "processed_ms": 640,
+            },
+            {
+                "status": "ok",
+                "closed": True,
+            },
+        ]
+
+        async def handler(
+            reader: asyncio.StreamReader,
+            writer: asyncio.StreamWriter,
+        ) -> None:
+            request = json.loads(await reader.readline())
+            assert request["token"] == TOKEN
+            writer.write(json.dumps(responses.pop(0)).encode() + b"\n")
+            await writer.drain()
+            writer.close()
+            await writer.wait_closed()
+
+        server = await asyncio.start_unix_server(handler, path=path)
+        async with server:
+            adapter = VadWorkerAdapter(
+                UnixJsonWorkerClient(
+                    socket_path=path,
+                    token=TOKEN,
+                    timeout_seconds=2,
+                )
+            )
+            decision = await adapter.analyze(
+                stream_id=stream_id,
+                pcm_s16le=b"\x00\x01" * 512,
+                sample_rate_hz=16_000,
+                channels=1,
+            )
+            await adapter.close(stream_id=stream_id)
+        assert decision.speech_started is True
+        assert decision.end_of_speech is True
+        assert decision.probability == 0.91
+        assert decision.processed_ms == 640
 
     asyncio.run(scenario())

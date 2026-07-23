@@ -81,7 +81,7 @@ model repositories, and upstream release notes are used for selections.
 
 | Component | Candidate | License | Korean | Streaming | GPU/CPU | Selected rationale |
 |---|---|---|---|---|---|---|
-| VAD | Silero VAD 6.2.1 ONNX | MIT | Language-agnostic, 6000+ language training claim | Yes | Prefer CPU | Lightweight and independent of CUDA stack |
+| VAD | Silero VAD 6.2.1 + ONNX Runtime 1.27.0 | MIT | Language-agnostic, 6000+ language training claim | Authenticated streaming worker passed | CPUExecutionProvider | Selected; 500 ms endpoint avoids splitting the measured Korean sample pause |
 | STT | faster-whisper 1.2.1, `large-v3-turbo` + `small` | MIT | Whisper multilingual | Chunk/partial orchestration required | CUDA 12 + cuDNN 9 or CPU | GPU/CPU benchmark pair; isolate from CUDA 13 |
 | STT alternative | Gemma 4 12B audio understanding / newer runtime ASR | Apache-2.0/model-specific | Yes, measure | Runtime-dependent | GPU | Not the baseline until latency and tool contention are measured |
 | TTS | Chatterbox Multilingual V3, HF `5bb1f6e…`, package 0.1.7 | MIT | Officially listed | Sentence/chunk orchestration | PyTorch pin compatibility gate | Primary quality candidate |

@@ -101,5 +101,6 @@ release, initially Python 3.12 unless official wheels require otherwise.
 - Versioned vLLM, SGLang, faster-whisper, and Chatterbox environments were
   subsequently installed under the WSL user runtime root. Their exact
   packages, checksums, model paths, and measured smokes are recorded in
-  `manifests/runtimes.yaml` and `docs/test-report.md`. Silero VAD remains
-  planned.
+  `manifests/runtimes.yaml` and `docs/test-report.md`. Silero VAD 6.2.1 was
+  subsequently installed in a CPU-only ONNX environment and its persistent
+  worker smoke passed.

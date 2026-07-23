@@ -38,13 +38,21 @@ guard. Git uses fixed argv with external execution features disabled and
 rejects metadata escape mechanisms. Delete, Git mutation, process, browser,
 UI, and shell adapters remain unavailable.
 
-The current transport boundary is an authenticated HTTP API bound by the
-launcher to `127.0.0.1:8790`. The PC server has a hexagonal
-`ToolExecutionPort` and loopback HTTP adapter that carries the exact execution
+The current transport boundary is an authenticated HTTP API bound by default
+to `127.0.0.1:8790`. In WSL NAT mode the launcher can instead bind only the
+detected RFC1918 address of the Windows `vEthernet (WSL ...)` Hyper-V adapter;
+the client accepts that address only when the same canonical IP is explicitly
+configured. LAN addresses, hostnames, and wildcard binds remain rejected. The
+PC server has a hexagonal `ToolExecutionPort` and HTTP adapter that carries the exact execution
 ID, idempotency key, argument digest, tool-definition digest, risk level,
 approval binding, and expiry. Planner-to-executor read and approved
-create/rollback paths have passed process smokes; the conversational model
-tool loop is not connected yet. The executor revalidates those bindings,
+create/rollback paths have passed process smokes. The conversational model
+loop exposes only the sixteen implemented executor tools, rejects malformed,
+parallel, or unavailable calls, and runs at most four sequential calls.
+Level 0 results return to the model immediately; Level 1 pauses with the exact
+approval binding and resumes the same voice turn only after approval. The
+WSL-to-Windows process smoke completed a model-selected `read_file` and
+persisted metadata-only evidence. The executor revalidates those bindings,
 serializes duplicate keys in process, and returns the prior terminal response
 without repeating a successful call. Durable
 idempotency across process restarts remains a PostgreSQL milestone.
@@ -105,3 +113,12 @@ Android UDF state, audio interruption, pairing, reconnection, and device-test
 boundaries are detailed in [`android-design.md`](android-design.md).
 VAD, STT/TTS isolation, streaming boundaries, and barge-in measurements are
 detailed in [`audio-design.md`](audio-design.md).
+
+The current voice composition uses three authenticated mode-0600 Unix-socket
+workers: Silero VAD 6.2.1 on CPU ONNX, faster-whisper on its isolated CUDA 12
+stack, and Chatterbox V3 on its isolated CUDA 13 stack. VAD consumes ordered
+PCM chunks and returns a server endpoint decision; Android then stops capture
+and sends the terminal input event. Voice-response completion runs as a
+background task so a monotonic cancellation event can be processed while
+STT, model inference, or TTS is pending. Cancellation IDs are bounded and
+deduplicated per session; later output from a cancelled task is discarded.

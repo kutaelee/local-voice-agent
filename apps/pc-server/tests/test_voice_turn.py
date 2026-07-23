@@ -4,6 +4,7 @@ from uuid import uuid4
 from local_voice_agent_server.application.voice_turn import (
     SynthesizedAudio,
     Transcript,
+    VoiceActivityDecision,
     VoiceTurnService,
 )
 
@@ -77,3 +78,50 @@ def test_voice_turn_emits_ordered_transcript_text_and_audio() -> None:
     assert first_audio.payload["channels"] == 1
     assert types[-1] == "audio.output.end"
     assert completed[1].payload["text"] == "컴퓨터 상태 알려줘."
+
+
+def test_voice_turn_emits_vad_end_and_closes_worker_state() -> None:
+    class FakeVad:
+        closed = False
+
+        async def analyze(self, **_: object) -> VoiceActivityDecision:
+            return VoiceActivityDecision(
+                speech_started=True,
+                end_of_speech=True,
+                probability=0.88,
+                processed_ms=640,
+            )
+
+        async def close(self, **_: object) -> None:
+            self.closed = True
+
+    async def scenario() -> None:
+        vad = FakeVad()
+        service = VoiceTurnService(
+            stt=FakeStt(),
+            conversation=FakeConversation(),
+            tts=FakeTts(),
+            vad=vad,
+        )
+        stream_id = uuid4()
+        service.start(
+            stream_id=stream_id,
+            encoding="pcm_s16le",
+            sample_rate_hz=16_000,
+            channels=1,
+        )
+        events = await service.append_with_vad(
+            stream_id=stream_id,
+            chunk_index=0,
+            encoding="pcm_s16le",
+            data=b"\x00\x00" * 160,
+            duration_ms=10,
+        )
+        assert events[0].payload == {
+            "state": "recognizing",
+            "detail": "vad_end_detected",
+        }
+        await service.finish(stream_id=stream_id)
+        assert vad.closed is True
+
+    asyncio.run(scenario())

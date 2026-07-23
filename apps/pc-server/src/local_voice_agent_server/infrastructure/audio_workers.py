@@ -6,9 +6,13 @@ import asyncio
 import base64
 import json
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from ..application.voice_turn import SynthesizedAudio, Transcript
+from ..application.voice_turn import (
+    SynthesizedAudio,
+    Transcript,
+    VoiceActivityDecision,
+)
 
 
 class AudioWorkerError(RuntimeError):
@@ -94,6 +98,45 @@ class SttWorkerAdapter:
             text=str(response["text"]),
             language=str(response["language"]),
             confidence=float(response["confidence"]),
+        )
+
+
+class VadWorkerAdapter:
+    def __init__(self, client: UnixJsonWorkerClient) -> None:
+        self._client = client
+
+    async def analyze(
+        self,
+        *,
+        stream_id: UUID,
+        pcm_s16le: bytes,
+        sample_rate_hz: int,
+        channels: int,
+    ) -> VoiceActivityDecision:
+        response = await self._client.request(
+            {
+                "operation": "analyze",
+                "request_id": str(uuid4()),
+                "stream_id": str(stream_id),
+                "audio_base64": base64.b64encode(pcm_s16le).decode("ascii"),
+                "sample_rate_hz": sample_rate_hz,
+                "channels": channels,
+            }
+        )
+        return VoiceActivityDecision(
+            speech_started=bool(response["speech_started"]),
+            end_of_speech=bool(response["end_of_speech"]),
+            probability=float(response["probability"]),
+            processed_ms=int(response["processed_ms"]),
+        )
+
+    async def close(self, *, stream_id: UUID) -> None:
+        await self._client.request(
+            {
+                "operation": "close",
+                "request_id": str(uuid4()),
+                "stream_id": str(stream_id),
+            }
         )
 
 

@@ -25,8 +25,42 @@ if ($process) {
     if ($process.Path -ne $expectedExecutable) {
         throw 'The registered PID belongs to a different executable; no process was stopped.'
     }
+    $processDetails = Get-CimInstance `
+        -ClassName Win32_Process `
+        -Filter "ProcessId = $($process.Id)"
+    if (
+        $processDetails.CommandLine -notmatch
+            'local_voice_agent_tool_executor\.bootstrap:create_app_from_environment' -or
+        $processDetails.CommandLine -notmatch "--port $([int]$status.port)"
+    ) {
+        throw 'The registered process command line is invalid; no process was stopped.'
+    }
     Stop-Process -Id $process.Id -Force
     $process.WaitForExit(5000) | Out-Null
+}
+
+$launcher = $null
+if ($status.launcher_pid -and [int]$status.launcher_pid -ne [int]$status.pid) {
+    $launcher = Get-Process `
+        -Id ([int]$status.launcher_pid) `
+        -ErrorAction SilentlyContinue
+}
+if ($launcher) {
+    $expectedLauncher = (Resolve-Path `
+        -LiteralPath $status.launcher_executable).Path
+    $launcherDetails = Get-CimInstance `
+        -ClassName Win32_Process `
+        -Filter "ProcessId = $($launcher.Id)"
+    if (
+        $launcher.Path -ne $expectedLauncher -or
+        $launcherDetails.CommandLine -notmatch
+            'local_voice_agent_tool_executor\.bootstrap:create_app_from_environment' -or
+        $launcherDetails.CommandLine -notmatch "--port $([int]$status.port)"
+    ) {
+        throw 'The registered launcher identity is invalid; it was not stopped.'
+    }
+    Stop-Process -Id $launcher.Id -Force
+    $launcher.WaitForExit(5000) | Out-Null
 }
 
 [ordered]@{
@@ -37,6 +71,8 @@ if ($process) {
     host = $status.host
     port = [int]$status.port
     executable = $status.executable
+    launcher_pid = $status.launcher_pid
+    launcher_executable = $status.launcher_executable
     started_at = $status.started_at
     stopped_at = (Get-Date).ToUniversalTime().ToString('o')
     stdout_path = $status.stdout_path
