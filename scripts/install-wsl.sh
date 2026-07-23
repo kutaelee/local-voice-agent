@@ -3,6 +3,7 @@ set -euo pipefail
 
 mode="${1:---plan-only}"
 runtime_root="${HOME}/.local/share/local-voice-agent/runtimes"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ "${mode}" == "--plan-only" ]]; then
   cat <<EOF
@@ -44,26 +45,32 @@ download_verified() {
   local url="$1"
   local destination="$2"
   local expected_sha="$3"
+  local expected_bytes="$4"
   local partial="${destination}.partial"
+  local download_python="${runtime_root}/model-download/.venv/bin/python"
 
   if [[ -f "${destination}" ]]; then
+    local existing_bytes
     local existing_sha
+    existing_bytes="$(stat -c '%s' "${destination}")"
     existing_sha="$(sha256sum "${destination}" | awk '{print $1}')"
-    [[ "${existing_sha}" == "${expected_sha}" ]] || {
+    [[ "${existing_bytes}" == "${expected_bytes}" && "${existing_sha}" == "${expected_sha}" ]] || {
       echo "Refusing to overwrite invalid existing download: ${destination}" >&2
       return 4
     }
     return 0
   fi
 
-  curl --fail --location \
-    --retry 5 \
-    --retry-all-errors \
-    --retry-delay 5 \
-    --continue-at - \
-    --output "${partial}" \
-    "${url}"
-  echo "${expected_sha}  ${partial}" | sha256sum --check -
+  [[ -x "${download_python}" ]] || {
+    echo "Run --bootstrap-download-tool before runtime installation." >&2
+    return 5
+  }
+  "${download_python}" "${script_dir}/download-file.py" \
+    "${url}" \
+    "${partial}" \
+    "${expected_bytes}" \
+    "${expected_sha}" \
+    --workers 16
   mv -- "${partial}" "${destination}"
 }
 
@@ -80,9 +87,10 @@ case "${mode}" in
     environment="${runtime_root}/vllm-0.25.1"
     wheel="${cache_root}/vllm-0.25.1-cp38-abi3-manylinux_2_28_x86_64.whl"
     download_verified \
-      "https://github.com/vllm-project/vllm/releases/download/v0.25.1/vllm-0.25.1-cp38-abi3-manylinux_2_28_x86_64.whl" \
+      "https://files.pythonhosted.org/packages/35/9d/c379618ce0abfc2679607d403c0f586b07e9c9c33d08c5bdd6196cb524e0/vllm-0.25.1-cp38-abi3-manylinux_2_28_x86_64.whl" \
       "${wheel}" \
-      "16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e"
+      "16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e" \
+      "250100306"
     create_environment "${environment}"
     "${uv_bin}" pip install \
       --python "${environment}/.venv/bin/python" \
@@ -98,7 +106,8 @@ case "${mode}" in
     download_verified \
       "https://files.pythonhosted.org/packages/c1/24/701bf55add96c074047d76f56fe1778f2d2a2280de1455b0ee84dde52e29/sglang-0.5.15.post1-cp312-cp312-manylinux_2_34_x86_64.whl" \
       "${wheel}" \
-      "d1cf208d6ed6bd1d66e6c284635cb671519855dcdfe119e3c4011b6797c90679"
+      "d1cf208d6ed6bd1d66e6c284635cb671519855dcdfe119e3c4011b6797c90679" \
+      "12848778"
     create_environment "${environment}"
     "${uv_bin}" pip install \
       --python "${environment}/.venv/bin/python" \

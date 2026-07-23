@@ -53,10 +53,22 @@ def load_or_create_state(args: argparse.Namespace, chunks: int) -> dict[str, obj
         "chunks": chunks,
     }
     if path.exists():
+        if not args.output.exists():
+            raise RuntimeError("resume state exists but partial output is missing")
+        if args.output.stat().st_size != args.size_bytes:
+            raise RuntimeError("resume state exists but partial output size changed")
         state = json.loads(path.read_text(encoding="utf-8"))
         for key, value in expected.items():
+            if key == "url":
+                continue
             if state.get(key) != value:
                 raise RuntimeError(f"resume state mismatch for {key}")
+        if state.get("url") != args.url:
+            source_urls = state.setdefault("source_urls", [state.get("url")])
+            if args.url not in source_urls:
+                source_urls.append(args.url)
+            state["url"] = args.url
+            write_state(path, state)
         state.setdefault("completed", [])
         return state
 

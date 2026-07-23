@@ -20,7 +20,12 @@ Status: Slice 0 only. No product acceptance test has run.
 | Stable range-resume strategy | Passed (small-file test) | 29,372-byte official file; HTTP 206, SHA-256 pass, second run reused 1/1 completed chunk |
 | 12B interrupted transfer resume | Passed | Restart resumed at 24/153 completed 64 MiB chunks |
 | Range worker comparison | Preliminary | 8 workers: 1,536 MiB/289 s = 5.31 MiB/s; 16 workers: 1,216 MiB/211 s = 5.76 MiB/s |
-| 12B parallel range transfer | In progress | 16 workers, 64 MiB chunks, atomic completed-range state |
+| 12B parallel range transfer | Passed | 153/153 chunks; 1,227.345 s wall time including restart = 7.98 MiB/s |
+| 12B target SHA-256 | Passed | `60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3` |
+| 12B MTP assistant SHA-256 | Passed | `67f1420cf24aa5065089aaed175223f7c245ccfda16111b6c56765afd7280db6` |
+| Identical-hash mirror resume | Passed | vLLM wheel reused 1/4 ranges after GitHub-to-PyPI URL change |
+| vLLM wheel SHA-256 | Passed | `16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e` |
+| vLLM isolated dependency install | In progress | uv-managed Python 3.12, CUDA 13 backend |
 
 Model artifact download and SHA-256 validation are in progress. All functional,
 security, Android, model-loading, MTP, benchmark, and rollback tests are

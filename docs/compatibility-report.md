@@ -19,7 +19,8 @@ model repositories, and upstream release notes are used for selections.
   landed in 0.5.12. It remains a benchmark candidate until function calling,
   multimodal paths, and MTP are tested on this workstation.
 - vLLM's official 0.25.1 x86_64 release wheel is pinned by its GitHub release
-  SHA-256 and installed with uv's explicit CUDA 13.0 backend selection.
+  SHA-256. The byte-identical PyPI artifact is used as a faster mirror and
+  installed with uv's explicit CUDA 13.0 backend selection.
 - SGLang's official 0.5.15.post1 CPython 3.12 x86_64 PyPI wheel is pinned by
   its PyPI SHA-256. Its official installation guide states CUDA 13 is the
   default runtime line.
