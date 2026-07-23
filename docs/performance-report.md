@@ -1,7 +1,8 @@
 # Performance report
 
-Status: preliminary 12B smoke observations only; fixed-condition benchmark has
-not run.
+Status: preliminary smoke observations only; the fixed-condition benchmark
+has not completed. Shared-GPU retries on 2026-07-24 were safely yielded when
+ComfyUI reclaimed the device, so no partial latency result is reported.
 
 The project does not claim TTFT, TPOT, tokens/s, first-audio latency, MTP
 speedup, VRAM peak, or end-to-end voice latency until the benchmark harness
