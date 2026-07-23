@@ -8,8 +8,9 @@ from types import MappingProxyType
 from typing import Any, Mapping
 from uuid import uuid4
 
-from ..domain.approval import ApprovalRequest
+from ..domain.approval import ApprovalRequest, ApprovalState
 from ..domain.digests import sha256_json
+from ..domain.errors import ApprovalBindingError, InvalidTransition
 from ..domain.policy import PolicyAction, PolicyDecision, evaluate_policy
 from ..domain.tool_execution import ToolExecution, ToolExecutionState
 from ..infrastructure.tool_registry import ToolRegistry
@@ -119,4 +120,46 @@ class ToolPlanner:
             policy=decision,
             execution=execution,
             approval=approval,
+        )
+
+    def queue_approved(
+        self,
+        plan: ToolPlan,
+        *,
+        decided_approval: ApprovalRequest,
+        expected_execution_version: int,
+        now: datetime | None = None,
+    ) -> ToolPlan:
+        if plan.execution is None or plan.approval is None:
+            raise InvalidTransition("plan has no approval-bound execution")
+        if plan.execution.state is not ToolExecutionState.WAITING_APPROVAL:
+            raise InvalidTransition(
+                f"execution is {plan.execution.state.value}, not WAITING_APPROVAL"
+            )
+        if decided_approval.state is not ApprovalState.APPROVED:
+            raise InvalidTransition("approval is not APPROVED")
+        if (
+            decided_approval.approval_id != plan.approval.approval_id
+            or decided_approval.tool_call_id != plan.execution.tool_call_id
+            or decided_approval.normalized_arguments_sha256
+            != plan.execution.normalized_arguments_sha256
+            or decided_approval.precondition_version
+            != plan.approval.precondition_version
+        ):
+            raise ApprovalBindingError(
+                "decided approval does not match the planned execution"
+            )
+
+        queued = plan.execution.transition(
+            ToolExecutionState.QUEUED,
+            expected_version=expected_execution_version,
+            reason="exact_approval_granted",
+            now=now,
+        )
+        return ToolPlan(
+            tool_name=plan.tool_name,
+            normalized_arguments=plan.normalized_arguments,
+            policy=plan.policy,
+            execution=queued,
+            approval=decided_approval,
         )

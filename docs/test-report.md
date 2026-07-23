@@ -84,9 +84,10 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Benchmark result/report envelopes | Passed (static) | Raw result remains explicitly `not_run` with zero runs; model/runtime comparison matrices exist and every unmeasured cell is `NOT_RUN` |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 | PC-server isolated dependency lock/install | Passed | Python 3.12.13 environment outside repo; latest stable FastAPI 0.139.2, JSON Schema 4.26.0, Pydantic 2.13.4, Starlette 1.3.1, Uvicorn 0.51.0; lock SHA-256 `5a223baf…` |
-| PC-server domain/API/registry/planner unit tests | Passed | 43 tests: state transitions, optimistic locks, approvals, risk policy, envelope, pairing security, session/replay checks, deep registry immutability, all 74 tool definitions, and non-executing plans |
+| PC-server domain/API/registry/planner unit tests | Passed | 46 tests: state transitions, optimistic locks, approvals, risk policy, envelope, pairing security, session/replay checks, deep registry immutability, all 74 tool definitions, and non-executing plans |
 | Runtime tool registry | Passed | Draft 2020-12 definition and argument validation; stable definition hashes; unknown tools fail closed; disabled `restricted_shell` omitted from 73 model-visible tools; server-issued approval/idempotency fields hidden from model schemas |
 | Tool planner risk routing | Passed | Level 0 queued; Level 1 waits unless a valid session grant exists; Level 2 always waits for exact approval; Level 3 and disabled tools create no execution aggregate |
+| Approval-to-queue binding | Passed | Approved exact binding queued; denied approval and mismatched approval ID were rejected; execution CAS version remained enforced |
 | PC-server process smoke first wrapper | Failed, corrected | Inline Bash used command substitution that PowerShell parsed first; command failed before starting a process, so a shell-isolated smoke script was added |
 | PC-server Uvicorn process smoke | Passed | Loopback `127.0.0.1:8787`, `/health` HTTP 200, owned PID 51847 cleanly stopped, port confirmed closed |
 

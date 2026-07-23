@@ -24,7 +24,9 @@ transport- and persistence-neutral:
   function schemas while retained in executor validation contracts.
 - a non-executing planner that maps validated Level 0 requests to `QUEUED`,
   Level 1/2 requests to exact approval-bound `WAITING_APPROVAL`, and Level 3
-  or disabled tools to a denial without creating an execution aggregate.
+  or disabled tools to a denial without creating an execution aggregate;
+  queue activation requires an approved record with the same approval ID,
+  tool call, argument digest, precondition version, and execution version.
 
 No tool is executed by this slice. PostgreSQL adapters and application use
 cases remain follow-up work. The FastAPI composition root currently exposes a

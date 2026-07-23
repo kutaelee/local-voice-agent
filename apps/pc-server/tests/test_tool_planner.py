@@ -7,6 +7,11 @@ from uuid import uuid4
 import pytest
 
 from local_voice_agent_server.application.tool_planner import ToolPlanner
+from local_voice_agent_server.domain.approval import ApprovalRequest
+from local_voice_agent_server.domain.errors import (
+    ApprovalBindingError,
+    InvalidTransition,
+)
 from local_voice_agent_server.domain.policy import PolicyAction
 from local_voice_agent_server.domain.tool_execution import ToolExecutionState
 from local_voice_agent_server.infrastructure.tool_registry import ToolRegistry
@@ -148,3 +153,79 @@ def test_disabled_tool_creates_no_execution(
     assert plan.policy.action is PolicyAction.DENY
     assert plan.policy.reason_codes == ("TOOL_DISABLED",)
     assert plan.execution is None
+
+
+def waiting_plan(planner: ToolPlanner):
+    return planner.plan(
+        **identifiers(),
+        tool_name="write_file",
+        arguments={
+            "workspace_id": "repo",
+            "relative_path": "notes.txt",
+            "expected_sha256": None,
+            "content": "draft",
+        },
+        precondition_version=4,
+    )
+
+
+def test_exact_approved_plan_can_be_queued(planner: ToolPlanner) -> None:
+    plan = waiting_plan(planner)
+    assert plan.approval is not None
+    decided = plan.approval.decide(
+        approved=True,
+        normalized_arguments_sha256=plan.approval.normalized_arguments_sha256,
+        precondition_version=plan.approval.precondition_version,
+        expected_version=0,
+    )
+    queued = planner.queue_approved(
+        plan,
+        decided_approval=decided,
+        expected_execution_version=1,
+    )
+    assert queued.execution is not None
+    assert queued.execution.state is ToolExecutionState.QUEUED
+    assert queued.execution.version == 2
+
+
+def test_denied_approval_cannot_queue(planner: ToolPlanner) -> None:
+    plan = waiting_plan(planner)
+    assert plan.approval is not None
+    denied = plan.approval.decide(
+        approved=False,
+        normalized_arguments_sha256=plan.approval.normalized_arguments_sha256,
+        precondition_version=plan.approval.precondition_version,
+        expected_version=0,
+    )
+    with pytest.raises(InvalidTransition):
+        planner.queue_approved(
+            plan,
+            decided_approval=denied,
+            expected_execution_version=1,
+        )
+
+
+def test_mismatched_approved_record_cannot_queue(
+    planner: ToolPlanner,
+) -> None:
+    plan = waiting_plan(planner)
+    assert plan.approval is not None
+    other = ApprovalRequest(
+        approval_id=str(uuid4()),
+        tool_call_id=plan.approval.tool_call_id,
+        normalized_arguments_sha256=plan.approval.normalized_arguments_sha256,
+        precondition_version=plan.approval.precondition_version,
+        created_at=plan.approval.created_at,
+        expires_at=plan.approval.expires_at,
+    ).decide(
+        approved=True,
+        normalized_arguments_sha256=plan.approval.normalized_arguments_sha256,
+        precondition_version=plan.approval.precondition_version,
+        expected_version=0,
+    )
+    with pytest.raises(ApprovalBindingError):
+        planner.queue_approved(
+            plan,
+            decided_approval=other,
+            expected_execution_version=1,
+        )
