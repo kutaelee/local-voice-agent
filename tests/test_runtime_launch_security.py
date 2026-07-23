@@ -34,6 +34,9 @@ def test_vllm_launcher_uses_official_environment_key() -> None:
     assert "minimum_free_mib=28500" in start
     assert '31b:on)' in start
     assert "31B MTP is not enabled" in start
+    assert "VLLM_SMOKE_CPU_OFFLOAD_GB" in serve
+    assert '--cpu-offload-gb "${cpu_offload_gb}"' in serve
+    assert "integer from 0 to 48" in serve
 
 
 def test_vllm_stop_validates_owned_model_identity() -> None:

@@ -13,6 +13,7 @@ enforce_eager="${VLLM_SMOKE_ENFORCE_EAGER:-0}"
 language_model_only="${VLLM_SMOKE_LANGUAGE_MODEL_ONLY:-0}"
 kv_cache_memory="${VLLM_SMOKE_KV_CACHE_MEMORY_BYTES:-}"
 max_num_seqs="${VLLM_SMOKE_MAX_NUM_SEQS:-}"
+cpu_offload_gb="${VLLM_SMOKE_CPU_OFFLOAD_GB:-0}"
 # WSL did not expose CUDA UVA to vLLM's V2 runner on this workstation.
 # vLLM 0.25.1 officially supports forcing the V1 runner with this variable.
 export VLLM_USE_V2_MODEL_RUNNER="${VLLM_USE_V2_MODEL_RUNNER:-0}"
@@ -56,6 +57,10 @@ if [[ -n "${max_num_seqs}" && ! "${max_num_seqs}" =~ ^[1-9][0-9]*$ ]]; then
   echo "VLLM_SMOKE_MAX_NUM_SEQS must be a positive integer" >&2
   exit 9
 fi
+[[ "${cpu_offload_gb}" =~ ^([0-9]|[1-3][0-9]|4[0-8])$ ]] || {
+  echo "VLLM_SMOKE_CPU_OFFLOAD_GB must be an integer from 0 to 48" >&2
+  exit 11
+}
 
 case "${mtp_mode}" in
   off)
@@ -138,9 +143,12 @@ fi
 if [[ -n "${max_num_seqs}" ]]; then
   args+=(--max-num-seqs "${max_num_seqs}")
 fi
+if [[ "${cpu_offload_gb}" != "0" ]]; then
+  args+=(--cpu-offload-gb "${cpu_offload_gb}")
+fi
 
 echo \
-  "Starting ${served_name} MTP=${mtp_mode} runtime=${runtime_root} runner_v2=${VLLM_USE_V2_MODEL_RUNNER} enforce_eager=${enforce_eager} language_model_only=${language_model_only} on ${host}:${port}" \
+  "Starting ${served_name} MTP=${mtp_mode} runtime=${runtime_root} runner_v2=${VLLM_USE_V2_MODEL_RUNNER} enforce_eager=${enforce_eager} language_model_only=${language_model_only} cpu_offload_gb=${cpu_offload_gb} on ${host}:${port}" \
   >&2
 for variable_name in "${!VLLM_SMOKE_@}"; do
   unset "${variable_name}"
