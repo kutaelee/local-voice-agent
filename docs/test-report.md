@@ -25,8 +25,10 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | 12B parallel range transfer | Passed | 153/153 chunks; 1,227.345 s wall time including restart = 7.98 MiB/s |
 | 12B target SHA-256 | Passed | `60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3` |
 | 12B MTP assistant SHA-256 | Passed | `67f1420cf24aa5065089aaed175223f7c245ccfda16111b6c56765afd7280db6` |
+| 12B exact MTP target SHA-256 | Passed | 23,919,549,408-byte final file; downloader and wrapper both matched `26f2cee4292298a3f9f92209643c37c80e34e011381e22434088870d9439a0a0` |
 | 12B target safetensors structure | Passed | 1,334 tensors; file end matches final tensor offset |
 | 12B target/assistant tensor contract | Passed | Target embedding 262,144×3,840; assistant pre-projection 1,024×7,680; target embedding sharing is required |
+| 12B exact target/assistant offline pair | Passed | Target 677 BF16 tensors, assistant 48 BF16 tensors; all 11 model/dimension/embedding/projection/context checks passed; runtime loading remains pending |
 | Identical-hash mirror resume | Passed | vLLM wheel reused 1/4 ranges after GitHub-to-PyPI URL change |
 | vLLM wheel SHA-256 | Passed | `16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e` |
 | vLLM isolated dependency install | Passed | vLLM 0.25.1, Python 3.12.13, torch 2.11.0+cu130; 192-package compatibility check |

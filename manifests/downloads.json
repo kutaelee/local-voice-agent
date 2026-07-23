@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-23T17:24:00+09:00",
+  "generated_at": "2026-07-23T18:35:00+09:00",
   "canonical_cache": "E:\\Cache\\LocalVoiceAgent\\huggingface",
   "free_space_before_bytes": 3636472119296,
   "status": "partially_downloaded",
@@ -44,8 +44,8 @@
         "sha256": "26f2cee4292298a3f9f92209643c37c80e34e011381e22434088870d9439a0a0"
       },
       "requires_credential": false,
-      "downloaded_at": null,
-      "validation_status": "not_downloaded"
+      "downloaded_at": "2026-07-23T18:34:38+09:00",
+      "validation_status": "sha256_and_pair_structure_passed"
     },
     {
       "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
