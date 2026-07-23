@@ -11,3 +11,7 @@ Raw audio and full conversation content are disabled by default. Evidence is
 stored outside Git under the canonical runtime path and referenced by opaque
 IDs. Secrets, pairing tokens, authorization headers, command-line
 credentials, and environment values are masked before serialization.
+
+`metrics-catalog.json` is the required Prometheus-facing metric inventory.
+`schemas/log-event.schema.json` is the closed structured-log contract. Run
+`scripts/validate-observability.py` after changing either.

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-voice-agent.invalid/schemas/log-event.schema.json",
+  "title": "Structured Local Voice Agent log event",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "level",
+    "component",
+    "event",
+    "result"
+  ],
+  "properties": {
+    "timestamp": {"type": "string", "format": "date-time"},
+    "level": {"enum": ["debug", "info", "warning", "error", "critical"]},
+    "session_id": {"type": ["string", "null"], "format": "uuid"},
+    "request_id": {"type": ["string", "null"], "format": "uuid"},
+    "tool_call_id": {"type": ["string", "null"], "format": "uuid"},
+    "component": {"type": "string", "minLength": 1, "maxLength": 128},
+    "event": {"type": "string", "minLength": 1, "maxLength": 128},
+    "model": {"type": ["string", "null"], "maxLength": 256},
+    "runtime": {"type": ["string", "null"], "maxLength": 256},
+    "latency_ms": {"type": ["number", "null"], "minimum": 0},
+    "risk_level": {"type": ["integer", "null"], "minimum": 0, "maximum": 3},
+    "approval_id": {"type": ["string", "null"], "format": "uuid"},
+    "result": {
+      "enum": ["started", "progress", "succeeded", "failed", "cancelled", "denied"]
+    },
+    "error_code": {"type": ["string", "null"], "maxLength": 128},
+    "evidence_path": {"type": ["string", "null"], "maxLength": 2048},
+    "metadata": {"type": "object"}
+  },
+  "additionalProperties": false
+}

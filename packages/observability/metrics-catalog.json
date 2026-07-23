@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "metrics": [
+    {"name": "vad_latency_ms", "type": "histogram", "unit": "milliseconds", "summaries": ["p50", "p95"]},
+    {"name": "stt_partial_latency_ms", "type": "histogram", "unit": "milliseconds", "summaries": ["p50", "p95"]},
+    {"name": "stt_final_latency_ms", "type": "histogram", "unit": "milliseconds", "summaries": ["p50", "p95"]},
+    {"name": "llm_ttft_ms", "type": "histogram", "unit": "milliseconds", "summaries": ["p50", "p95"]},
+    {"name": "llm_tpot_ms", "type": "histogram", "unit": "milliseconds", "summaries": ["p50", "p95"]},
+    {"name": "llm_tokens_per_second", "type": "histogram", "unit": "tokens_per_second", "summaries": ["p50", "p95"]},
+    {"name": "tts_first_audio_ms", "type": "histogram", "unit": "milliseconds", "summaries": ["p50", "p95"]},
+    {"name": "tts_synthesis_realtime_factor", "type": "histogram", "unit": "ratio", "summaries": ["p50", "p95"]},
+    {"name": "android_pc_network_latency_ms", "type": "histogram", "unit": "milliseconds", "summaries": ["p50", "p95"]},
+    {"name": "tool_execution_latency_ms", "type": "histogram", "unit": "milliseconds", "summaries": ["p50", "p95"]},
+    {"name": "tool_failure_rate", "type": "gauge", "unit": "ratio", "summaries": []},
+    {"name": "tool_schema_failure_rate", "type": "gauge", "unit": "ratio", "summaries": []},
+    {"name": "mtp_acceptance_rate", "type": "gauge", "unit": "ratio", "summaries": []},
+    {"name": "vram_peak_bytes", "type": "gauge", "unit": "bytes", "summaries": []},
+    {"name": "gpu_utilization_percent", "type": "gauge", "unit": "percent", "summaries": []},
+    {"name": "queue_length", "type": "gauge", "unit": "count", "summaries": []},
+    {"name": "model_load_time_ms", "type": "histogram", "unit": "milliseconds", "summaries": ["p50", "p95"]},
+    {"name": "model_switch_time_ms", "type": "histogram", "unit": "milliseconds", "summaries": ["p50", "p95"]}
+  ]
+}
