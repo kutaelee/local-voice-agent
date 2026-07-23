@@ -16,7 +16,7 @@ param(
     [int]$Port = 8768,
 
     [ValidatePattern('^http://(localhost|127\.0\.0\.1|\[::1\]):[0-9]+/$')]
-    [string]$ComfyUiBaseUrl = 'http://127.0.0.1:8189/'
+    [string]$ComfyUiBaseUrl = 'http://127.0.0.1:8188/'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -159,6 +159,7 @@ function Wait-ChildOrYield {
         Start-Sleep -Seconds 2
         $Process.Refresh()
     }
+    $Process.WaitForExit()
     return $true
 }
 
@@ -224,8 +225,25 @@ try {
     if (-not (Wait-ChildOrYield -Process $startProcess -Phase 'startup')) {
         exit 20
     }
-    if ($startProcess.ExitCode -ne 0) {
-        throw "Registered SGLang startup exited $($startProcess.ExitCode)."
+    $startProcess.WaitForExit()
+    $startExitCode = $startProcess.ExitCode
+    if ($null -eq $startExitCode) {
+        try {
+            Invoke-RestMethod `
+                -Uri "http://127.0.0.1:$Port/health" `
+                -TimeoutSec 3 |
+                Out-Null
+            $startExitCode = 0
+        }
+        catch {
+            throw (
+                'SGLang launcher exit code was unavailable and the ' +
+                'independent health probe failed.'
+            )
+        }
+    }
+    if ($startExitCode -ne 0) {
+        throw "Registered SGLang startup exited $startExitCode."
     }
 
     Write-RunStatus `
@@ -263,9 +281,17 @@ try {
     )) {
         exit 21
     }
-    if ($benchmarkProcess.ExitCode -ne 0) {
+    $benchmarkProcess.WaitForExit()
+    $benchmarkExitCode = $benchmarkProcess.ExitCode
+    if (
+        $null -eq $benchmarkExitCode -and
+        (Test-Path -LiteralPath $evidencePath -PathType Leaf)
+    ) {
+        $benchmarkExitCode = 0
+    }
+    if ($benchmarkExitCode -ne 0) {
         throw (
-            "Registered benchmark exited $($benchmarkProcess.ExitCode)."
+            "Registered benchmark exited $benchmarkExitCode."
         )
     }
 

@@ -120,6 +120,7 @@ function Wait-ChildOrYield {
         Start-Sleep -Seconds 2
         $Process.Refresh()
     }
+    $Process.WaitForExit()
     return $true
 }
 
@@ -187,8 +188,25 @@ try {
     if (-not (Wait-ChildOrYield -Process $start -Phase 'startup')) {
         exit 21
     }
-    if ($start.ExitCode -ne 0) {
-        throw "31B MTP startup exited $($start.ExitCode)."
+    $start.WaitForExit()
+    $startExitCode = $start.ExitCode
+    if ($null -eq $startExitCode) {
+        try {
+            Invoke-RestMethod `
+                -Uri "http://127.0.0.1:$Port/health" `
+                -TimeoutSec 3 |
+                Out-Null
+            $startExitCode = 0
+        }
+        catch {
+            throw (
+                '31B MTP launcher exit code was unavailable and the ' +
+                'independent health probe failed.'
+            )
+        }
+    }
+    if ($startExitCode -ne 0) {
+        throw "31B MTP startup exited $startExitCode."
     }
 
     Write-ProbeStatus `
@@ -217,8 +235,16 @@ try {
     if (-not (Wait-ChildOrYield -Process $smoke -Phase 'smoke')) {
         exit 22
     }
-    if ($smoke.ExitCode -ne 0) {
-        throw "31B MTP smoke exited $($smoke.ExitCode)."
+    $smoke.WaitForExit()
+    $smokeExitCode = $smoke.ExitCode
+    if (
+        $null -eq $smokeExitCode -and
+        (Test-Path -LiteralPath $evidence -PathType Leaf)
+    ) {
+        $smokeExitCode = 0
+    }
+    if ($smokeExitCode -ne 0) {
+        throw "31B MTP smoke exited $smokeExitCode."
     }
 
     Stop-OwnedProbe

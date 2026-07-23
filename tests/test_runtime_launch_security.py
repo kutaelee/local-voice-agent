@@ -65,6 +65,9 @@ def test_shared_sglang_benchmark_yields_to_comfyui() -> None:
 
     assert "Get-ComfyUiQueueState" in shared
     assert "Wait-ChildOrYield" in shared
+    assert "$Process.WaitForExit()" in shared
+    assert "independent health probe failed" in shared
+    assert "Test-Path -LiteralPath $evidencePath" in shared
     assert "Get-CimInstance Win32_Process" in shared
     assert "ComfyUI[\\\\/]main\\.py" in shared
     assert "busy = $processCount -gt 0" in shared
@@ -93,6 +96,9 @@ def test_31b_mtp_probe_is_bounded_and_yields_to_comfyui() -> None:
     assert "--api-key" not in start
     assert "Get-ComfyUiProcessCount" in shared
     assert "Stop-OwnedProbe" in shared
+    assert "$Process.WaitForExit()" in shared
+    assert "independent health probe failed" in shared
+    assert "Test-Path -LiteralPath $evidence" in shared
     assert "-ExpectedModelSize 31b" in shared
     assert "'process was started.'" in shared
     assert "LVA_VLLM_API_KEY = $apiKey" in shared
