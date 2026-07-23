@@ -1,0 +1,126 @@
+{
+  "schema_version": "1.0",
+  "status": "specified_not_run",
+  "cases": [
+    {
+      "id": "invalid_pairing_token",
+      "layer": "gateway",
+      "expected": "reject authentication without creating a session or leaking token details"
+    },
+    {
+      "id": "path_traversal",
+      "layer": "tool_executor",
+      "expected": "reject normalized path outside the selected workspace before filesystem access"
+    },
+    {
+      "id": "symlink_reparse_bypass",
+      "layer": "tool_executor",
+      "expected": "reject a final resolved target outside the workspace root"
+    },
+    {
+      "id": "outside_allowlist_file",
+      "layer": "policy",
+      "expected": "deny access and record a redacted audit event"
+    },
+    {
+      "id": "concurrent_file_modification",
+      "layer": "tool_executor",
+      "expected": "detect changed precondition and require a new plan and approval"
+    },
+    {
+      "id": "hash_mismatch",
+      "layer": "tool_executor",
+      "expected": "perform no write and return a precondition failure"
+    },
+    {
+      "id": "duplicate_tool_call",
+      "layer": "tool_executor",
+      "expected": "return the prior terminal result for the same idempotency key"
+    },
+    {
+      "id": "tool_timeout",
+      "layer": "tool_executor",
+      "expected": "terminate only the registered child when safe and report observed final state"
+    },
+    {
+      "id": "stt_timeout",
+      "layer": "audio",
+      "expected": "end recognition, preserve session, and prompt for retry without fabricated transcript"
+    },
+    {
+      "id": "llm_timeout",
+      "layer": "model_router",
+      "expected": "cancel generation, emit error state, and keep tool execution blocked"
+    },
+    {
+      "id": "tts_timeout",
+      "layer": "audio",
+      "expected": "discard incomplete audio and keep final text available"
+    },
+    {
+      "id": "gpu_oom",
+      "layer": "gpu_resource_manager",
+      "expected": "record peak evidence, recover worker, and enter configured degraded mode"
+    },
+    {
+      "id": "mtp_initialization_failure",
+      "layer": "runtime",
+      "expected": "disable MTP, preserve target model availability, and report exact runtime log evidence"
+    },
+    {
+      "id": "model_31b_load_failure",
+      "layer": "model_router",
+      "expected": "unload failed state, reload 12B, pass health check, and disclose failure"
+    },
+    {
+      "id": "wsl_failure",
+      "layer": "runtime",
+      "expected": "avoid restart loops and expose the Windows fallback diagnostic path"
+    },
+    {
+      "id": "websocket_disconnect",
+      "layer": "gateway",
+      "expected": "retain replayable state and never replay non-idempotent execution"
+    },
+    {
+      "id": "android_reconnect",
+      "layer": "android",
+      "expected": "resume from last accepted sequence and reconcile pending approvals"
+    },
+    {
+      "id": "barge_in_during_tts",
+      "layer": "audio",
+      "expected": "stop playback, discard queued audio, mark response interrupted, and accept new speech"
+    },
+    {
+      "id": "not_a_git_repository",
+      "layer": "git_adapter",
+      "expected": "return a typed not_repository result without invoking mutating Git commands"
+    },
+    {
+      "id": "large_diff",
+      "layer": "git_adapter",
+      "expected": "cap output, retain hash and statistics, and offer bounded ranges"
+    },
+    {
+      "id": "corrupted_log",
+      "layer": "status_adapter",
+      "expected": "mark corrupt segments and separate observed facts from inference"
+    },
+    {
+      "id": "browser_element_changed",
+      "layer": "computer_use",
+      "expected": "invalidate stale locator, observe fresh page state, and replan"
+    },
+    {
+      "id": "screen_resolution_changed",
+      "layer": "computer_use",
+      "expected": "invalidate coordinate plan and require a fresh screenshot and dimensions"
+    },
+    {
+      "id": "rollback_failure",
+      "layer": "tool_executor",
+      "expected": "stop additional mutation, preserve evidence, and escalate manual recovery steps"
+    }
+  ]
+}

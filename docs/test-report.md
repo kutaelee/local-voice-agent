@@ -31,6 +31,7 @@ Status: Slice 0 only. No product acceptance test has run.
 | Download state isolation | Passed | Explicit cache-side state path; 29,372-byte live transfer and 1/1 resume passed |
 | Protocol/tool contract catalog consistency | Passed | 22 event types and 3 seed tool definitions; JSON parse and dependency-free drift checks passed |
 | Benchmark prompt catalog | Passed | 160 unique Korean cases with required 20/30/20/20/20/20/10/20 category counts |
+| Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 
 Model artifact download and SHA-256 validation are in progress. All functional,
 security, Android, model-loading, MTP, benchmark, and rollback tests are
