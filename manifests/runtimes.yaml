@@ -1,6 +1,26 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T03:52:00+09:00"
+generated_at: "2026-07-24T03:57:41+09:00"
 runtimes:
+  - id: tls-tools-49.0.0
+    role: private_debug_ca_generator
+    version: "49.0.0"
+    status: installed_locked_generator_unit_tests_3_and_ntfs_acl_https_smoke_passed
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/tls-tools-49.0.0
+    python: "3.12.13"
+    uv: "0.11.31"
+    cryptography: "49.0.0"
+    cffi: "2.1.0"
+    pycparser: "3.0"
+    installed_at: "2026-07-24T03:46:49+09:00"
+    lock_file: scripts/requirements/tls-tools.lock
+    lock_sha256: 2f094852e7052c5fed4255aa52907777a9f73c97a48bd88924272388bb443fbe
+    source: https://pypi.org/project/cryptography/49.0.0/
+    license: Apache-2.0 OR BSD-3-Clause
+    output_policy: new_directory_only_beneath_E_Data_LocalVoiceAgent_tls
+    ca_key_policy: encrypted_pkcs8_password_from_process_environment_only
+    server_key_policy: unencrypted_pkcs8_runtime_key_never_committed
+    test_status: matching_signature_san_eku_encryption_overwrite_public_ip_reserved_ip_wildcard_ntfs_acl_wsl_read_tls_health_and_graceful_stop_passed
+    rollback: retain generated deployment certificates; archive only the versioned isolated environment after inventory
   - id: android-client-build-0.6.0
     role: android_client_build
     version: "0.6.0"

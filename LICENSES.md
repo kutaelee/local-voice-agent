@@ -22,6 +22,7 @@ This file records licenses verified during Slice 0. It is not legal advice.
 | Chrome for Testing 149.0.7827.55 | Chromium component notices | Installed in versioned computer-use browser root |
 | pywinauto 0.6.9 | BSD-3-Clause | Installed in isolated Windows Tool Executor environment |
 | Pillow 12.3.0 | HPND | Installed for bounded screenshot metadata |
+| cryptography 49.0.0 | Apache-2.0 OR BSD-3-Clause | Installed in isolated private-debug-CA generator environment |
 | Android Open Source components | Component-specific | To be locked with Gradle dependency report |
 
 Third-party notices and exact dependency license snapshots will be generated

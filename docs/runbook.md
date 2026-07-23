@@ -215,13 +215,52 @@ requires a PEM certificate and key, and requires the
 if the existing firewall blocks the chosen port, stop and obtain explicit
 approval before changing a firewall rule.
 
+Install the hash-locked certificate tool into its isolated WSL environment:
+
+```bash
+bash scripts/install-tls-tools.sh
+```
+
+For a debug-device deployment, choose the exact private IP address or DNS name
+that the Android app will use. Supply the CA-key password only through the
+current process environment, and use the Windows wrapper so NTFS ACLs are
+restricted immediately after generation. The wrapper rejects existing
+destinations; the generator rejects public/loopback/link-local IPs, wildcard
+DNS names, missing SANs, and passwords shorter than 20 characters:
+
+```powershell
+$secureCaPassword = Read-Host 'Private CA password' -AsSecureString
+$temporaryCredential = [pscredential]::new('unused', $secureCaPassword)
+$env:LVA_CA_KEY_PASSWORD = $temporaryCredential.GetNetworkCredential().Password
+try {
+  powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File .\scripts\generate-private-ca.ps1 `
+    -DeploymentName home-lan-2026 `
+    -IpAddress 192.168.1.20
+}
+finally {
+  Remove-Item Env:LVA_CA_KEY_PASSWORD -ErrorAction SilentlyContinue
+  $temporaryCredential = $null
+  $secureCaPassword = $null
+}
+```
+
+The output contains `root-ca.pem`, encrypted `root-ca-key.pem`,
+`server-cert.pem`, unencrypted runtime `server-key.pem`, and a secret-free
+`manifest.json` with certificate fingerprints and validity. Neither private
+key may enter Git, logs, an APK, or device storage. Keep the CA key offline
+after issuance. Install only `root-ca.pem` on a user-controlled debug device;
+the release candidate deliberately does not trust user-installed CAs. The
+wrapper verifies that every generated file allows only the current Windows
+user and LocalSystem and that no inherited ACL remains.
+
 ```powershell
 $env:LVA_PAIRING_TOKEN = '<at-least-32-random-characters>'
 .\scripts\start-server.ps1 `
   -ListenAddress 192.168.1.20 `
   -EnablePrivateNetwork `
-  -TlsCertificatePath 'E:\Data\LocalVoiceAgent\tls\server-cert.pem' `
-  -TlsPrivateKeyPath 'E:\Data\LocalVoiceAgent\tls\server-key.pem'
+  -TlsCertificatePath 'E:\Data\LocalVoiceAgent\tls\home-lan-2026\server-cert.pem' `
+  -TlsPrivateKeyPath 'E:\Data\LocalVoiceAgent\tls\home-lan-2026\server-key.pem'
 ```
 
 The private key and certificate are runtime data, not repository files. For a

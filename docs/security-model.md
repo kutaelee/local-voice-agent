@@ -103,6 +103,11 @@ explicit launcher switch, an RFC1918 IPv4 or IPv6 ULA address, and a PEM TLS
 certificate/key; wildcard, public-address, and non-TLS bindings fail before a
 server process starts. The launcher never creates a firewall rule. Device CA
 installation and any firewall change require a user-controlled approval step.
+Private debug certificates are generated only through a hash-locked isolated
+environment and a Windows wrapper that refuses overwrite, encrypts the CA key,
+and verifies non-inherited NTFS ACLs granting access only to the current user
+and LocalSystem. The unencrypted server key is runtime-only and never enters
+Git, an APK, or logs.
 
 ## Approval integrity
 

@@ -47,6 +47,18 @@ function ConvertTo-BashLiteral {
     return "'" + $Value.Replace("'", $embeddedSingleQuote) + "'"
 }
 
+function ConvertTo-WslDrivePath {
+    param([Parameter(Mandatory)][string]$WindowsPath)
+
+    $fullPath = [System.IO.Path]::GetFullPath($WindowsPath)
+    if ($fullPath -notmatch '^([A-Za-z]):\\(.+)$') {
+        throw "Only absolute Windows drive paths can be translated for WSL: $WindowsPath"
+    }
+    $drive = $matches[1].ToLowerInvariant()
+    $relativePath = $matches[2].Replace('\', '/')
+    return "/mnt/$drive/$relativePath"
+}
+
 if (-not (Test-Path -LiteralPath $repoRoot -PathType Container)) {
     throw "Repository is unavailable: $repoRoot"
 }
@@ -153,14 +165,8 @@ $stdoutPath = Join-Path $logDirectory "pc-server-$stamp.stdout.log"
 $stderrPath = Join-Path $logDirectory "pc-server-$stamp.stderr.log"
 $tlsArguments = ''
 if ($tlsEnabled) {
-    $wslCertificatePath = (wsl.exe -d Ubuntu -- wslpath -a $TlsCertificatePath).Trim()
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($wslCertificatePath)) {
-        throw 'TLS certificate path could not be translated for WSL.'
-    }
-    $wslPrivateKeyPath = (wsl.exe -d Ubuntu -- wslpath -a $TlsPrivateKeyPath).Trim()
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($wslPrivateKeyPath)) {
-        throw 'TLS private-key path could not be translated for WSL.'
-    }
+    $wslCertificatePath = ConvertTo-WslDrivePath -WindowsPath $TlsCertificatePath
+    $wslPrivateKeyPath = ConvertTo-WslDrivePath -WindowsPath $TlsPrivateKeyPath
     $tlsArguments = " --ssl-certfile $(ConvertTo-BashLiteral $wslCertificatePath)" +
         " --ssl-keyfile $(ConvertTo-BashLiteral $wslPrivateKeyPath)"
 }
