@@ -9,4 +9,5 @@ escalation_reasons:
   - level_2_preflight_review
   - repeated_12b_tool_failure
 fallback_on_31b_failure: gemma4-12b
+fallback_on_wsl_failure: gemma4-12b-fallback
 preserve_voice_priority: true

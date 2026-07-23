@@ -22,6 +22,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", required=True)
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument("--include-image", action="store_true")
+    parser.add_argument(
+        "--skip-thinking",
+        action="store_true",
+        help="Skip the optional reasoning smoke for limited fallback runtimes",
+    )
+    parser.add_argument(
+        "--disable-thinking",
+        action="store_true",
+        help="Disable model reasoning for ordinary smoke requests",
+    )
     parser.add_argument("--output", type=Path)
     parser.add_argument(
         "--api-key-env",
@@ -77,13 +87,21 @@ def request_json(
     return json.loads(body or b"{}"), elapsed_ms
 
 
-def completion_payload(model: str, prompt: str) -> dict[str, Any]:
-    return {
+def completion_payload(
+    model: str,
+    prompt: str,
+    *,
+    disable_thinking: bool = False,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0,
         "max_tokens": 64,
     }
+    if disable_thinking:
+        payload["chat_template_kwargs"] = {"enable_thinking": False}
+    return payload
 
 
 def red_png_data_url(width: int = 32, height: int = 32) -> str:
@@ -256,7 +274,11 @@ def main() -> int:
         args.base_url,
         "/v1/chat/completions",
         args.timeout,
-        completion_payload(args.model, "대한민국의 수도를 한 문장으로 답해."),
+        completion_payload(
+            args.model,
+            "대한민국의 수도를 한 문장으로 답해.",
+            disable_thinking=args.disable_thinking,
+        ),
         api_key,
     )
     text_content = str(response_message(text_response).get("content") or "")
@@ -271,6 +293,7 @@ def main() -> int:
     tool_payload = completion_payload(
         args.model,
         "현재 GPU 상태를 확인하려면 제공된 도구를 호출해.",
+        disable_thinking=args.disable_thinking,
     )
     tool_payload["tools"] = [
         {
@@ -310,6 +333,7 @@ def main() -> int:
     schema_payload = completion_payload(
         args.model,
         "대한민국의 국가명과 수도를 JSON으로 답해.",
+        disable_thinking=args.disable_thinking,
     )
     schema_payload["response_format"] = {
         "type": "json_schema",
@@ -348,18 +372,27 @@ def main() -> int:
     results["checks"]["streaming"] = run_stream(
         args.base_url,
         args.timeout,
-        completion_payload(args.model, "로컬 AI의 장점을 두 문장으로 설명해."),
+        completion_payload(
+            args.model,
+            "로컬 AI의 장점을 두 문장으로 설명해.",
+            disable_thinking=args.disable_thinking,
+        ),
         api_key,
     )
-    results["checks"]["thinking"] = run_thinking_stream(
-        args.base_url,
-        args.timeout,
-        args.model,
-        api_key,
-    )
+    if not args.skip_thinking:
+        results["checks"]["thinking"] = run_thinking_stream(
+            args.base_url,
+            args.timeout,
+            args.model,
+            api_key,
+        )
 
     if args.include_image:
-        image_payload = completion_payload(args.model, "")
+        image_payload = completion_payload(
+            args.model,
+            "",
+            disable_thinking=args.disable_thinking,
+        )
         image_payload["messages"] = [
             {
                 "role": "user",

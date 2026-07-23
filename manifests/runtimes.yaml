@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T04:30:11+09:00"
+generated_at: "2026-07-24T04:40:50+09:00"
 runtimes:
   - id: tls-tools-49.0.0
     role: private_debug_ca_generator
@@ -286,6 +286,37 @@ runtimes:
     gpu_admission: base_22000_mib_mtp_28500_mib_two_sample_fail_closed
     mtp_probe: exact_assistant_promoted_to_FROZEN_KV_MTP_then_interrupted_for_concurrent_comfyui_turn
     rollback: retain previous versioned environment and switch config pointer
+  - id: llama-cpp-b10092
+    role: windows_native_fallback
+    version: b10092
+    commit: 3ce7da2c852c538c4c5f9806da27029cf8c9cc4a
+    status: installed_cpu_only_openai_text_tool_structured_stream_smoke_passed
+    environment: 'C:\Dev\Tools\LocalVoiceAgent\runtimes\llama.cpp-b10092'
+    platform: windows_native
+    source: https://github.com/ggml-org/llama.cpp/releases/tag/b10092
+    installed_at: "2026-07-24T04:37:39+09:00"
+    executable_sha256: 644597bac2f0cee5cca16cea2406bc6ac78361a47c98569cb121f60055ffe4f9
+    binary_archive:
+      size_bytes: 145857793
+      sha256: 6f3375d5029b677ea2049963439ee7f2b970626da42f56da34d1d203b1833875
+    cuda_archive:
+      size_bytes: 390970417
+      sha256: 1462a050eb4c684921ba51dcc4cc488a036674c3e73e9945ee705b854808d03e
+    model_role: windows_fallback_target
+    api_key_contract: official_LLAMA_API_KEY_environment_only
+    listener: 127.0.0.1:8769
+    cpu_only_smoke:
+      model_load_seconds: 2.94
+      korean_text: passed
+      tool_call: passed
+      structured_output: passed
+      streaming: passed
+      ttft_ms: 640.311
+      output_tokens_per_second_observed: 7.322
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\llama-cpp-12b-fallback-smoke.json'
+      evidence_sha256: bf0ab3e2a4c084dd81061b3494c22c40b71c15b573321a457d7b229864e4f0e5
+    gpu_smoke: deferred_while_authorized_comfyui_qwen_turn_active
+    rollback: stop the registered fallback server and move only this versioned runtime to C:\WorkstationTrash
   - id: faster-whisper-1.2.1
     role: stt_candidate
     version: 1.2.1

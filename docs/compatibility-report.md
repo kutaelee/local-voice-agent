@@ -75,7 +75,7 @@ model repositories, and upstream release notes are used for selections.
 | SGLang | 0.5.15.post1 stable + kernel 0.4.4 cu130 | SGLang releases/docs | Local CUDA 13/SM 12.0 and 12B W4A16 load passed | Text/image/tool/schema/stream/thinking passed; 10-sample latency recorded | Official; local load pending | Exact assistant promoted to `FROZEN_KV_MTP`; functional run interrupted by shared-GPU turn | 12B red-image smoke passed | Gemma4 tool/reasoning parsers passed locally | W4A16 compressed-tensors passed; Q4_0 pair load began | Installed comparison candidate; MTP functional gate pending |
 | Transformers | >=5.10.1, lock after runtime resolution | Google Gemma function-calling guide | Wheels/test required | Official | Official | Official MTP guide | Official | `apply_chat_template(tools=…)` | Model dependent | Validation oracle |
 | PyTorch | Runtime-pinned 2.11-class CUDA wheel | vLLM/SGLang release notes | SM 12.0 build must be verified | Yes | Yes | N/A | Yes | N/A | FP8/NVFP4 ecosystem | Per-runtime lock |
-| Windows fallback | llama.cpp + official Q4_0 GGUF | Google QAT routing table | CUDA support must be tested | Candidate | Candidate | Not assumed | Reduced | App-level schema validation | Official GGUF | Fallback candidate |
+| Windows fallback | llama.cpp b10092 + `ggml-org/gemma-4-12B-it-GGUF` Q4_0 @ `d72ee272…` | Google llama.cpp integration, ggml-org release/model | CPU-only Windows path passed while GPU was occupied; CUDA binary installed, GPU smoke pending | 12B Korean text passed | N/A | Disabled for fallback | Text only guaranteed | Native tool call and strict JSON passed | Q4_0 GGUF, SHA-256 passed | Selected recovery fallback |
 
 ## Audio and application matrix
 

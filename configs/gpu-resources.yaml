@@ -49,3 +49,7 @@ measurements:
     note: first_utilization_based_launch_failed_after_weight_load_due_to_no_available_kv_cache
   gemma4-31b-mtp:
     peak_vram_mib: null
+  gemma4-12b-fallback:
+    peak_vram_mib: 0
+    measurement_kind: cpu_only_recovery_smoke
+    gpu_peak_vram_mib: null

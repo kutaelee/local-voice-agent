@@ -2,7 +2,7 @@ schema_version: "1.0"
 primary: vllm-0.25.1
 mtp_candidate: vllm-b2b8f679d058-cu130
 comparison: sglang-0.5.15.post1
-fallback: null
+fallback: llama-cpp-b10092
 startup:
   gpu_memory_utilization_initial: 0.75
   health_timeout_seconds: 300
@@ -24,3 +24,10 @@ vllm_mtp_candidate:
   rollback_runtime: vllm-0.25.1
   environment:
     VLLM_USE_V2_MODEL_RUNNER: "0"
+windows_fallback:
+  runtime: llama-cpp-b10092
+  model: gemma4-12b-fallback
+  listener: 127.0.0.1
+  port: 8769
+  cpu_only_during_gpu_contention: true
+  capabilities: [text, simple_tool_call, structured_output, recovery_diagnostics]

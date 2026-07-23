@@ -37,3 +37,11 @@ models:
     enabled: false
     enable_after: cpu_offload_exact_pair_runtime_and_quality_gate
     modalities: [text, image]
+  gemma4-12b-fallback:
+    manifest_role: windows_fallback_target
+    runtime: llama-cpp-b10092
+    max_model_len_initial: 4096
+    mtp_enabled_by_default: false
+    modalities: [text]
+    validated_modalities: [text]
+    limited_role: recovery_diagnostics_and_simple_tool_calls

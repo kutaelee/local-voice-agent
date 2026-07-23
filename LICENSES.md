@@ -7,6 +7,8 @@ This file records licenses verified during Slice 0. It is not legal advice.
 | Gemma 4 model repositories selected in `manifests/models.yaml` | Apache-2.0 | Verified from official Google model cards |
 | vLLM | Apache-2.0 | Candidate |
 | SGLang | Apache-2.0 | Candidate |
+| llama.cpp b10092 | MIT | Installed as the Windows-native recovery fallback |
+| ggml-org Gemma 4 12B Q4_0 GGUF | Apache-2.0 | Installed from the official llama.cpp organization conversion |
 | Silero VAD | MIT | Candidate |
 | faster-whisper | MIT | Candidate |
 | Chatterbox | MIT | Candidate |

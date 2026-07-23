@@ -87,6 +87,47 @@ Never stop ComfyUI or another task's Python process to make room. An idle
 ComfyUI queue may release cached weights through its own `/free` API only as
 an explicitly coordinated turn change.
 
+### Windows-native recovery fallback
+
+The pinned llama.cpp runtime is installed without administrator rights from
+two release archives whose sizes and SHA-256 values are embedded in the
+installer. Planning is the default:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\install-llama-cpp.ps1
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\install-llama-cpp.ps1 -Execute
+```
+
+The selected fallback is the official ggml-org Q4_0 conversion at revision
+`d72ee27227da2ba16c725180ddd507ee96208d23`. Its exact local file size and
+SHA-256 are recorded in `manifests/models.yaml`. The MTP GGUF is deliberately
+not downloaded because the fallback role guarantees only text, simple tool
+calls, structured output, and recovery diagnostics.
+
+Run on CPU while another task owns the GPU or when CUDA diagnosis is the goal:
+
+```powershell
+$env:LVA_FALLBACK_API_KEY = '<random-fallback-api-key>'
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\start-fallback.ps1 -CpuOnly
+
+$env:LVA_RUNTIME_API_KEY = $env:LVA_FALLBACK_API_KEY
+python .\scripts\smoke-openai-api.py `
+  --base-url http://127.0.0.1:8769 `
+  --model gemma4-12b-fallback `
+  --skip-thinking --disable-thinking
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\stop-fallback.ps1
+```
+
+Without `-CpuOnly`, startup requires at least 12,000 MiB measured free VRAM.
+The server binds only to `127.0.0.1`, receives its key through the official
+`LLAMA_API_KEY` environment variable, and publishes no external port.
+
 The unreleased MTP-fix runtime is installed only into its versioned
 environment:
 

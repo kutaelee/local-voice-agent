@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-24T03:09:08+09:00",
+  "generated_at": "2026-07-24T04:40:50+09:00",
   "canonical_cache": "E:\\Cache\\LocalVoiceAgent\\huggingface",
   "free_space_before_bytes": 3636472119296,
   "status": "all_selected_model_weights_downloaded",
@@ -154,6 +154,20 @@
       "requires_credential": false,
       "downloaded_at": "2026-07-24T00:08:28+09:00",
       "validation_status": "sha256_passed"
+    },
+    {
+      "model_id": "ggml-org/gemma-4-12B-it-GGUF",
+      "revision": "d72ee27227da2ba16c725180ddd507ee96208d23",
+      "license": "Apache-2.0",
+      "size_bytes": 7219673216,
+      "largest_file": {
+        "path": "gemma-4-12B-it-Q4_0.gguf",
+        "size_bytes": 7219673216,
+        "sha256": "3712b9bd32cae83a22f67ee7a4466d8d7a4f21646ac8a07d19bf9418e8767a70"
+      },
+      "requires_credential": false,
+      "downloaded_at": "2026-07-24T04:35:38+09:00",
+      "validation_status": "sha256_and_windows_cpu_only_openai_smoke_passed"
     }
   ]
 }

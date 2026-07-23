@@ -24,6 +24,13 @@ Model downloads are revision-addressed. Configuration references an explicit
 revision directory. Rollback changes the active manifest pointer to a
 previous validated revision; it does not delete weights automatically.
 
+The Windows fallback is versioned at
+`C:\Dev\Tools\LocalVoiceAgent\runtimes\llama.cpp-b10092`. Stop it through
+`scripts\stop-fallback.ps1`, verify port 8769 and the registered PID are gone,
+then use the workstation trash helper to move only that exact runtime if a
+rollback is required. Retain the revision-addressed GGUF unless a separate
+inventory and cleanup authorization explicitly includes it.
+
 ## Database
 
 Alembic migrations must include a tested downgrade when technically safe.
