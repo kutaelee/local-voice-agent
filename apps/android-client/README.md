@@ -20,7 +20,10 @@ private-CA network configuration. Version 0.5.0 persists an unresolved
 approval and bounded execution summaries through Room, without retaining raw
 audio or transcript text. Version 0.6.0 requests Bluetooth-connect permission
 with microphone capture and selects an available modern communication device
-for the foreground voice session. Launch, status/navigation
+for the foreground voice session. Version 0.6.1 separates normal playback
+drain from interruption: barge-in immediately flushes the active track and
+invalidates all queued chunks from the prior response generation. Launch,
+status/navigation
 insets, the More destination list, portrait/landscape recreation, and
 force-stop/relaunch passed without an AndroidRuntime error. Physical-device
 private-CA installation, microphone, Bluetooth, Room process-recovery on a

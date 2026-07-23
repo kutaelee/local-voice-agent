@@ -349,7 +349,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         channels = envelope.payload.getValue("channels").jsonPrimitive.int,
                     )
                 }
-                "audio.output.end" -> player.stop()
+                "audio.output.end" -> {
+                    val reason = envelope.payload.getValue("reason").jsonPrimitive.content
+                    if (reason == "completed") {
+                        player.finish()
+                    } else {
+                        player.stop()
+                    }
+                }
                 "tool.approval.required" -> reduce(
                     AppAction.SetPendingApproval(
                         requestId = envelope.requestId.toString(),

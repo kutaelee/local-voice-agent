@@ -6,10 +6,12 @@ import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.os.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicLong
 
 class PcmPlayer(
     context: Context,
@@ -18,16 +20,31 @@ class PcmPlayer(
 ) {
     private val audioManager = context.getSystemService(AudioManager::class.java)
     private val commands = Channel<Command>(Channel.UNLIMITED)
-    private var track: AudioTrack? = null
+    private val playbackGeneration = PlaybackGeneration()
+    @Volatile private var track: AudioTrack? = null
     private var format: PlaybackFormat? = null
     private var focusRequest: AudioFocusRequest? = null
+    private var writtenFrames = 0L
 
     init {
         scope.launch(Dispatchers.IO) {
             for (command in commands) {
                 when (command) {
-                    is Command.Chunk -> write(command)
-                    Command.Stop -> release()
+                    is Command.Chunk -> {
+                        if (playbackGeneration.isCurrent(command.generation)) {
+                            write(command)
+                        }
+                    }
+                    is Command.Finish -> {
+                        if (playbackGeneration.isCurrent(command.generation)) {
+                            drainAndRelease(command.generation)
+                        }
+                    }
+                    is Command.Abort -> {
+                        if (playbackGeneration.isCurrent(command.generation)) {
+                            release()
+                        }
+                    }
                 }
             }
             release()
@@ -39,18 +56,43 @@ class PcmPlayer(
             onError("Server audio chunk size is invalid")
             return
         }
-        commands.trySend(Command.Chunk(data.copyOf(), sampleRateHz, channels))
+        commands.trySend(
+            Command.Chunk(
+                data.copyOf(),
+                sampleRateHz,
+                channels,
+                playbackGeneration.current(),
+            ),
+        )
+    }
+
+    fun finish() {
+        commands.trySend(Command.Finish(playbackGeneration.current()))
     }
 
     fun stop() {
-        commands.trySend(Command.Stop)
+        val generation = playbackGeneration.advance()
+        interruptCurrentWrite()
+        commands.trySend(Command.Abort(generation))
     }
 
     fun close() {
+        playbackGeneration.advance()
+        interruptCurrentWrite()
         commands.close()
     }
 
+    private fun interruptCurrentWrite() {
+        track?.let { activeTrack ->
+            runCatching { activeTrack.pause() }
+            runCatching { activeTrack.flush() }
+        }
+    }
+
     private fun write(command: Command.Chunk) {
+        if (!playbackGeneration.isCurrent(command.generation)) {
+            return
+        }
         val incomingFormat = PlaybackFormat(command.sampleRateHz, command.channels)
         if (incomingFormat.sampleRateHz !in setOf(16_000, 24_000, 48_000)) {
             onError("Server audio sample rate is unsupported")
@@ -66,6 +108,10 @@ class PcmPlayer(
             release()
             createTrack(incomingFormat)
         }
+        if (!playbackGeneration.isCurrent(command.generation)) {
+            release()
+            return
+        }
         val activeTrack = track ?: return
         val written = activeTrack.write(
             command.data,
@@ -75,6 +121,8 @@ class PcmPlayer(
         )
         if (written != command.data.size) {
             onError("Audio playback write failed")
+        } else {
+            writtenFrames += written / (command.channels * 2)
         }
     }
 
@@ -122,12 +170,28 @@ class PcmPlayer(
         created.play()
         track = created
         format = playbackFormat
+        writtenFrames = 0
+    }
+
+    private fun drainAndRelease(generation: Long) {
+        val activeTrack = track
+        val deadline = SystemClock.elapsedRealtime() + 5_000
+        while (
+            activeTrack != null &&
+            playbackGeneration.isCurrent(generation) &&
+            (activeTrack.playbackHeadPosition.toLong() and 0xffff_ffffL) < writtenFrames &&
+            SystemClock.elapsedRealtime() < deadline
+        ) {
+            SystemClock.sleep(10)
+        }
+        release()
     }
 
     private fun release() {
         val activeTrack = track
         track = null
         format = null
+        writtenFrames = 0
         if (activeTrack != null) {
             runCatching { activeTrack.pause() }
             activeTrack.flush()
@@ -143,13 +207,26 @@ class PcmPlayer(
             val data: ByteArray,
             val sampleRateHz: Int,
             val channels: Int,
+            val generation: Long,
         ) : Command
 
-        data object Stop : Command
+        data class Finish(val generation: Long) : Command
+
+        data class Abort(val generation: Long) : Command
     }
 
     private data class PlaybackFormat(
         val sampleRateHz: Int,
         val channels: Int,
     )
+}
+
+internal class PlaybackGeneration {
+    private val value = AtomicLong(0)
+
+    fun current(): Long = value.get()
+
+    fun advance(): Long = value.incrementAndGet()
+
+    fun isCurrent(generation: Long): Boolean = value.get() == generation
 }
