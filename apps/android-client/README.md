@@ -16,12 +16,13 @@ bottom bar; History, Execution, Evidence, and Settings remain reachable from
 More without clipping compact screens.
 
 Version 0.4.1 was installed on an API 37 emulator. Version 0.4.2 adds the
-private-CA network configuration and has passed the isolated Android build.
-Launch, status/navigation
+private-CA network configuration. Version 0.5.0 persists an unresolved
+approval and bounded execution summaries through Room, without retaining raw
+audio or transcript text. Launch, status/navigation
 insets, the More destination list, portrait/landscape recreation, and
 force-stop/relaunch passed without an AndroidRuntime error. Physical-device
-private-CA installation, microphone, Bluetooth, and end-to-end voice timing
-remain separate acceptance tests. Room persistence remains deferred.
+private-CA installation, microphone, Bluetooth, Room process-recovery on a
+physical device, and end-to-end voice timing remain separate acceptance tests.
 
 ## Isolated build
 

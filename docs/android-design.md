@@ -1,9 +1,10 @@
 # Android client design
 
-Status: Slice 8 scaffold builds successfully for Android 17 / API 37 with the
-isolated command-line SDK. Android Studio is not installed. WebSocket, real
-audio capture/playback, Room, Bluetooth routing, and device QA remain later
-slices.
+Status: Kotlin/Compose client builds successfully for Android 17 / API 37 with
+the isolated command-line SDK. Android Studio is not installed. Authenticated
+WebSocket, PCM capture/playback, Room-backed approval/execution metadata,
+foreground service, and basic emulator UI QA are implemented. Physical-device
+Bluetooth, private-CA, process-recovery, and end-to-end voice QA remain.
 
 ## Application structure
 
@@ -27,9 +28,9 @@ not require a large Gradle multi-module build until measurements justify it.
 
 Each screen exposes `StateFlow<UiState>`. One-time navigation, permission
 launches, and user messages use `SharedFlow<UiEffect>`. `SavedStateHandle`
-restores navigation/session identifiers, not tokens or audio. Room caches
-recent final messages, last execution states, and unresolved approval
-requests; the PC remains authoritative.
+restores navigation/session identifiers, not tokens or audio. Room retains an
+unresolved approval and no more than 50 execution summaries. Raw audio and
+full transcript text are not cached by default; the PC remains authoritative.
 
 Assistant states mirror the protocol exactly: connecting, listening,
 recognizing, thinking, selecting tool, waiting approval, executing, verifying,

@@ -15,6 +15,7 @@ import dev.localvoiceagent.android.network.PcGatewayClient
 import dev.localvoiceagent.android.network.ServerEndpoint
 import dev.localvoiceagent.android.protocol.ProtocolEnvelope
 import dev.localvoiceagent.android.security.PairingTokenStore
+import dev.localvoiceagent.android.storage.LocalStateStore
 import java.util.UUID
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,7 @@ import kotlinx.serialization.json.put
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val tokenStore = PairingTokenStore(application)
+    private val localState = LocalStateStore.create(application)
     private val gateway = PcGatewayClient(viewModelScope)
     private val mutableState = MutableStateFlow(
         AppUiState(
@@ -62,6 +64,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch {
             gateway.events.collect(::handleGatewayEvent)
+        }
+        viewModelScope.launch {
+            val restored = localState.restore()
+            if (restored.pendingApproval != null && mutableState.value.pendingApproval == null) {
+                reduce(
+                    AppAction.SetPendingApproval(
+                        requestId = restored.pendingRequestId.orEmpty(),
+                        sequence = restored.pendingSequence,
+                        approval = restored.pendingApproval,
+                    ),
+                )
+            }
+            if (restored.latestExecutionSummary != null &&
+                mutableState.value.executionSummary == "No execution"
+            ) {
+                reduce(
+                    AppAction.SetExecutionSummary(
+                        sequence = restored.latestExecutionSequence,
+                        summary = restored.latestExecutionSummary,
+                    ),
+                )
+            }
         }
     }
 
@@ -239,6 +263,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
         if (sent) {
             reduce(AppAction.ApprovalDecision(approved))
+            viewModelScope.launch {
+                localState.clearPendingApproval(approval.approvalId)
+            }
         } else {
             reduce(AppAction.ReportError("Approval response could not be sent"))
         }
@@ -345,18 +372,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 .jsonPrimitive.content,
                         ),
                     ),
-                )
+                ).also {
+                    val approval = mutableState.value.pendingApproval ?: return@also
+                    viewModelScope.launch {
+                        localState.savePendingApproval(
+                            requestId = envelope.requestId.toString(),
+                            sequence = envelope.sequence,
+                            approval = approval,
+                        )
+                    }
+                }
                 "tool.started", "tool.progress", "tool.completed", "tool.failed",
                 "tool.rollback.started", "tool.rollback.completed",
-                -> reduce(
-                    AppAction.SetExecutionSummary(
-                        sequence = envelope.sequence,
-                        summary = "${envelope.type}: " +
-                            (envelope.payload["message"]?.jsonPrimitive?.contentOrNull
-                                ?: envelope.payload["status"]?.jsonPrimitive?.contentOrNull
-                                ?: "updated"),
-                    ),
-                )
+                -> {
+                    val summary = "${envelope.type}: " +
+                        (envelope.payload["message"]?.jsonPrimitive?.contentOrNull
+                            ?: envelope.payload["status"]?.jsonPrimitive?.contentOrNull
+                            ?: "updated")
+                    reduce(
+                        AppAction.SetExecutionSummary(
+                            sequence = envelope.sequence,
+                            summary = summary,
+                        ),
+                    )
+                    viewModelScope.launch {
+                        localState.saveExecutionSummary(envelope.sequence, summary)
+                    }
+                }
                 "model.switch.started" -> reduce(
                     AppAction.SetAssistantState(AssistantState.SWITCHING_MODEL),
                 )

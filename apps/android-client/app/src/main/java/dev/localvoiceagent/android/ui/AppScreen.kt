@@ -225,7 +225,9 @@ private fun SummaryScreen(
     Text(destination.label, style = MaterialTheme.typography.headlineSmall)
     Spacer(Modifier.height(12.dp))
     val values = when (destination) {
-        AppDestination.HISTORY -> listOf("No cached conversations")
+        AppDestination.HISTORY -> listOf(
+            "Transcript retention is disabled by default for privacy",
+        )
         AppDestination.EXECUTION -> listOf(state.executionSummary)
         AppDestination.EVIDENCE -> listOf("No evidence received")
         AppDestination.DIAGNOSTICS -> listOf(
@@ -233,7 +235,10 @@ private fun SummaryScreen(
             "Assistant: ${state.assistantState}",
             "Server: ${state.serverUrl.ifBlank { "not configured" }}",
         )
-        AppDestination.SETTINGS -> listOf("Audio and privacy settings pending")
+        AppDestination.SETTINGS -> listOf(
+            "Pending approvals and up to 50 execution summaries stay on this device",
+            "Raw audio and full transcripts are not stored by default",
+        )
         else -> emptyList()
     }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
