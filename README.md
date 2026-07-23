@@ -12,6 +12,8 @@ also passed text-only MTP loading and API smoke on a pinned upstream-fix
 runtime; its multimodal initialization remains blocked and MTP stays disabled
 by default. A locked PC-server environment now runs the first state,
 approval, policy, protocol, and authenticated FastAPI/WebSocket tests. No
+tool executor is connected, but the runtime registry now validates all 74
+tracked tool definitions and exposes only enabled contracts to the model. No
 end-to-end product acceptance criterion is claimed yet.
 
 ## Architecture

@@ -18,6 +18,8 @@ transport- and persistence-neutral:
 - fail-closed Level 0-3 policy decisions;
 - deterministic UTF-8 JSON digests;
 - WebSocket envelope construction matching protocol schema version 1.0.
+- immutable loading of all 74 tool contracts with definition/argument
+  validation and stable hashes; disabled tools are not exposed to the model.
 
 No tool is executed by this slice. PostgreSQL adapters and application use
 cases remain follow-up work. The FastAPI composition root currently exposes a

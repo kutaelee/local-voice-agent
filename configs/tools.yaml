@@ -1,5 +1,5 @@
 schema_version: "1.0"
-registry_status: design_only
+registry_status: schema_validated_runtime_loader
 families:
   filesystem:
     read_risk: 0
