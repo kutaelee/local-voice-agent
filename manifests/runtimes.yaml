@@ -1,10 +1,10 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T02:01:19+09:00"
+generated_at: "2026-07-24T02:22:00+09:00"
 runtimes:
-  - id: android-client-build-0.4.0
+  - id: android-client-build-0.4.1
     role: android_client_build
-    version: "0.4.0"
-    status: api37_vad_endpoint_debug_and_unsigned_release_apks_built
+    version: "0.4.1"
+    status: api37_debug_installed_ui_rotation_relaunch_and_unsigned_release_passed
     environment: 'C:\Dev\SDK\Android'
     jdk: "17.0.20"
     android_gradle_plugin: "9.3.0"
@@ -13,7 +13,7 @@ runtimes:
     target_sdk: 37
     build_tools: "36.0.0"
     platform_tools: "37.0.0"
-    test_status: 11_passed_lint_zero_findings
+    test_status: 11_passed_lint_zero_findings_emulator_ui_passed
     artifact_manifest: manifests/android-artifacts.yaml
     rollback: remove only isolated SDK/cache after inventory; revert tracked client changes
   - id: huggingface-hub-1.24.0

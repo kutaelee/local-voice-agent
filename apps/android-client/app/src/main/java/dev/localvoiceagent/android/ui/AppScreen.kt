@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -34,7 +34,12 @@ fun LocalVoiceAgentApp(
 ) {
     Scaffold(
         topBar = {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
                 Text("Local Voice Agent", style = MaterialTheme.typography.titleLarge)
                 Text(
                     "${state.connectionState} · ${state.assistantState}",
@@ -43,17 +48,32 @@ fun LocalVoiceAgentApp(
             }
         },
         bottomBar = {
-            LazyRow(
+            val primaryDestinations = listOf(
+                AppDestination.PAIRING,
+                AppDestination.VOICE,
+                AppDestination.APPROVAL,
+                AppDestination.DIAGNOSTICS,
+            )
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                items(AppDestination.entries) { destination ->
-                    TextButton(onClick = {
-                        onAction(AppAction.Navigate(destination))
-                    }) {
-                        Text(destination.label)
+                primaryDestinations.forEach { destination ->
+                    TextButton(
+                        onClick = {
+                            onAction(AppAction.Navigate(destination))
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            if (destination == AppDestination.DIAGNOSTICS) {
+                                "More"
+                            } else {
+                                destination.label
+                            },
+                        )
                     }
                 }
             }
@@ -73,7 +93,7 @@ fun LocalVoiceAgentApp(
                 AppDestination.PAIRING -> PairingScreen(state, onAction)
                 AppDestination.VOICE -> VoiceScreen(state, onAction)
                 AppDestination.APPROVAL -> ApprovalScreen(state, onAction)
-                else -> SummaryScreen(state.destination, state)
+                else -> SummaryScreen(state.destination, state, onAction)
             }
         }
     }
@@ -200,6 +220,7 @@ private fun ApprovalScreen(
 private fun SummaryScreen(
     destination: AppDestination,
     state: AppUiState,
+    onAction: (AppAction) -> Unit,
 ) {
     Text(destination.label, style = MaterialTheme.typography.headlineSmall)
     Spacer(Modifier.height(12.dp))
@@ -219,6 +240,26 @@ private fun SummaryScreen(
         items(values) { value ->
             Card(Modifier.fillMaxWidth()) {
                 Text(value, Modifier.padding(16.dp))
+            }
+        }
+        if (destination == AppDestination.DIAGNOSTICS) {
+            item {
+                Text("More screens", style = MaterialTheme.typography.titleMedium)
+            }
+            items(
+                listOf(
+                    AppDestination.HISTORY,
+                    AppDestination.EXECUTION,
+                    AppDestination.EVIDENCE,
+                    AppDestination.SETTINGS,
+                ),
+            ) { target ->
+                Button(
+                    onClick = { onAction(AppAction.Navigate(target)) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(target.label)
+                }
             }
         }
     }

@@ -4,11 +4,18 @@ Native Kotlin and Jetpack Compose client using ViewModel, `StateFlow`,
 immutable `UiState`, and one-way event flow. Pairing tokens are encrypted with
 an Android Keystore-backed AES key before they enter private app preferences.
 
-The current Slice 8 scaffold contains the eight required navigation
-destinations, connection/assistant states, pairing input, approval controls,
-diagnostics placeholders, and a microphone foreground-service boundary. It
-does not yet claim WebSocket, audio streaming, Bluetooth, Room persistence,
-or device-test completion.
+The client contains all eight required destinations, connection/assistant
+states, Keystore pairing, authenticated TLS WebSocket transport, PCM capture
+and playback, approval controls, interruption, reconnect handling, and a
+microphone foreground-service boundary. Four primary destinations fit the
+bottom bar; History, Execution, Evidence, and Settings remain reachable from
+More without clipping compact screens.
+
+Version 0.4.1 was installed on an API 37 emulator. Launch, status/navigation
+insets, the More destination list, portrait/landscape recreation, and
+force-stop/relaunch passed without an AndroidRuntime error. Physical-device
+microphone, Bluetooth, and end-to-end voice timing remain separate acceptance
+tests. Room persistence remains deferred.
 
 ## Isolated build
 
