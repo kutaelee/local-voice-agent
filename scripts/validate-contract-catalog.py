@@ -12,6 +12,81 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PROTOCOL_ROOT = REPO_ROOT / "packages" / "protocol"
 TOOL_ROOT = REPO_ROOT / "packages" / "tool-registry"
 TOOL_NAME = re.compile(r"^[a-z][a-z0-9_]*$")
+REQUIRED_TOOL_NAMES = {
+    "list_files",
+    "search_files",
+    "read_file",
+    "read_file_range",
+    "write_file",
+    "apply_patch",
+    "copy_file",
+    "move_file",
+    "create_directory",
+    "calculate_hash",
+    "list_recent_files",
+    "archive_files",
+    "extract_archive",
+    "delete_file",
+    "delete_directory",
+    "git_status",
+    "git_diff",
+    "git_diff_stat",
+    "git_log",
+    "git_branch",
+    "git_show",
+    "git_blame",
+    "git_create_branch",
+    "git_apply_patch",
+    "git_commit",
+    "git_push",
+    "git_merge",
+    "git_rebase",
+    "git_reset",
+    "git_clean",
+    "run_tests",
+    "run_test_file",
+    "run_linter",
+    "run_formatter",
+    "run_build",
+    "start_dev_server",
+    "stop_dev_server",
+    "inspect_build_log",
+    "inspect_test_log",
+    "check_port",
+    "inspect_cpu",
+    "inspect_memory",
+    "inspect_gpu",
+    "inspect_disk",
+    "inspect_network",
+    "list_processes",
+    "inspect_process",
+    "start_registered_process",
+    "stop_registered_process",
+    "list_services",
+    "inspect_service",
+    "browser_launch",
+    "browser_navigate",
+    "browser_get_page_state",
+    "browser_click",
+    "browser_type",
+    "browser_select",
+    "browser_scroll",
+    "browser_screenshot",
+    "browser_console_logs",
+    "browser_network_errors",
+    "browser_download_status",
+    "browser_close",
+    "ui_list_windows",
+    "ui_focus_window",
+    "ui_get_accessibility_tree",
+    "ui_click_element",
+    "ui_type_text",
+    "ui_press_key",
+    "ui_capture_screen",
+    "ui_click_coordinate",
+    "ui_drag_coordinate",
+    "restricted_shell",
+}
 
 
 def load_json(path: Path) -> dict[str, object]:
@@ -118,6 +193,9 @@ def validate_tool_definitions() -> int:
                 "format": "uuid",
             }:
                 raise ValueError(f"{path}: invalid approval_id schema")
+    missing = sorted(REQUIRED_TOOL_NAMES - names)
+    if missing:
+        raise ValueError(f"required tool definitions missing: {missing}")
     return len(paths)
 
 
@@ -129,6 +207,7 @@ def main() -> int:
             {
                 "events": event_count,
                 "tools": tool_count,
+                "required_tools": len(REQUIRED_TOOL_NAMES),
                 "status": "contract_catalog_consistency_passed",
             },
             sort_keys=True,
