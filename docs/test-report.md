@@ -16,7 +16,8 @@ product acceptance and physical Android QA are not complete.
 | Model-download environment bootstrap, first attempt | Failed as expected | Non-login WSL did not expose `~/.local/bin/uv`; no package installed |
 | Model-download environment bootstrap, retry | Passed | Python 3.12.13, Hugging Face Hub 1.24.0 |
 | PowerShell script parse | Passed | All tracked `.ps1` scripts parsed with `ScriptBlock::Create` |
-| Bash syntax check | Passed | `bash -n` for both WSL scripts |
+| Bash syntax check | Passed | `bash -n` for all 13 tracked WSL/Linux scripts |
+| Installation plan replay | Passed | All 20 PowerShell and 13 Bash scripts parsed; Windows and WSL plan-only entry points completed without mutation. The Windows plan now reflects installed Node.js 24 and treats absent FFmpeg/CMake/Ninja as optional for the validated runtime path |
 | `hf --local-dir` interrupted-transfer resume | Failed | Xet and HTTP fallback created different random partial names; preserved as evidence |
 | Stable range-resume strategy | Passed (small-file test) | 29,372-byte official file; HTTP 206, SHA-256 pass, second run reused 1/1 completed chunk |
 | 12B interrupted transfer resume | Passed | Restart resumed at 24/153 completed 64 MiB chunks |
