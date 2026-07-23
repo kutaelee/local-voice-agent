@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "name": "apply_patch",
+  "description": "Apply a bounded patch after approval and precondition checks.",
+  "risk_level": 1,
+  "timeout_seconds": 30,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "workspace_id",
+      "relative_path",
+      "expected_sha256",
+      "patch",
+      "idempotency_key"
+    ],
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "relative_path": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1024
+      },
+      "expected_sha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "patch": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1048576
+      },
+      "idempotency_key": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "additionalProperties": false
+  }
+}

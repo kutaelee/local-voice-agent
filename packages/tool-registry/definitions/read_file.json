@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "name": "read_file",
+  "description": "Read a bounded UTF-8 text file inside an allowed workspace.",
+  "risk_level": 0,
+  "timeout_seconds": 10,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["workspace_id", "relative_path"],
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "relative_path": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1024
+      },
+      "max_bytes": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1048576,
+        "default": 262144
+      }
+    },
+    "additionalProperties": false
+  }
+}

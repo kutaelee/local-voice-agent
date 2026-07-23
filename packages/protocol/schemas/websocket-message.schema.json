@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-voice-agent.invalid/schemas/websocket-message.schema.json",
+  "title": "Local Voice Agent WebSocket message",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "type",
+    "session_id",
+    "request_id",
+    "sequence",
+    "timestamp",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "type": {
+      "enum": [
+        "audio.input.chunk",
+        "audio.input.start",
+        "audio.input.end",
+        "transcript.user.partial",
+        "transcript.user.final",
+        "assistant.state",
+        "assistant.text.delta",
+        "assistant.text.final",
+        "audio.output.chunk",
+        "audio.output.end",
+        "tool.plan",
+        "tool.approval.required",
+        "tool.approval.response",
+        "tool.started",
+        "tool.progress",
+        "tool.completed",
+        "tool.failed",
+        "tool.rollback.started",
+        "tool.rollback.completed",
+        "model.switch.started",
+        "model.switch.completed",
+        "error"
+      ]
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

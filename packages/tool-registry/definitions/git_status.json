@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "name": "git_status",
+  "description": "Inspect Git status for a registered repository workspace.",
+  "risk_level": 0,
+  "timeout_seconds": 15,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["workspace_id"],
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "include_untracked": {
+        "type": "boolean",
+        "default": true
+      }
+    },
+    "additionalProperties": false
+  }
+}

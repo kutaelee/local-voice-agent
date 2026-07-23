@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "events": [
+    {"type": "audio.input.chunk", "direction": "android_to_pc", "replayable": false},
+    {"type": "audio.input.start", "direction": "android_to_pc", "replayable": false},
+    {"type": "audio.input.end", "direction": "android_to_pc", "replayable": false},
+    {"type": "transcript.user.partial", "direction": "pc_to_android", "replayable": false},
+    {"type": "transcript.user.final", "direction": "pc_to_android", "replayable": true},
+    {"type": "assistant.state", "direction": "pc_to_android", "replayable": true},
+    {"type": "assistant.text.delta", "direction": "pc_to_android", "replayable": false},
+    {"type": "assistant.text.final", "direction": "pc_to_android", "replayable": true},
+    {"type": "audio.output.chunk", "direction": "pc_to_android", "replayable": false},
+    {"type": "audio.output.end", "direction": "pc_to_android", "replayable": false},
+    {"type": "tool.plan", "direction": "pc_to_android", "replayable": true},
+    {"type": "tool.approval.required", "direction": "pc_to_android", "replayable": true},
+    {"type": "tool.approval.response", "direction": "android_to_pc", "replayable": true},
+    {"type": "tool.started", "direction": "pc_to_android", "replayable": true},
+    {"type": "tool.progress", "direction": "pc_to_android", "replayable": false},
+    {"type": "tool.completed", "direction": "pc_to_android", "replayable": true},
+    {"type": "tool.failed", "direction": "pc_to_android", "replayable": true},
+    {"type": "tool.rollback.started", "direction": "pc_to_android", "replayable": true},
+    {"type": "tool.rollback.completed", "direction": "pc_to_android", "replayable": true},
+    {"type": "model.switch.started", "direction": "pc_to_android", "replayable": true},
+    {"type": "model.switch.completed", "direction": "pc_to_android", "replayable": true},
+    {"type": "error", "direction": "bidirectional", "replayable": true}
+  ]
+}

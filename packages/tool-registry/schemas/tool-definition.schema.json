@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-voice-agent.invalid/schemas/tool-definition.schema.json",
+  "title": "Tool registry definition",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "name",
+    "description",
+    "risk_level",
+    "parameters",
+    "timeout_seconds",
+    "idempotency"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "risk_level": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "parameters": {
+      "type": "object"
+    },
+    "timeout_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3600
+    },
+    "idempotency": {
+      "enum": ["read_only", "required", "not_applicable"]
+    }
+  },
+  "additionalProperties": false
+}
