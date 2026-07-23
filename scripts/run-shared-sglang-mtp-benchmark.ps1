@@ -1,0 +1,276 @@
+[CmdletBinding()]
+param(
+    [ValidateRange(1, 5)]
+    [int]$SpeculativeSteps = 1,
+
+    [ValidateRange(0, 16)]
+    [int]$MtpCpuOffloadGiB = 4,
+
+    [ValidateRange(1, 100)]
+    [int]$Samples = 10,
+
+    [ValidateRange(8, 4096)]
+    [int]$MaxTokens = 128,
+
+    [ValidateRange(1024, 65535)]
+    [int]$Port = 8768,
+
+    [ValidatePattern('^http://(localhost|127\.0\.0\.1|\[::1\]):[0-9]+/$')]
+    [string]$ComfyUiBaseUrl = 'http://127.0.0.1:8189/'
+)
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+$repoRoot = 'C:\Dev\Repos\local-voice-agent'
+$startScript = Join-Path $repoRoot 'scripts\start-sglang.ps1'
+$stopScript = '/mnt/c/Dev/Repos/local-voice-agent/scripts/stop-sglang.sh'
+$benchmarkScript = Join-Path $repoRoot 'scripts\benchmark.ps1'
+$statusRoot = 'E:\Data\LocalVoiceAgent\runtime\status'
+$logRoot = 'E:\Data\LocalVoiceAgent\runtime\logs'
+$evidenceRoot = 'E:\Data\LocalVoiceAgent\benchmarks\results'
+$stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
+$statusPath = Join-Path $statusRoot "sglang-mtp-benchmark-$stamp.json"
+$evidencePath = Join-Path (
+    $evidenceRoot
+) "sglang-12b-mtp-on-s$SpeculativeSteps-$stamp.json"
+
+foreach ($path in @(
+    $startScript,
+    $benchmarkScript
+)) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "Registered script is unavailable: $path"
+    }
+}
+foreach ($path in @($statusRoot, $logRoot, $evidenceRoot)) {
+    if (-not (Test-Path -LiteralPath $path -PathType Container)) {
+        throw "Registered external data root is unavailable: $path"
+    }
+}
+
+function Write-RunStatus {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Phase,
+
+        [Parameter(Mandatory)]
+        [string]$Result,
+
+        [Parameter(Mandatory)]
+        [string]$Detail
+    )
+
+    $payload = [ordered]@{
+        schema_version = '1.0'
+        stamp = $stamp
+        phase = $Phase
+        result = $Result
+        detail = $Detail
+        evidence = $evidencePath
+        updated_at = [DateTimeOffset]::Now.ToString('o')
+    }
+    $temporaryPath = "$statusPath.tmp"
+    $payload |
+        ConvertTo-Json |
+        Set-Content -LiteralPath $temporaryPath -Encoding utf8
+    Move-Item -LiteralPath $temporaryPath -Destination $statusPath -Force
+}
+
+function Get-ComfyUiQueueState {
+    $queueUri = [Uri]::new([Uri]$ComfyUiBaseUrl, 'queue')
+    try {
+        $queue = Invoke-RestMethod -Uri $queueUri -TimeoutSec 2
+    }
+    catch {
+        return [pscustomobject]@{
+            reachable = $false
+            running = 0
+            pending = 0
+            busy = $true
+        }
+    }
+    $running = @($queue.queue_running).Count
+    $pending = @($queue.queue_pending).Count
+    return [pscustomobject]@{
+        reachable = $true
+        running = $running
+        pending = $pending
+        busy = ($running + $pending) -gt 0
+    }
+}
+
+function Stop-OwnedSglang {
+    & wsl.exe -d Ubuntu -- bash $stopScript | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Registered SGLang stop exited $LASTEXITCODE."
+    }
+}
+
+function Wait-ChildOrYield {
+    param(
+        [Parameter(Mandatory)]
+        [Diagnostics.Process]$Process,
+
+        [Parameter(Mandatory)]
+        [string]$Phase
+    )
+
+    while (-not $Process.HasExited) {
+        $queue = Get-ComfyUiQueueState
+        if ($queue.busy) {
+            try {
+                Stop-OwnedSglang
+            }
+            finally {
+                $Process.Refresh()
+                if (-not $Process.HasExited) {
+                    $Process.Kill()
+                }
+            }
+            $reason = if ($queue.reachable) {
+                "ComfyUI queue became active ($($queue.running) running, " +
+                    "$($queue.pending) pending)."
+            }
+            else {
+                'ComfyUI queue endpoint became unavailable.'
+            }
+            Write-RunStatus `
+                -Phase 'yielded' `
+                -Result 'yielded' `
+                -Detail (
+                    "$reason Stopped only the owned SGLang process group " +
+                    "during $Phase."
+                )
+            return $false
+        }
+        Start-Sleep -Seconds 2
+        $Process.Refresh()
+    }
+    return $true
+}
+
+$originalSglangKey = $env:LVA_SGLANG_API_KEY
+$originalRuntimeKey = $env:LVA_RUNTIME_API_KEY
+$apiKey = (
+    [Guid]::NewGuid().ToString('N') +
+    [Guid]::NewGuid().ToString('N')
+)
+
+try {
+    for ($sample = 1; $sample -le 2; $sample += 1) {
+        $queue = Get-ComfyUiQueueState
+        if ($queue.busy) {
+            throw (
+                'ComfyUI must be reachable with an empty queue for two ' +
+                'consecutive samples before reserving the shared GPU.'
+            )
+        }
+        if ($sample -eq 1) {
+            Start-Sleep -Seconds 3
+        }
+    }
+
+    $env:LVA_SGLANG_API_KEY = $apiKey
+    $env:LVA_RUNTIME_API_KEY = $apiKey
+    Write-RunStatus `
+        -Phase 'starting' `
+        -Result 'running' `
+        -Detail 'Starting the registered SGLang MTP runtime.'
+
+    $startOutput = Join-Path $logRoot "sglang-start-$stamp.stdout.log"
+    $startError = Join-Path $logRoot "sglang-start-$stamp.stderr.log"
+    $startArguments = @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', $startScript,
+        '-Mode', 'mtp',
+        '-SpeculativeSteps', [string]$SpeculativeSteps,
+        '-MtpCpuOffloadGiB', [string]$MtpCpuOffloadGiB,
+        '-Port', [string]$Port,
+        '-StartupTimeoutSeconds', '600'
+    )
+    $startProcess = Start-Process `
+        -FilePath 'powershell.exe' `
+        -ArgumentList $startArguments `
+        -WindowStyle Hidden `
+        -PassThru `
+        -RedirectStandardOutput $startOutput `
+        -RedirectStandardError $startError
+    if (-not (Wait-ChildOrYield -Process $startProcess -Phase 'startup')) {
+        exit 20
+    }
+    if ($startProcess.ExitCode -ne 0) {
+        throw "Registered SGLang startup exited $($startProcess.ExitCode)."
+    }
+
+    Write-RunStatus `
+        -Phase 'benchmarking' `
+        -Result 'running' `
+        -Detail 'Runtime is healthy; running the fixed-condition samples.'
+
+    $benchmarkOutput = Join-Path $logRoot "sglang-bench-$stamp.stdout.log"
+    $benchmarkError = Join-Path $logRoot "sglang-bench-$stamp.stderr.log"
+    $benchmarkArguments = @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', $benchmarkScript,
+        '-Runtime', 'sglang',
+        '-Condition', "12b-mtp-on-s$SpeculativeSteps",
+        '-BaseUrl', "http://127.0.0.1:$Port/",
+        '-Model', 'gemma4-12b-mtp',
+        '-ModelRevision', 'b6ed86275a6a5735884e208bfed95b445a684ca2',
+        '-Samples', [string]$Samples,
+        '-MaxTokens', [string]$MaxTokens,
+        '-MtpEnabled',
+        '-MtpConfig',
+        "steps=$SpeculativeSteps,cpu_offload_gib=$MtpCpuOffloadGiB",
+        '-OutputPath', $evidencePath
+    )
+    $benchmarkProcess = Start-Process `
+        -FilePath 'powershell.exe' `
+        -ArgumentList $benchmarkArguments `
+        -WindowStyle Hidden `
+        -PassThru `
+        -RedirectStandardOutput $benchmarkOutput `
+        -RedirectStandardError $benchmarkError
+    if (-not (
+        Wait-ChildOrYield -Process $benchmarkProcess -Phase 'benchmark'
+    )) {
+        exit 21
+    }
+    if ($benchmarkProcess.ExitCode -ne 0) {
+        throw (
+            "Registered benchmark exited $($benchmarkProcess.ExitCode)."
+        )
+    }
+
+    Stop-OwnedSglang
+    $hash = (
+        Get-FileHash -LiteralPath $evidencePath -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
+    Write-RunStatus `
+        -Phase 'completed' `
+        -Result 'passed' `
+        -Detail "Benchmark completed; sha256=$hash"
+    Write-Output "benchmark_status=$statusPath"
+    Write-Output "benchmark_evidence=$evidencePath"
+    Write-Output "benchmark_evidence_sha256=$hash"
+}
+catch {
+    try {
+        Stop-OwnedSglang
+    }
+    catch {
+        # Preserve the original failure; the stop error remains in stderr.
+    }
+    Write-RunStatus `
+        -Phase 'failed' `
+        -Result 'failed' `
+        -Detail $_.Exception.Message
+    throw
+}
+finally {
+    $env:LVA_SGLANG_API_KEY = $originalSglangKey
+    $env:LVA_RUNTIME_API_KEY = $originalRuntimeKey
+}

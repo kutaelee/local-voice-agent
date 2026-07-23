@@ -55,3 +55,18 @@ def test_windows_wrappers_bridge_only_variable_names() -> None:
     assert "-ArgumentList" not in sglang
     assert "-ArgumentList" not in vllm
     assert "LVA_VLLM_EXPECTED_MODEL_SIZE/u" in stop_vllm
+
+
+def test_shared_sglang_benchmark_yields_to_comfyui() -> None:
+    shared = script("run-shared-sglang-mtp-benchmark.ps1")
+
+    assert "Get-ComfyUiQueueState" in shared
+    assert "Wait-ChildOrYield" in shared
+    assert "$queue.busy" in shared
+    assert "Stop-OwnedSglang" in shared
+    assert "stop-sglang.sh" in shared
+    assert "ComfyUI queue endpoint became unavailable" in shared
+    assert "LVA_SGLANG_API_KEY = $apiKey" in shared
+    assert "LVA_RUNTIME_API_KEY = $apiKey" in shared
+    assert "Bearer " not in shared
+    assert "/free" not in shared

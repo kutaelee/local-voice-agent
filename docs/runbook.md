@@ -87,6 +87,23 @@ Never stop ComfyUI or another task's Python process to make room. An idle
 ComfyUI queue may release cached weights through its own `/free` API only as
 an explicitly coordinated turn change.
 
+For a coordinated SGLang 12B MTP measurement while ComfyUI remains running,
+use the registered shared-GPU wrapper:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\run-shared-sglang-mtp-benchmark.ps1
+```
+
+It requires two idle queue samples, generates an in-process API key, starts
+only the registered SGLang pair, and polls the configured loopback ComfyUI
+queue every two seconds. If a render appears or the queue endpoint becomes
+unreachable, it stops only the owned SGLang process group and records the run
+as `yielded`; it does not create a partial benchmark result. The 2026-07-24
+live guard test yielded during target loading when one ComfyUI render arrived,
+then verified that port 8768, the SGLang PID file, and the incomplete result
+were absent.
+
 ### Windows-native recovery fallback
 
 The pinned llama.cpp runtime is installed without administrator rights from
