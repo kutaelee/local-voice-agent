@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "name": "git_show",
+  "description": "Read a bounded commit or object view from a registered repository.",
+  "risk_level": 0,
+  "timeout_seconds": 30,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["workspace_id", "revision"],
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "revision": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "relative_path": {
+        "type": "string",
+        "maxLength": 1024
+      },
+      "max_bytes": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 2097152,
+        "default": 524288
+      }
+    },
+    "additionalProperties": false
+  }
+}

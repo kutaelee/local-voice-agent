@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "name": "git_branch",
+  "description": "Inspect local branches, current branch, and configured upstreams.",
+  "risk_level": 0,
+  "timeout_seconds": 15,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["workspace_id"],
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "additionalProperties": false
+  }
+}

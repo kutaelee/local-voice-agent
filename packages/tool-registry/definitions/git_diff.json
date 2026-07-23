@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "name": "git_diff",
+  "description": "Read a bounded working-tree or staged Git diff in a registered repository.",
+  "risk_level": 0,
+  "timeout_seconds": 30,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["workspace_id"],
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "staged": {
+        "type": "boolean",
+        "default": false
+      },
+      "relative_path": {
+        "type": "string",
+        "maxLength": 1024
+      },
+      "max_bytes": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 4194304,
+        "default": 1048576
+      }
+    },
+    "additionalProperties": false
+  }
+}

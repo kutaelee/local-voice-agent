@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "name": "inspect_process",
+  "description": "Inspect one process by ID; command-line values are opt-in and secret-masked.",
+  "risk_level": 0,
+  "timeout_seconds": 10,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["process_id"],
+    "properties": {
+      "process_id": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 4194304
+      },
+      "include_command_line": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "additionalProperties": false
+  }
+}

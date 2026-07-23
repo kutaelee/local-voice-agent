@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "name": "inspect_network",
+  "description": "Inspect network adapters and addresses; listener details are opt-in and masked.",
+  "risk_level": 0,
+  "timeout_seconds": 10,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "include_listeners": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "additionalProperties": false
+  }
+}

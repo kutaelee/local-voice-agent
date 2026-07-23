@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "name": "git_diff_stat",
+  "description": "Read working-tree or staged Git diff statistics in a registered repository.",
+  "risk_level": 0,
+  "timeout_seconds": 20,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["workspace_id"],
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "staged": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "additionalProperties": false
+  }
+}

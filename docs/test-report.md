@@ -44,7 +44,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Official exact MTP target metadata | Passed | 12B `b6ed862…` and 31B `1e4d8be…` revisions, sizes, and SHA-256 values pinned |
 | OpenAI-compatible smoke client static checks | Passed | Python compile and generated 32×32 red PNG decode/pixel validation |
 | Download state isolation | Passed | Explicit cache-side state path; 29,372-byte live transfer and 1/1 resume passed |
-| Protocol/tool contract catalog consistency | Passed | 22 events, 3 seed tools; drift checks and Draft 2020-12 schema validation passed |
+| Protocol/tool contract catalog consistency | Passed | 22 events, 21 tools; drift checks and Draft 2020-12 schema validation passed |
 | Benchmark prompt catalog | Passed | 160 unique Korean cases with required 20/30/20/20/20/20/10/20 category counts |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 

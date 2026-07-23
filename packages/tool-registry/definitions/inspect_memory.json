@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "name": "inspect_memory",
+  "description": "Inspect total, available, committed, and used system memory.",
+  "risk_level": 0,
+  "timeout_seconds": 5,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
+}

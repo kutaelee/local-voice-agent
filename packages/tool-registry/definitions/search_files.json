@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "name": "search_files",
+  "description": "Search names or bounded text content inside an allowed workspace.",
+  "risk_level": 0,
+  "timeout_seconds": 30,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["workspace_id", "query"],
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "query": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      },
+      "relative_path": {
+        "type": "string",
+        "maxLength": 1024,
+        "default": "."
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["name", "content"],
+        "default": "name"
+      },
+      "max_results": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500,
+        "default": 100
+      }
+    },
+    "additionalProperties": false
+  }
+}

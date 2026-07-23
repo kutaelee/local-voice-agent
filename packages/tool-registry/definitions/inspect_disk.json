@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "name": "inspect_disk",
+  "description": "Inspect capacity and free space for all volumes or one Windows drive.",
+  "risk_level": 0,
+  "timeout_seconds": 10,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "volume": {
+        "type": "string",
+        "pattern": "^[A-Za-z]:$"
+      }
+    },
+    "additionalProperties": false
+  }
+}
