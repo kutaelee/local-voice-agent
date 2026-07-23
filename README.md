@@ -5,11 +5,14 @@ conversation and policy-controlled computer use. The target workstation is a
 Windows 11 PC with an RTX 5090 32 GB GPU; inference runtimes run in WSL2 and
 the Android client uses Kotlin and Jetpack Compose.
 
-Current status: **Slice 2 (model/runtime validation in progress)**.
-The pinned 12B W4A16 target and 12B MTP assistant are hash-validated, and
-vLLM 0.25.1 is installed in an isolated WSL environment. The 12B W4A16 model
-has passed text, image, structured-output, streaming, and function-calling
-smoke tests. No end-to-end product acceptance criterion is claimed yet.
+Current status: **Slice 2 validation plus an early Slice 5 server core**.
+The pinned 12B W4A16 model passed text, image, structured-output, streaming,
+and function-calling smoke tests. The exact 12B Q4_0 target/assistant pair
+also passed text-only MTP loading and API smoke on a pinned upstream-fix
+runtime; its multimodal initialization remains blocked and MTP stays disabled
+by default. A locked PC-server environment now runs the first state,
+approval, policy, protocol, and authenticated FastAPI/WebSocket tests. No
+end-to-end product acceptance criterion is claimed yet.
 
 ## Architecture
 
@@ -40,9 +43,9 @@ peaks fail closed until measured.
 
 ## Build, test, and run
 
-The repository currently contains investigation artifacts and guarded
-installation scripts only. They default to planning or validation and do not
-silently install system components.
+Installation scripts default to planning or validation and do not silently
+install system components. The PC-server domain/API slice is runnable only
+from its isolated, locked environment and does not execute tools yet.
 
 ```powershell
 pwsh -File scripts\health-check.ps1

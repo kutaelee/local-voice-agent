@@ -12,6 +12,12 @@ means stop its processes, point configuration to the previous locked
 environment, health-check it, and only then archive the failed environment.
 No global pip state is changed.
 
+The PC-server environment is
+`/home/kutae/.local/share/local-voice-agent/runtimes/pc-server/.venv`.
+Stop and verify the registered server PID before switching or archiving it.
+Source rollback uses `git revert`; the environment is not automatically
+deleted.
+
 ## Models
 
 Model downloads are revision-addressed. Configuration references an explicit

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling==1.28.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "local-voice-agent-server"
+version = "0.1.0"
+description = "Local Voice Agent PC API gateway and domain core"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi==0.136.3",
+  "pydantic==2.13.4",
+  "uvicorn[standard]==0.51.0",
+]
+
+[project.optional-dependencies]
+persistence = [
+  "alembic==1.18.5",
+  "asyncpg==0.31.0",
+  "sqlalchemy[asyncio]==2.0.51",
+]
+test = [
+  "httpx2==2.7.0",
+  "pytest==9.0.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/local_voice_agent_server"]
+
+[tool.pytest.ini_options]
+addopts = "-q -p no:cacheprovider"
+testpaths = ["tests"]
+pythonpath = ["src"]

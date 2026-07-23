@@ -74,7 +74,8 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Approval and policy contracts | Passed | Canonical argument digest/precondition binding validated; Level 2 direct allow and Level 3 approval decisions are rejected by schema |
 | Workspace configuration guard | Passed | Closed schema validated; drive root, user profile root, backup-only D:, protected E: backup root, wildcard, and WSL mounted-drive cases rejected |
 | Application and pairing security defaults | Passed | Public bind, raw-audio retention, cleartext pairing, and plaintext token storage cases rejected |
-| Network-free repository validation suite | Passed | Latest run: 10 validators completed in 1,169.76 ms using the isolated WSL runtime; configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
+| Network-free repository validation using PC-server env | Failed, corrected | App-only lock intentionally lacks top-level validator dependency `jsonschema`; no validator or product code failed before the missing import |
+| Network-free repository validation suite | Passed | Latest run: 10 validators completed in 918.48 ms using the isolated validation-capable WSL runtime; configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
 | Read-only health check | Passed | Detected both isolated vLLM versions, two finalized 12B artifacts, active partial MTP target, RTX 5090/WSL GPU state, canonical paths, and stopped server without mutation |
 | Event payload contract coverage | Passed | All 24 catalog events have closed, bounded Draft 2020-12 payload definitions |
 | Explicit cancellation protocol | Passed (static) | Idempotent request/result events distinguish cancelled, draining, non-cancellable, already-terminal, and missing operations |
@@ -82,6 +83,10 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Benchmark prompt catalog | Passed | 160 unique Korean cases with required 20/30/20/20/20/20/10/20 category counts |
 | Benchmark result/report envelopes | Passed (static) | Raw result remains explicitly `not_run` with zero runs; model/runtime comparison matrices exist and every unmeasured cell is `NOT_RUN` |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
+| PC-server isolated dependency lock/install | Passed | Python 3.12.13 environment outside repo; FastAPI 0.136.3, Pydantic 2.13.4, Starlette 1.3.1, Uvicorn 0.51.0; lock SHA-256 `9f0f173a…` |
+| PC-server domain/API unit tests | Passed | 25 tests: state transitions, optimistic locks, approvals, risk policy, envelope, pairing-token rejection, timezone enforcement, session binding, closed schema, and replay rejection |
+| PC-server process smoke first wrapper | Failed, corrected | Inline Bash used command substitution that PowerShell parsed first; command failed before starting a process, so a shell-isolated smoke script was added |
+| PC-server Uvicorn process smoke | Passed | Loopback `127.0.0.1:8787`, `/health` HTTP 200, owned PID 51847 cleanly stopped, port confirmed closed |
 
 Exact Q4_0 MTP multimodal compatibility, statistical MTP quality/latency
 benchmark, 31B artifact completion, SGLang, audio/video, full benchmark, security,

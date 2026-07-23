@@ -87,6 +87,39 @@ language-only and cannot count as an MTP multimodal pass. Do not patch the
 official model config in place; resolve and record an upstream-compatible
 multimodal path separately.
 
+## PC server development
+
+The project environment is outside the repository and the lock remains
+tracked:
+
+```bash
+cd /mnt/c/Dev/Repos/local-voice-agent/apps/pc-server
+export UV_PROJECT_ENVIRONMENT=\
+/home/kutae/.local/share/local-voice-agent/runtimes/pc-server/.venv
+/home/kutae/.local/bin/uv sync --locked --extra test
+/home/kutae/.local/bin/uv run --locked --extra test pytest
+```
+
+Process-level loopback smoke with a test-only token:
+
+```bash
+bash scripts/smoke-pc-server.sh
+```
+
+The Uvicorn factory refuses to start without a non-placeholder token. A
+manual loopback-only development launch is:
+
+```bash
+export LVA_PAIRING_TOKEN='<at-least-32-random-characters>'
+/home/kutae/.local/bin/uv run --locked uvicorn \
+  local_voice_agent_server.api:create_app_from_environment \
+  --factory --host 127.0.0.1 --port 8787
+```
+
+Do not put the token in a command history or tracked file in normal use.
+`scripts/start-server.ps1` remains fail-closed until registered PID/status
+handling is implemented.
+
 ## Installation gates
 
 1. Confirm manifests reference exact official revisions.
