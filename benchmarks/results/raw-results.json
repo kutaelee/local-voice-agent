@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "status": "running",
-  "generated_at": "2026-07-24T07:17:15+09:00",
+  "generated_at": "2026-07-24T08:13:02+09:00",
   "hardware_snapshot": {
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_mib": 32607,
@@ -58,6 +58,31 @@
       "oom_or_crash": 0,
       "evidence": "E:\\Data\\LocalVoiceAgent\\benchmarks\\results\\sglang-12b-mtp-off-latency.json",
       "evidence_sha256": "947a95570509d4bbe2cca87eed17ddfaa88cf83c895bdeb97eb818f2bafe03dc"
+    },
+    {
+      "runtime": "sglang",
+      "runtime_version": "0.5.15.post1",
+      "model": "gemma4-12b-mtp",
+      "model_revision": "b6ed86275a6a5735884e208bfed95b445a684ca2",
+      "condition": "12b-mtp-on-s1",
+      "mtp_enabled": true,
+      "mtp_config": "steps=1,cpu_offload_gib=4",
+      "successful_samples": 10,
+      "ttft_ms_p50": 447.962,
+      "ttft_ms_p95": 523.587,
+      "tpot_ms_p50": 106.929,
+      "tpot_ms_p95": 113.024,
+      "output_tokens_per_second_mean": 9.441,
+      "observed_total_vram_mib": 28728,
+      "mtp_acceptance_rate_log_observations": 16,
+      "mtp_acceptance_rate_log_mean": 0.7687,
+      "mtp_acceptance_rate_log_min": 0.68,
+      "mtp_acceptance_rate_log_max": 0.85,
+      "oom_or_crash": 0,
+      "evidence": "E:\\Data\\LocalVoiceAgent\\benchmarks\\results\\sglang-12b-mtp-on-s1-20260723T230801960Z.json",
+      "evidence_sha256": "0bbac572cb7396cc0e20975ca241ae12cd28b8d3ce394571c0fa7044f5956ad6",
+      "runtime_log": "E:\\Data\\LocalVoiceAgent\\runtime\\logs\\sglang-12b-mtp-s1.log",
+      "runtime_log_sha256": "6590b653853d69a8a103c1c0d25925a238a843d6c4a9efeab65c453287917c2d"
     }
   ]
 }

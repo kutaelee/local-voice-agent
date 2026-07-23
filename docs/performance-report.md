@@ -58,6 +58,33 @@ SHA-256
 This matching base row enables a direct MTP-OFF comparison, but does not settle
 MTP behavior, model-switch reliability, or the final runtime selection.
 
+## Fixed-condition SGLang 12B exact-pair MTP-ON
+
+Ten streaming samples completed with the exact target revision
+`b6ed86275a6a5735884e208bfed95b445a684ca2`, matching assistant, one MTP step,
+and 4 GiB CPU offload:
+
+- successful samples: 10 / 10
+- TTFT p50 / p95: 447.962 / 523.587 ms
+- TPOT p50 / p95: 106.929 / 113.024 ms
+- mean output rate: 9.441 tokens/s
+- observed total GPU memory at endpoint snapshots: 28,728 MiB
+- OOM or crash: 0
+- periodic decoder acceptance observations: 16, mean 0.7687, range 0.68–0.85
+
+The target and assistant loaded in 132.69 and 5.04 seconds. SGLang explicitly
+promoted the assistant to `FROZEN_KV_MTP`. Evidence:
+`E:\Data\LocalVoiceAgent\benchmarks\results\sglang-12b-mtp-on-s1-20260723T230801960Z.json`,
+SHA-256
+`0bbac572cb7396cc0e20975ca241ae12cd28b8d3ce394571c0fa7044f5956ad6`.
+The runtime log SHA-256 is
+`6590b653853d69a8a103c1c0d25925a238a843d6c4a9efeab65c453287917c2d`.
+
+This row is much slower than the SGLang W4A16 base row, but the comparison
+also changes checkpoint format and adds CPU offload. It is not a valid
+MTP-only speedup ratio. The exact target must be measured with MTP disabled
+before a final MTP decision. Until then, MTP remains disabled by default.
+
 ## Preliminary vLLM 12B smoke
 
 These observations are not benchmark claims. The machine was shared with
