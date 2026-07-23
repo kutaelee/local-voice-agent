@@ -111,6 +111,10 @@ uses locked Windows and WSL environments, hash-locks the TLS tools, keeps the
 Playwright browser outside Git, and never installs a driver, Windows feature,
 system PATH entry, firewall rule, or administrator package.
 
+Physical-device acceptance is intentionally separate from emulator evidence;
+use [docs/physical-android-qa.md](docs/physical-android-qa.md) without
+recording pairing tokens or raw audio.
+
 After setting an untracked `LVA_TOOL_EXECUTOR_TOKEN` with at least 32 random
 characters, the isolated executor can be started and stopped with
 `scripts\start-tool-executor.ps1` and `scripts\stop-tool-executor.ps1`.

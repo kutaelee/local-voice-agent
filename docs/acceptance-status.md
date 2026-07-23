@@ -56,6 +56,6 @@ live runtime or physical-device test.
 3. Run a live 12B→31B→12B process switch.
 4. Install the current APK on a physical Android device and complete
    microphone, speaker/earpiece, Bluetooth, reconnect, LAN/TLS, and barge-in
-   QA.
+   QA using `docs/physical-android-qa.md`.
 5. Perform an independent documented clean-environment reproduction or record
    an explicit scope decision.
