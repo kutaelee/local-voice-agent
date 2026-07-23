@@ -18,6 +18,39 @@ Stop and verify the registered server PID before switching or archiving it.
 Source rollback uses `git revert`; the environment is not automatically
 deleted.
 
+The Windows Tool Executor environment is
+`C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv`; Playwright
+browser assets are isolated at
+`C:\Dev\Tools\LocalVoiceAgent\browsers\playwright-1.61.0`. Stop the registered
+executor, verify port 8790 and its recorded PID are absent, inventory the
+exact directory, and then move only the selected directory with
+`E:\Workspace\System\workstation-config\scripts\Move-ToWorkstationTrash.ps1`.
+Do not recursively delete `C:\Dev\Tools` or a shared browser root.
+
+For a WSL runtime rollback, first use its registered stop script and verify
+the listener/PID are absent. Rename the exact revisioned environment into a
+timestamped `~/.local/share/local-voice-agent/retired` directory; do not
+delete the runtime root. Re-run the locked installer to recreate only the
+selected environment, validate health, and retain the retired copy until the
+replacement is proven.
+
+## Android SDK and emulator
+
+The project did not install Android Studio or change system PATH. The SDK is
+isolated at `C:\Dev\SDK\Android`, Gradle downloads at
+`E:\Cache\LocalVoiceAgent\gradle`, and the project QA AVD at
+`E:\Data\LocalVoiceAgent\runtime\android-avd\lva_api36.avd` with its pointer
+file at `C:\Users\kutae\.android\avd\lva_api36.ini`.
+
+To remove only the QA AVD, stop `emulator-5556` through `adb emu kill`, verify
+the serial and owned emulator/QEMU processes are absent, inventory both exact
+AVD paths, and move them to the corresponding same-drive workstation trash.
+The SDK may be trashed only after verifying that no other Android project
+references it. Gradle and SDK download caches are disposable but still use
+the trash helper for task cleanup. APKs and evidence under
+`E:\Data\LocalVoiceAgent` are retained unless a separate, exact cleanup
+authorization includes them.
+
 ## Models
 
 Model downloads are revision-addressed. Configuration references an explicit
