@@ -44,6 +44,49 @@ python scripts/smoke-openai-api.py \
   --output /mnt/e/Data/LocalVoiceAgent/runtime/evidence/vllm-12b-mtp-smoke.json
 ```
 
+### Shared-GPU runtime turns
+
+Use the Windows wrappers for routine starts so secrets cross into WSL by
+variable name rather than command-line value. Generate a distinct random
+token in the current process or retrieve it from an OS secret store:
+
+```powershell
+$env:LVA_SGLANG_API_KEY = '<random-sglang-api-key>'
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\start-sglang.ps1 -Mode base
+
+$env:LVA_VLLM_API_KEY = '<random-vllm-api-key>'
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\start-vllm.ps1
+```
+
+For the exact SGLang target/assistant pair, begin with one speculative step.
+SGLang requires one more draft token than steps when top-k is one:
+
+```powershell
+$env:LVA_SGLANG_API_KEY = '<random-sglang-api-key>'
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\start-sglang.ps1 `
+  -Mode mtp -SpeculativeSteps 1
+```
+
+The SGLang base and vLLM 12B launchers require at least 22,000 MiB free.
+SGLang MTP requires 28,500 MiB free. SGLang samples twice before launch.
+These gates are collision guards, not VRAM performance claims. If another
+ComfyUI/Qwen task starts after admission, stop only this project's registered
+runtime and record the comparison as interrupted rather than failed.
+
+```powershell
+wsl.exe -d Ubuntu -- bash `
+  /mnt/c/Dev/Repos/local-voice-agent/scripts/stop-sglang.sh
+wsl.exe -d Ubuntu -- bash `
+  /mnt/c/Dev/Repos/local-voice-agent/scripts/stop-vllm.sh
+```
+
+Never stop ComfyUI or another task's Python process to make room. An idle
+ComfyUI queue may release cached weights through its own `/free` API only as
+an explicitly coordinated turn change.
+
 The unreleased MTP-fix runtime is installed only into its versioned
 environment:
 

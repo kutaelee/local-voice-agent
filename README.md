@@ -36,11 +36,12 @@ workspace Git state without assuming private APIs. An isolated Playwright
 1.61.0 browser now permits loopback-only DOM/accessibility observation and
 approved non-submit navigation/input/clicks; Microsoft UI Automation supports
 bounded window/tree/screenshot observation and approved actions only in
-registered Notepad windows. The Android 0.4.1 client
-records and streams PCM, plays
+registered Notepad windows. The Android 0.6.0 client records and streams PCM, plays
 ordered PCM output, supports client-side interruption, and keeps pairing
-tokens in Android Keystore-backed storage. No full product acceptance is
-claimed until the installed SGLang runtime completes model comparison,
+tokens in Android Keystore-backed storage. The installed SGLang 0.5.15.post1
+runtime now passes the 12B base text, tool/schema, streaming, image, thinking,
+and latency smoke set. No full product acceptance is claimed until SGLang MTP
+completes model comparison,
 computer-use, physical-device barge-in/audio, and the required failure
 matrix pass.
 

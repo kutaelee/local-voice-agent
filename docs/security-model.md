@@ -32,6 +32,22 @@
 - Store no raw audio or full conversation by default.
 - Never make the tool executor an administrator.
 
+Inference bearer tokens are process-environment secrets. The Windows runtime
+wrappers bridge only the variable names through `WSLENV`; they never append
+token values to a command line. The SGLang wrapper removes its bridge variable
+before importing the runtime, injects the value only into the parsed
+`ServerArgs`, and redacts API, admin, and TLS-password fields from its
+representation. vLLM uses its official `VLLM_API_KEY` environment contract
+instead of `--api-key`. Both launch paths use unauthenticated loopback health
+endpoints so probes do not expose an Authorization header in `ps` output.
+
+The launchers also fail closed when measured free VRAM is below the
+model-specific admission floor. SGLang takes two samples two seconds apart
+before starting. Neither runtime unloads, stops, or signals a foreign GPU
+process. A ComfyUI model may be unloaded only after its queue is observed idle
+and the user has authorized alternating use; the ComfyUI process itself stays
+running.
+
 Workspace configuration is a closed schema. Windows drive roots, the user
 profile root, wildcards, traversal, the backup-only `D:` drive, and protected
 `E:\backup`/`E:\transfer` write roots are rejected. Linux-native workspaces

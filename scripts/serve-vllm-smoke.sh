@@ -121,7 +121,10 @@ if [[ -n "${LVA_VLLM_API_KEY:-}" ]]; then
     echo "LVA_VLLM_API_KEY must contain at least 32 characters." >&2
     exit 10
   }
-  args+=(--api-key "${LVA_VLLM_API_KEY}")
+  # vLLM officially reads VLLM_API_KEY. Keep the bearer token out of argv,
+  # remove the project bridge variable, and let the exec'ed server inherit it.
+  export VLLM_API_KEY="${LVA_VLLM_API_KEY}"
+  unset LVA_VLLM_API_KEY
 fi
 if [[ "${enforce_eager}" == "1" ]]; then
   args+=(--enforce-eager)

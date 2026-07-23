@@ -1,0 +1,77 @@
+[CmdletBinding()]
+param(
+    [ValidateRange(1024, 65535)]
+    [int]$Port = 8766,
+
+    [ValidateRange(60, 900)]
+    [int]$StartupTimeoutSeconds = 600
+)
+
+$ErrorActionPreference = 'Stop'
+
+if (-not $env:LVA_VLLM_API_KEY -or $env:LVA_VLLM_API_KEY.Length -lt 32) {
+    throw 'Set LVA_VLLM_API_KEY to a secret of at least 32 characters.'
+}
+
+$scriptPath = 'C:\Dev\Repos\local-voice-agent\scripts\start-vllm.sh'
+if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+    throw "vLLM start script is unavailable: $scriptPath"
+}
+
+$freeMemoryText = (
+    nvidia-smi `
+        --query-gpu=memory.free `
+        --format=csv,noheader,nounits |
+        Select-Object -First 1
+).Trim()
+$freeMemory = 0
+if (-not [int]::TryParse($freeMemoryText, [ref]$freeMemory)) {
+    throw 'Unable to measure free GPU memory.'
+}
+if ($freeMemory -lt 22000) {
+    throw (
+        "GPU reservation declined: vLLM 12B requires 22000 MiB free; " +
+        "observed $freeMemory MiB. The concurrent workload was preserved."
+    )
+}
+
+$bridgeNames = @(
+    'LVA_VLLM_API_KEY',
+    'LVA_VLLM_PORT',
+    'LVA_VLLM_STARTUP_TIMEOUT_SECONDS'
+)
+$previousValues = @{}
+foreach ($name in $bridgeNames) {
+    $previousValues[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+}
+$previousWslEnv = $env:WSLENV
+
+try {
+    $env:LVA_VLLM_PORT = [string]$Port
+    $env:LVA_VLLM_STARTUP_TIMEOUT_SECONDS = [string]$StartupTimeoutSeconds
+    $existingBridgeEntries = @(
+        $previousWslEnv -split ':' |
+            Where-Object { $_ -and $_ -notmatch '^LVA_VLLM_' }
+    )
+    $env:WSLENV = (@($bridgeNames | ForEach-Object { "$_/u" }) + $existingBridgeEntries) -join ':'
+
+    & wsl.exe -d Ubuntu -- bash /mnt/c/Dev/Repos/local-voice-agent/scripts/start-vllm.sh
+    if ($LASTEXITCODE -ne 0) {
+        throw "vLLM startup failed with exit code $LASTEXITCODE."
+    }
+}
+finally {
+    foreach ($name in $bridgeNames) {
+        if ($null -eq $previousValues[$name]) {
+            Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue
+        }
+        else {
+            [Environment]::SetEnvironmentVariable(
+                $name,
+                [string]$previousValues[$name],
+                'Process'
+            )
+        }
+    }
+    $env:WSLENV = $previousWslEnv
+}

@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T03:57:41+09:00"
+generated_at: "2026-07-24T04:30:11+09:00"
 runtimes:
   - id: tls-tools-49.0.0
     role: private_debug_ca_generator
@@ -248,7 +248,7 @@ runtimes:
   - id: sglang-0.5.15.post1
     role: comparison_candidate
     version: 0.5.15.post1
-    status: installed_cuda_smoke_passed_model_load_deferred_for_external_gpu_contention
+    status: installed_12b_base_openai_multimodal_thinking_and_latency_smoke_passed_mtp_functional_pending
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/sglang-0.5.15.post1
     python: "3.12.13"
     cuda: "13.0"
@@ -266,7 +266,25 @@ runtimes:
     kernel_wheel_sha256: eb19842cd9809cce7e71d291aa1808f3a7e8c7ad46070a505d970e1ca8105240
     package_check: 194_packages_compatible
     gpu_smoke: rtx_5090_compute_capability_12_0_cuda_matmul_passed
-    model_load_gate: deferred_when_external_workload_left_only_2954_mib_free
+    gemma4_12b_base:
+      revision: 1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee
+      weight_load_seconds: 60.98
+      total_cold_start_seconds_approximate: 210
+      peak_observed_vram_mib: 17957
+      checks: korean_text_tool_structured_stream_image_thinking_passed
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\sglang-12b-openai-smoke.json'
+      evidence_sha256: 5f375c3e3fe24e6df333bbe9a0850d8d83b1730a9111645cfd07dfd6d3889465
+    latency_evidence: 'E:\Data\LocalVoiceAgent\benchmarks\results\sglang-12b-mtp-off-latency.json'
+    latency_evidence_sha256: 947a95570509d4bbe2cca87eed17ddfaa88cf83c895bdeb97eb818f2bafe03dc
+    latency_10_sample_concurrency_1:
+      ttft_ms_p50: 42.635
+      ttft_ms_p95: 50.426
+      tpot_ms_p50: 18.561
+      tpot_ms_p95: 18.931
+      output_tokens_per_second_mean: 54.335
+    secure_launcher: api_key_absent_from_argv_and_redacted_in_server_args
+    gpu_admission: base_22000_mib_mtp_28500_mib_two_sample_fail_closed
+    mtp_probe: exact_assistant_promoted_to_FROZEN_KV_MTP_then_interrupted_for_concurrent_comfyui_turn
     rollback: retain previous versioned environment and switch config pointer
   - id: faster-whisper-1.2.1
     role: stt_candidate

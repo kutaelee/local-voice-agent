@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import os
 from pathlib import Path
 import struct
 import time
@@ -22,6 +23,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument("--include-image", action="store_true")
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--api-key-env",
+        default="LVA_RUNTIME_API_KEY",
+        help="Environment variable containing the bearer token",
+    )
     return parser.parse_args()
 
 
@@ -30,9 +36,12 @@ def request(
     path: str,
     timeout: float,
     payload: dict[str, Any] | None = None,
+    api_key: str = "",
 ):
     data = None
     headers = {"Accept": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     method = "GET"
     if payload is not None:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -56,9 +65,10 @@ def request_json(
     path: str,
     timeout: float,
     payload: dict[str, Any] | None = None,
+    api_key: str = "",
 ) -> tuple[dict[str, Any], float]:
     started = time.perf_counter()
-    with request(base_url, path, timeout, payload) as response:
+    with request(base_url, path, timeout, payload, api_key) as response:
         body = response.read()
         status = response.status
     elapsed_ms = (time.perf_counter() - started) * 1000
@@ -109,13 +119,20 @@ def run_stream(
     base_url: str,
     timeout: float,
     payload: dict[str, Any],
+    api_key: str,
 ) -> dict[str, Any]:
     payload["stream"] = True
     started = time.perf_counter()
     first_delta_ms: float | None = None
     chunks = 0
     text_parts: list[str] = []
-    with request(base_url, "/v1/chat/completions", timeout, payload) as response:
+    with request(
+        base_url,
+        "/v1/chat/completions",
+        timeout,
+        payload,
+        api_key,
+    ) as response:
         for raw_line in response:
             line = raw_line.decode("utf-8").strip()
             if not line.startswith("data: "):
@@ -144,8 +161,64 @@ def run_stream(
     }
 
 
+def run_thinking_stream(
+    base_url: str,
+    timeout: float,
+    model: str,
+    api_key: str,
+) -> dict[str, Any]:
+    payload = completion_payload(
+        model,
+        "시속 60km로 2.5시간 이동한 거리를 계산해.",
+    )
+    payload["max_tokens"] = 1024
+    payload["stream"] = True
+    payload["chat_template_kwargs"] = {"enable_thinking": True}
+    reasoning_characters = 0
+    answer_parts: list[str] = []
+    chunks = 0
+    started = time.perf_counter()
+    with request(
+        base_url,
+        "/v1/chat/completions",
+        timeout,
+        payload,
+        api_key,
+    ) as response:
+        for raw_line in response:
+            line = raw_line.decode("utf-8").strip()
+            if not line.startswith("data: "):
+                continue
+            data = line[6:]
+            if data == "[DONE]":
+                break
+            event = json.loads(data)
+            chunks += 1
+            delta = event["choices"][0].get("delta", {})
+            reasoning = delta.get("reasoning_content")
+            if reasoning:
+                reasoning_characters += len(reasoning)
+            content = delta.get("content")
+            if content:
+                answer_parts.append(content)
+    total_ms = (time.perf_counter() - started) * 1000
+    answer = "".join(answer_parts)
+    if reasoning_characters == 0:
+        raise ValueError("thinking stream returned no reasoning_content")
+    if "150" not in answer:
+        raise ValueError(f"thinking answer check failed: {answer!r}")
+    return {
+        "status": "passed",
+        "chunks": chunks,
+        "reasoning_characters": reasoning_characters,
+        "answer": answer,
+        "total_ms": round(total_ms, 3),
+    }
+
+
 def main() -> int:
     args = parse_args()
+    api_key = os.environ.get(args.api_key_env, "")
     results: dict[str, Any] = {
         "base_url": args.base_url,
         "model": args.model,
@@ -153,13 +226,23 @@ def main() -> int:
         "checks": {},
     }
 
-    _, health_ms = request_json(args.base_url, "/health", args.timeout)
+    _, health_ms = request_json(
+        args.base_url,
+        "/health",
+        args.timeout,
+        api_key=api_key,
+    )
     results["checks"]["health"] = {
         "status": "passed",
         "latency_ms": round(health_ms, 3),
     }
 
-    models, models_ms = request_json(args.base_url, "/v1/models", args.timeout)
+    models, models_ms = request_json(
+        args.base_url,
+        "/v1/models",
+        args.timeout,
+        api_key=api_key,
+    )
     model_ids = [item.get("id") for item in models.get("data", [])]
     if args.model not in model_ids:
         raise ValueError(f"served model {args.model!r} not in {model_ids!r}")
@@ -174,6 +257,7 @@ def main() -> int:
         "/v1/chat/completions",
         args.timeout,
         completion_payload(args.model, "대한민국의 수도를 한 문장으로 답해."),
+        api_key,
     )
     text_content = str(response_message(text_response).get("content") or "")
     if "서울" not in text_content:
@@ -207,6 +291,7 @@ def main() -> int:
         "/v1/chat/completions",
         args.timeout,
         tool_payload,
+        api_key,
     )
     tool_calls = response_message(tool_response).get("tool_calls")
     if not isinstance(tool_calls, list) or not tool_calls:
@@ -247,6 +332,7 @@ def main() -> int:
         "/v1/chat/completions",
         args.timeout,
         schema_payload,
+        api_key,
     )
     structured = json.loads(
         str(response_message(schema_response).get("content") or "")
@@ -263,6 +349,13 @@ def main() -> int:
         args.base_url,
         args.timeout,
         completion_payload(args.model, "로컬 AI의 장점을 두 문장으로 설명해."),
+        api_key,
+    )
+    results["checks"]["thinking"] = run_thinking_stream(
+        args.base_url,
+        args.timeout,
+        args.model,
+        api_key,
     )
 
     if args.include_image:
@@ -287,6 +380,7 @@ def main() -> int:
             "/v1/chat/completions",
             args.timeout,
             image_payload,
+            api_key,
         )
         image_content = str(response_message(image_response).get("content") or "")
         lowered = image_content.lower()

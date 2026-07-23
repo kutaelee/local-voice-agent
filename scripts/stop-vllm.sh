@@ -23,6 +23,7 @@ command="$(tr '\0' ' ' <"/proc/${pid}/cmdline")"
 kill -TERM "${pid}"
 for _ in {1..300}; do
   kill -0 "${pid}" 2>/dev/null || {
+    rm -f -- "${pid_file}"
     echo "Owned vLLM process stopped."
     exit 0
   }
