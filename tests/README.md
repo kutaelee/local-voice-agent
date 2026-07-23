@@ -1,9 +1,12 @@
-# Required test catalog
+# Tests
 
-`required-cases.json` records the 24 mandatory security, timeout, recovery,
-reconnection, interruption, Git, and computer-use cases from the product
-requirements.
+Planned layers:
 
-The catalog is a specification, not a test result. Every case remains
-`NOT_RUN` until an executable test records its command, exact build/runtime,
-result, and evidence path.
+- unit: state machines, policies, schema and path normalization;
+- contract: WebSocket events, tool definitions, runtime adapters;
+- integration: PostgreSQL/outbox, executor sandbox, runtime APIs;
+- security: pairing, traversal, reparse points, idempotency, expiry;
+- end-to-end: Android voice, interruption, approval, rollback, evidence.
+
+Catalog presence is not execution. Results remain `NOT_RUN` until a concrete
+test command and observed outcome are recorded in `docs/test-report.md`.
