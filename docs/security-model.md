@@ -48,6 +48,15 @@ process. A ComfyUI model may be unloaded only after its queue is observed idle
 and the user has authorized alternating use; the ComfyUI process itself stays
 running.
 
+The model-switch API requires the same pairing bearer token as other
+management routes. It accepts only the closed `gemma4-12b`/`gemma4-31b`
+identifiers and never converts model text into a command. The process adapter
+calls two registered scripts with an environment allowlist, validates the
+owned PID and expected model path before stop, verifies the exact served model
+after health, bounds command and HTTP responses, redacts the inference token,
+and stores action evidence outside Git. A still-open listener or failed
+cleanup prevents a new model from loading.
+
 Workspace configuration is a closed schema. Windows drive roots, the user
 profile root, wildcards, traversal, the backup-only `D:` drive, and protected
 `E:\backup`/`E:\transfer` write roots are rejected. Linux-native workspaces

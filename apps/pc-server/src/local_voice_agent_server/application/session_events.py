@@ -16,6 +16,7 @@ from ..protocol.client_events import (
     ClientPayload,
     OperationCancelPayload,
 )
+from .model_switch import ModelActivityBarrier
 from .voice_turn import VoiceEvent, VoiceTurnService
 
 
@@ -75,8 +76,12 @@ class VoiceSessionEventHandler:
     def __init__(
         self,
         voice_turn_factory: Callable[[UUID, UUID], VoiceTurnService],
+        *,
+        model_activity_barrier: ModelActivityBarrier | None = None,
     ) -> None:
         self._voice_turn_factory = voice_turn_factory
+        self._model_activity_barrier = model_activity_barrier
+        self._usage_sessions: set[UUID] = set()
         self._active: dict[UUID, VoiceTurnService] = {}
         self._processing: dict[
             UUID,
@@ -111,14 +116,28 @@ class VoiceSessionEventHandler:
                     raise AudioStreamError(
                         "an audio stream or response is already active"
                     )
-                turn = self._voice_turn_factory(session_id, request_id)
-                self._active[session_id] = turn
-                events = turn.start(
-                    stream_id=payload.audio_stream_id,
-                    encoding=payload.encoding,
-                    sample_rate_hz=payload.sample_rate_hz,
-                    channels=payload.channels,
-                )
+                await self._acquire_usage(session_id)
+                try:
+                    if (
+                        session_id in self._active
+                        or session_id in self._processing
+                        or session_id in self._pending_approval
+                    ):
+                        raise AudioStreamError(
+                            "an audio stream or response is already active"
+                        )
+                    turn = self._voice_turn_factory(session_id, request_id)
+                    self._active[session_id] = turn
+                    events = turn.start(
+                        stream_id=payload.audio_stream_id,
+                        encoding=payload.encoding,
+                        sample_rate_hz=payload.sample_rate_hz,
+                        channels=payload.channels,
+                    )
+                except BaseException:
+                    self._active.pop(session_id, None)
+                    await self._release_usage(session_id)
+                    raise
                 return _outbound(events)
 
             turn = self._active.get(session_id)
@@ -137,9 +156,12 @@ class VoiceSessionEventHandler:
                 if turn is None:
                     raise AudioStreamError("no audio stream is active")
                 if payload.reason in {"barge_in", "disconnect"}:
-                    events = turn.cancel(stream_id=payload.audio_stream_id)
-                    await turn.close_vad(stream_id=payload.audio_stream_id)
-                    self._active.pop(session_id, None)
+                    try:
+                        events = turn.cancel(stream_id=payload.audio_stream_id)
+                        await turn.close_vad(stream_id=payload.audio_stream_id)
+                    finally:
+                        self._active.pop(session_id, None)
+                        await self._release_usage(session_id)
                 else:
                     current = asyncio.current_task()
                     if current is None:
@@ -164,6 +186,8 @@ class VoiceSessionEventHandler:
                         registered = self._processing.get(session_id)
                         if registered is not None and registered[2] is current:
                             self._processing.pop(session_id, None)
+                        if session_id not in self._pending_approval:
+                            await self._release_usage(session_id)
                 return _outbound(events)
             if isinstance(payload, ApprovalResponsePayload):
                 return await self._continue_after_approval(
@@ -206,19 +230,31 @@ class VoiceSessionEventHandler:
         turn = self._active.pop(session_id, None)
         if turn is not None:
             stream_id = turn.stream_id
-            turn.cancel_active()
-            if stream_id is not None:
-                await turn.close_vad(stream_id=stream_id)
-        processing = self._processing.pop(session_id, None)
+            try:
+                turn.cancel_active()
+                if stream_id is not None:
+                    await turn.close_vad(stream_id=stream_id)
+            finally:
+                await self._release_usage(session_id)
+        processing = self._processing.get(session_id)
         if processing is not None:
             stream_id = processing[1].stream_id
-            processing[1].cancel_active()
-            processing[2].cancel()
-            if stream_id is not None:
-                await processing[1].close_vad(stream_id=stream_id)
+            try:
+                processing[1].cancel_active()
+                processing[2].cancel()
+                if stream_id is not None:
+                    await processing[1].close_vad(stream_id=stream_id)
+                if processing[2] is not asyncio.current_task():
+                    await asyncio.gather(processing[2], return_exceptions=True)
+            finally:
+                self._processing.pop(session_id, None)
+                await self._release_usage(session_id)
         pending = self._pending_approval.pop(session_id, None)
         if pending is not None:
-            await pending[1].cancel_pending_approval()
+            try:
+                await pending[1].cancel_pending_approval()
+            finally:
+                await self._release_usage(session_id)
         self._cancel_results = {
             key: value
             for key, value in self._cancel_results.items()
@@ -264,7 +300,10 @@ class VoiceSessionEventHandler:
             and pending[0] == payload.target_id
         ):
             self._pending_approval.pop(session_id, None)
-            await pending[1].cancel_pending_approval()
+            try:
+                await pending[1].cancel_pending_approval()
+            finally:
+                await self._release_usage(session_id)
             status = "cancelled"
             final_state = "interrupted"
             summary = "The pending approval and response were cancelled."
@@ -334,6 +373,22 @@ class VoiceSessionEventHandler:
             registered = self._processing.get(session_id)
             if registered is not None and registered[2] is current:
                 self._processing.pop(session_id, None)
+            if session_id not in self._pending_approval:
+                await self._release_usage(session_id)
+
+    async def _acquire_usage(self, session_id: UUID) -> None:
+        if session_id in self._usage_sessions:
+            raise RuntimeError("model usage is already held for session")
+        if self._model_activity_barrier is not None:
+            await self._model_activity_barrier.acquire_usage()
+        self._usage_sessions.add(session_id)
+
+    async def _release_usage(self, session_id: UUID) -> None:
+        if session_id not in self._usage_sessions:
+            return
+        self._usage_sessions.remove(session_id)
+        if self._model_activity_barrier is not None:
+            await self._model_activity_barrier.release_usage()
 
 
 def _outbound(events: list[VoiceEvent]) -> list[OutboundEvent]:

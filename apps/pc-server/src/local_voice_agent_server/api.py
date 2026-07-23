@@ -9,7 +9,7 @@ from datetime import datetime
 import hmac
 import os
 from pathlib import Path
-from typing import Any, AsyncIterator, Callable, Literal
+from typing import Any, AsyncIterator, Awaitable, Callable, Literal
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -22,6 +22,12 @@ from .application.session_events import (
     VoiceSessionEventHandler,
 )
 from .application.execute_tool import ExecuteQueuedTool
+from .application.model_router import ModelId
+from .application.model_switch import (
+    ModelActivityBarrier,
+    ModelSwitchCoordinator,
+    ModelSwitchEvent,
+)
 from .application.tool_execution_lifecycle import DurableToolExecutionLifecycle
 from .application.tool_planner import ToolPlanner
 from .application.voice_turn import VoiceTurnService
@@ -32,6 +38,10 @@ from .infrastructure.audio_workers import (
     VadWorkerAdapter,
 )
 from .infrastructure.vllm_conversation import VllmConversationAdapter
+from .infrastructure.registered_vllm_runtime import (
+    RegisteredVllmRuntimeAdapter,
+    RegisteredVllmSettings,
+)
 from .infrastructure.status_adapters import AgentStatusManager
 from .infrastructure.tool_agent_conversation import ToolAgentConversation
 from .infrastructure.tool_executor_client import (
@@ -40,6 +50,7 @@ from .infrastructure.tool_executor_client import (
 )
 from .infrastructure.tool_registry import ToolRegistry
 from .infrastructure.persistence import PostgresStateStore
+from .domain.model_runtime import ModelRuntime, ModelRuntimeState
 from .protocol.client_events import (
     AudioInputEndPayload,
     ApprovalResponsePayload,
@@ -97,10 +108,23 @@ class ServerSettings:
         return cls(pairing_token=token)
 
 
+class ModelSwitchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: UUID
+    idempotency_key: UUID
+    target_model: Literal["gemma4-12b", "gemma4-31b"]
+
+
 def _authorized(websocket: WebSocket, expected_token: str) -> bool:
     authorization = websocket.headers.get("authorization", "")
     expected = f"Bearer {expected_token}"
     return hmac.compare_digest(authorization, expected)
+
+
+def _authorized_request(request: Request, expected_token: str) -> bool:
+    authorization = request.headers.get("authorization", "")
+    return hmac.compare_digest(authorization, f"Bearer {expected_token}")
 
 
 async def _send_error(
@@ -133,8 +157,13 @@ def create_app(
     event_handler: SessionEventHandler | None = None,
     agent_status_provider: Callable[[], list[dict[str, object]]] | None = None,
     state_store: PostgresStateStore | None = None,
+    model_switch_coordinator: ModelSwitchCoordinator | None = None,
 ) -> FastAPI:
     handler = event_handler or UnavailableSessionEventHandler()
+    switch_subscribers: set[
+        Callable[[UUID, ModelSwitchEvent], Awaitable[None]]
+    ] = set()
+    switch_subscribers_lock = asyncio.Lock()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -181,6 +210,91 @@ def create_app(
             "agents": agents,
         }
 
+    @app.get("/v1/models/status")
+    async def model_status(request: Request) -> dict[str, object]:
+        if not _authorized_request(request, settings.pairing_token):
+            raise HTTPException(status_code=401, detail="invalid pairing token")
+        if model_switch_coordinator is None:
+            raise HTTPException(
+                status_code=503,
+                detail="model runtime coordinator is unavailable",
+            )
+        runtimes = model_switch_coordinator.runtimes
+        return {
+            "schema_version": "1.0",
+            "runtimes": [
+                {
+                    "model_id": model_id.value,
+                    "state": runtime.state.value,
+                    "version": runtime.version,
+                    "failure_code": (
+                        runtime.events[-1].failure_code
+                        if runtime.events
+                        and runtime.events[-1].failure_code is not None
+                        else None
+                    ),
+                }
+                for model_id, runtime in runtimes.items()
+            ],
+        }
+
+    @app.post("/v1/models/switch")
+    async def switch_model(
+        payload: ModelSwitchRequest,
+        request: Request,
+    ) -> dict[str, object]:
+        if not _authorized_request(request, settings.pairing_token):
+            raise HTTPException(status_code=401, detail="invalid pairing token")
+        if model_switch_coordinator is None:
+            raise HTTPException(
+                status_code=503,
+                detail="model runtime coordinator is unavailable",
+            )
+
+        async def broadcast(event: ModelSwitchEvent) -> None:
+            async with switch_subscribers_lock:
+                subscribers = tuple(switch_subscribers)
+            failed: list[Callable[[UUID, ModelSwitchEvent], Awaitable[None]]] = []
+            for subscriber in subscribers:
+                try:
+                    await asyncio.wait_for(
+                        subscriber(payload.request_id, event),
+                        timeout=2,
+                    )
+                except Exception:
+                    failed.append(subscriber)
+            if failed:
+                async with switch_subscribers_lock:
+                    for subscriber in failed:
+                        switch_subscribers.discard(subscriber)
+
+        try:
+            result = await model_switch_coordinator.switch(
+                ModelId(payload.target_model),
+                idempotency_key=payload.idempotency_key,
+                emit=broadcast,
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409,
+                detail="model switch idempotency conflict",
+            ) from error
+        return {
+            "schema_version": "1.0",
+            "request_id": str(payload.request_id),
+            "requested_model": result.requested_model.value,
+            "ready_model": (
+                result.ready_model.value
+                if result.ready_model is not None
+                else None
+            ),
+            "changed": result.changed,
+            "degraded": result.degraded,
+            "failure_code": result.failure_code,
+            "duration_ms": result.duration_ms,
+            "replayed": result.replayed,
+        }
+
     @app.websocket("/v1/sessions/{session_id}/events")
     async def session_events(websocket: WebSocket, session_id: UUID) -> None:
         if not _authorized(websocket, settings.pairing_token):
@@ -207,6 +321,26 @@ def create_app(
             payload={"state": "connecting", "detail": "authenticated"},
         )
         await websocket.send_json(connected.to_dict())
+
+        async def emit_model_switch(
+            request_id: UUID,
+            event: ModelSwitchEvent,
+        ) -> None:
+            nonlocal server_sequence
+            async with send_lock:
+                server_sequence += 1
+                envelope = EventEnvelope.create(
+                    type=event.type,
+                    session_id=session_id,
+                    request_id=request_id,
+                    sequence=server_sequence,
+                    payload=event.payload,
+                )
+                await websocket.send_json(envelope.to_dict())
+
+        if model_switch_coordinator is not None:
+            async with switch_subscribers_lock:
+                switch_subscribers.add(emit_model_switch)
 
         async def send_error(
             *,
@@ -335,6 +469,10 @@ def create_app(
             if background_tasks:
                 await asyncio.gather(*background_tasks, return_exceptions=True)
             return
+        finally:
+            if model_switch_coordinator is not None:
+                async with switch_subscribers_lock:
+                    switch_subscribers.discard(emit_model_switch)
 
     return app
 
@@ -343,11 +481,66 @@ def create_app_from_environment() -> FastAPI:
     """Uvicorn factory; startup fails if no non-placeholder token is set."""
 
     state_store = _state_store_from_environment()
+    model_activity_barrier = ModelActivityBarrier()
+    model_switch_coordinator = _model_switch_coordinator_from_environment(
+        activity_barrier=model_activity_barrier,
+    )
     return create_app(
         ServerSettings.from_environment(),
-        event_handler=_event_handler_from_environment(state_store=state_store),
+        event_handler=_event_handler_from_environment(
+            state_store=state_store,
+            model_switch_coordinator=model_switch_coordinator,
+            model_activity_barrier=model_activity_barrier,
+        ),
         agent_status_provider=_agent_status_provider_from_environment(),
         state_store=state_store,
+        model_switch_coordinator=model_switch_coordinator,
+    )
+
+
+def _model_switch_coordinator_from_environment(
+    *,
+    activity_barrier: ModelActivityBarrier | None = None,
+) -> ModelSwitchCoordinator | None:
+    if os.environ.get("LVA_RUNTIME_SWITCH_ENABLED", "0") != "1":
+        return None
+    api_key = os.environ.get("LVA_VLLM_API_KEY", "")
+    settings = RegisteredVllmSettings(
+        api_key=api_key,
+        base_url=os.environ.get(
+            "LVA_VLLM_RUNTIME_URL",
+            "http://127.0.0.1:8766",
+        ),
+        start_script=Path(
+            "/mnt/c/Dev/Repos/local-voice-agent/scripts/start-vllm.sh"
+        ),
+        stop_script=Path(
+            "/mnt/c/Dev/Repos/local-voice-agent/scripts/stop-vllm.sh"
+        ),
+        status_path=Path(
+            "/mnt/e/Data/LocalVoiceAgent/runtime/status/vllm.json"
+        ),
+        evidence_directory=Path(
+            "/mnt/e/Data/LocalVoiceAgent/runtime/evidence/model-switch"
+        ),
+    )
+    adapter = RegisteredVllmRuntimeAdapter(settings)
+    ready_model = adapter.observe_ready_model()
+    runtimes = {
+        model_id: ModelRuntime(
+            model_id=model_id.value,
+            state=(
+                ModelRuntimeState.READY
+                if ready_model is model_id
+                else ModelRuntimeState.UNLOADED
+            ),
+        )
+        for model_id in (ModelId.GEMMA4_12B, ModelId.GEMMA4_31B)
+    }
+    return ModelSwitchCoordinator(
+        process_port=adapter,
+        runtimes=runtimes,
+        activity_barrier=activity_barrier,
     )
 
 
@@ -381,6 +574,8 @@ def _agent_status_provider_from_environment(
 def _event_handler_from_environment(
     *,
     state_store: PostgresStateStore | None = None,
+    model_switch_coordinator: ModelSwitchCoordinator | None = None,
+    model_activity_barrier: ModelActivityBarrier | None = None,
 ) -> SessionEventHandler:
     if os.environ.get("LVA_VOICE_ENABLED", "0") != "1":
         return UnavailableSessionEventHandler()
@@ -478,6 +673,10 @@ def _event_handler_from_environment(
         session_id: UUID,
         request_id: UUID,
     ) -> VoiceTurnService:
+        selected_model = _ready_model_name(
+            model_switch_coordinator,
+            default=vllm_model,
+        )
         if (
             tools_enabled
             and registry is not None
@@ -487,7 +686,7 @@ def _event_handler_from_environment(
         ):
             conversation = ToolAgentConversation(
                 base_url=base_url,
-                model=vllm_model,
+                model=selected_model,
                 api_key=vllm_api_key,
                 session_id=session_id,
                 request_id=request_id,
@@ -499,7 +698,7 @@ def _event_handler_from_environment(
         else:
             conversation = VllmConversationAdapter(
                 base_url=base_url,
-                model=vllm_model,
+                model=selected_model,
                 api_key=vllm_api_key,
             )
         return VoiceTurnService(
@@ -510,5 +709,23 @@ def _event_handler_from_environment(
         )
 
     return VoiceSessionEventHandler(
-        turn_factory
+        turn_factory,
+        model_activity_barrier=model_activity_barrier,
     )
+
+
+def _ready_model_name(
+    coordinator: ModelSwitchCoordinator | None,
+    *,
+    default: str,
+) -> str:
+    if coordinator is None:
+        return default
+    ready = [
+        model_id.value
+        for model_id, runtime in coordinator.runtimes.items()
+        if runtime.state is ModelRuntimeState.READY
+    ]
+    if len(ready) > 1:
+        raise RuntimeError("multiple model runtimes are READY")
+    return ready[0] if ready else default

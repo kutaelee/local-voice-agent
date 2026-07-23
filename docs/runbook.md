@@ -138,6 +138,59 @@ bash scripts/install-wsl.sh --install-vllm-mtp-fix
 Rollback is a runtime configuration switch to the untouched
 `vllm-0.25.1` environment.
 
+### Registered 12B/31B vLLM lifecycle
+
+The operator wrappers accept only the fixed `12b` and `31b` profiles. They
+measure free VRAM before launch, keep the API key out of argv, write
+`E:\Data\LocalVoiceAgent\runtime\status\vllm.json` only after health passes,
+and stop only the PID whose command line contains the expected canonical model
+path. The 31B profile uses the locally validated text-only 256-token context,
+single sequence, eager execution, and 384 MiB explicit KV cache. 31B MTP is
+rejected until its separate runtime gate passes.
+
+```powershell
+$env:LVA_VLLM_API_KEY = '<random-vllm-key-at-least-32-characters>'
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\start-vllm.ps1 -ModelSize 12b -MtpMode off
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\stop-vllm.ps1 -ExpectedModelSize 12b
+```
+
+To expose authenticated model status and switching through the PC server, set
+these process variables before `start-server.ps1`:
+
+```powershell
+$env:LVA_RUNTIME_SWITCH_ENABLED = '1'
+$env:LVA_VLLM_RUNTIME_URL = 'http://127.0.0.1:8766'
+```
+
+An authenticated management request is:
+
+```powershell
+$headers = @{ Authorization = "Bearer $env:LVA_PAIRING_TOKEN" }
+$body = @{
+  request_id = [guid]::NewGuid().ToString()
+  idempotency_key = [guid]::NewGuid().ToString()
+  target_model = 'gemma4-31b'
+} | ConvertTo-Json
+Invoke-RestMethod `
+  -Method Post `
+  -Uri 'http://127.0.0.1:8765/v1/models/switch' `
+  -Headers $headers `
+  -ContentType 'application/json' `
+  -Body $body
+```
+
+The request serializes `drain → stop → load → health → ready`. Connected
+Android/WebSocket sessions receive `model.switch.started` phases and the
+terminal `model.switch.completed` event. A 31B failure is recorded to
+`E:\Data\LocalVoiceAgent\runtime\evidence\model-switch`, the failed owned
+process is cleaned, and 12B is reloaded. If cleanup fails, no fallback load is
+attempted. Do not invoke a live switch until the ComfyUI queue is idle and the
+free-VRAM gate passes.
+
 Validate that isolated environment without loading a model:
 
 ```bash

@@ -25,6 +25,12 @@ returns, streams plain-conversation model deltas, and starts first-sentence
 TTS before later model text is complete. Tool-enabled turns remain on the
 non-streaming structured path so a complete tool call is validated before any
 execution.
+An authenticated registered-runtime coordinator now serializes fixed
+12B/31B stop, load, health, and fallback actions and broadcasts their phases
+to connected clients. New voice turns are paused during a switch, and active
+capture, response, or approval continuations drain before the source process
+is stopped. Its unit/API integration is complete; a live switch is still
+pending an idle window on the shared ComfyUI/Qwen GPU.
 Gemma's model-visible tool loop now
 limits itself to 47 implemented tools, validates every call through
 the planner/policy engine, pauses Level 1 work for an exact approval, resumes

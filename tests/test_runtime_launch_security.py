@@ -28,14 +28,30 @@ def test_vllm_launcher_uses_official_environment_key() -> None:
     assert 'unset LVA_VLLM_API_KEY' in serve
     assert 'args+=(--api-key' not in serve
     assert '--header "Authorization: Bearer' not in start
-    assert "free_mib < 22000" in start
+    assert "free_mib < minimum_free_mib" in start
+    assert "minimum_free_mib=22000" in start
+    assert "minimum_free_mib=27000" in start
+    assert "minimum_free_mib=28500" in start
+    assert '31b:on)' in start
+    assert "31B MTP is not enabled" in start
+
+
+def test_vllm_stop_validates_owned_model_identity() -> None:
+    stop = script("stop-vllm.sh")
+
+    assert '"/gemma4/${expected_model_size}/"' in stop
+    assert "refusing to signal" in stop
+    assert 'kill -TERM "${pid}"' in stop
+    assert "kill -KILL" not in stop
 
 
 def test_windows_wrappers_bridge_only_variable_names() -> None:
     sglang = script("start-sglang.ps1")
     vllm = script("start-vllm.ps1")
+    stop_vllm = script("stop-vllm.ps1")
 
     assert '"$_/u"' in sglang
     assert '"$_/u"' in vllm
     assert "-ArgumentList" not in sglang
     assert "-ArgumentList" not in vllm
+    assert "LVA_VLLM_EXPECTED_MODEL_SIZE/u" in stop_vllm

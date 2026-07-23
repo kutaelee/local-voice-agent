@@ -8,6 +8,15 @@ startup:
   health_timeout_seconds: 300
   model_load_timeout_seconds: 900
   require_gemma4_mtp_log_path: true
+management:
+  enabled_by_default: false
+  api_path: /v1/models/switch
+  status_path: 'E:\Data\LocalVoiceAgent\runtime\status\vllm.json'
+  evidence_root: 'E:\Data\LocalVoiceAgent\runtime\evidence\model-switch'
+  allowed_models: [gemma4-12b, gemma4-31b]
+  require_pairing_token: true
+  require_exact_pid_and_model_identity: true
+  live_switch_validation: pending_shared_gpu_idle_window
 vllm:
   model_runner: v1
   model_runner_reason: wsl_cuda_uva_unavailable_for_v2

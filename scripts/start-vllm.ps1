@@ -1,5 +1,11 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('12b', '31b')]
+    [string]$ModelSize = '12b',
+
+    [ValidateSet('off', 'on')]
+    [string]$MtpMode = 'off',
+
     [ValidateRange(1024, 65535)]
     [int]$Port = 8766,
 
@@ -11,6 +17,9 @@ $ErrorActionPreference = 'Stop'
 
 if (-not $env:LVA_VLLM_API_KEY -or $env:LVA_VLLM_API_KEY.Length -lt 32) {
     throw 'Set LVA_VLLM_API_KEY to a secret of at least 32 characters.'
+}
+if ($ModelSize -eq '31b' -and $MtpMode -eq 'on') {
+    throw '31B MTP is disabled until its runtime validation gate passes.'
 }
 
 $scriptPath = 'C:\Dev\Repos\local-voice-agent\scripts\start-vllm.sh'
@@ -28,15 +37,24 @@ $freeMemory = 0
 if (-not [int]::TryParse($freeMemoryText, [ref]$freeMemory)) {
     throw 'Unable to measure free GPU memory.'
 }
-if ($freeMemory -lt 22000) {
+$minimumFreeMemory = if ($ModelSize -eq '31b' -or $MtpMode -eq 'on') {
+    if ($ModelSize -eq '31b') { 27000 } else { 28500 }
+}
+else {
+    22000
+}
+if ($freeMemory -lt $minimumFreeMemory) {
     throw (
-        "GPU reservation declined: vLLM 12B requires 22000 MiB free; " +
+        "GPU reservation declined: vLLM $ModelSize MTP=$MtpMode requires " +
+        "$minimumFreeMemory MiB free; " +
         "observed $freeMemory MiB. The concurrent workload was preserved."
     )
 }
 
 $bridgeNames = @(
     'LVA_VLLM_API_KEY',
+    'LVA_VLLM_MODEL_SIZE',
+    'LVA_VLLM_MTP_MODE',
     'LVA_VLLM_PORT',
     'LVA_VLLM_STARTUP_TIMEOUT_SECONDS'
 )
@@ -47,6 +65,8 @@ foreach ($name in $bridgeNames) {
 $previousWslEnv = $env:WSLENV
 
 try {
+    $env:LVA_VLLM_MODEL_SIZE = $ModelSize
+    $env:LVA_VLLM_MTP_MODE = $MtpMode
     $env:LVA_VLLM_PORT = [string]$Port
     $env:LVA_VLLM_STARTUP_TIMEOUT_SECONDS = [string]$StartupTimeoutSeconds
     $existingBridgeEntries = @(

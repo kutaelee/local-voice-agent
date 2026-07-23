@@ -6,6 +6,9 @@ from uuid import uuid4
 
 import pytest
 
+from local_voice_agent_server.application.model_switch import (
+    ModelActivityBarrier,
+)
 from local_voice_agent_server.application.session_events import (
     VoiceSessionEventHandler,
 )
@@ -49,7 +52,11 @@ def factory(*_: object) -> VoiceTurnService:
 
 def test_voice_session_routes_complete_turn_and_releases_session() -> None:
     async def scenario() -> None:
-        handler = VoiceSessionEventHandler(factory)
+        barrier = ModelActivityBarrier()
+        handler = VoiceSessionEventHandler(
+            factory,
+            model_activity_barrier=barrier,
+        )
         session_id = uuid4()
         request_id = uuid4()
         stream_id = uuid4()
@@ -97,6 +104,7 @@ def test_voice_session_routes_complete_turn_and_releases_session() -> None:
             ),
         )
         assert completed[-1].type == "audio.output.end"
+        assert barrier.active_users == 0
 
         restarted = await handler.handle(
             session_id=session_id,
@@ -113,6 +121,89 @@ def test_voice_session_routes_complete_turn_and_releases_session() -> None:
             ),
         )
         assert restarted[0].payload["state"] == "listening"
+
+    asyncio.run(scenario())
+
+
+def test_voice_session_blocks_model_switch_until_response_finishes() -> None:
+    async def scenario() -> None:
+        entered = asyncio.Event()
+        release = asyncio.Event()
+
+        class BlockingConversation:
+            async def respond(self, text: str, **_: object) -> str:
+                assert text
+                entered.set()
+                await release.wait()
+                return "확인했습니다."
+
+        def blocking_factory(*_: object) -> VoiceTurnService:
+            return VoiceTurnService(
+                stt=FakeStt(),
+                conversation=BlockingConversation(),
+                tts=FakeTts(),
+            )
+
+        barrier = ModelActivityBarrier(drain_timeout_seconds=1)
+        handler = VoiceSessionEventHandler(
+            blocking_factory,
+            model_activity_barrier=barrier,
+        )
+        session_id = uuid4()
+        stream_id = uuid4()
+        await handler.handle(
+            session_id=session_id,
+            request_id=uuid4(),
+            event_type="audio.input.start",
+            payload=validate_client_payload(
+                "audio.input.start",
+                {
+                    "audio_stream_id": str(stream_id),
+                    "encoding": "pcm_s16le",
+                    "sample_rate_hz": 16_000,
+                    "channels": 1,
+                },
+            ),
+        )
+        await handler.handle(
+            session_id=session_id,
+            request_id=uuid4(),
+            event_type="audio.input.chunk",
+            payload=validate_client_payload(
+                "audio.input.chunk",
+                {
+                    "audio_stream_id": str(stream_id),
+                    "chunk_index": 0,
+                    "encoding": "pcm_s16le",
+                    "duration_ms": 20,
+                    "data_base64": base64.b64encode(b"\x00\x01" * 160).decode(),
+                },
+            ),
+        )
+        processing = asyncio.create_task(
+            handler.handle(
+                session_id=session_id,
+                request_id=uuid4(),
+                event_type="audio.input.end",
+                payload=validate_client_payload(
+                    "audio.input.end",
+                    {
+                        "audio_stream_id": str(stream_id),
+                        "reason": "vad_end",
+                    },
+                ),
+            )
+        )
+        await asyncio.wait_for(entered.wait(), timeout=1)
+        switching = asyncio.create_task(barrier.begin_switch())
+        await asyncio.sleep(0)
+        assert switching.done() is False
+
+        release.set()
+        await asyncio.wait_for(processing, timeout=1)
+        await asyncio.wait_for(switching, timeout=1)
+        assert barrier.active_users == 0
+        await barrier.end_switch()
 
     asyncio.run(scenario())
 
@@ -318,7 +409,11 @@ def test_pending_tool_approval_resumes_same_voice_turn() -> None:
                 tts=ApprovalTts(),
             )
 
-        handler = VoiceSessionEventHandler(approval_factory)
+        barrier = ModelActivityBarrier()
+        handler = VoiceSessionEventHandler(
+            approval_factory,
+            model_activity_barrier=barrier,
+        )
         session_id = uuid4()
         stream_id = uuid4()
         response_request_id = uuid4()
@@ -364,6 +459,7 @@ def test_pending_tool_approval_resumes_same_voice_turn() -> None:
             ),
         )
         assert pending[-1].payload["state"] == "waiting_approval"
+        assert barrier.active_users == 1
 
         resumed = await handler.handle(
             session_id=session_id,
@@ -379,5 +475,6 @@ def test_pending_tool_approval_resumes_same_voice_turn() -> None:
             ),
         )
         assert resumed[-1].type == "audio.output.end"
+        assert barrier.active_users == 0
 
     asyncio.run(scenario())

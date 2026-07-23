@@ -10,9 +10,19 @@ from starlette.websockets import WebSocketDisconnect
 
 from local_voice_agent_server.api import (
     ServerSettings,
+    _ready_model_name,
     create_app,
 )
+from local_voice_agent_server.application.model_router import ModelId
+from local_voice_agent_server.application.model_switch import (
+    ModelSwitchCoordinator,
+    RuntimeActionReceipt,
+)
 from local_voice_agent_server.application.session_events import OutboundEvent
+from local_voice_agent_server.domain.model_runtime import (
+    ModelRuntime,
+    ModelRuntimeState,
+)
 
 
 TOKEN = "test-only-pairing-token-with-32-chars"
@@ -58,6 +68,48 @@ def client_event(
     }
 
 
+class SuccessfulRuntimePort:
+    def __init__(self) -> None:
+        self.calls = []
+
+    async def start(self, model_id: ModelId) -> RuntimeActionReceipt:
+        self.calls.append(("start", model_id))
+        return self._receipt("start", model_id)
+
+    async def health_check(self, model_id: ModelId) -> RuntimeActionReceipt:
+        self.calls.append(("health", model_id))
+        return self._receipt("health", model_id)
+
+    async def stop(self, model_id: ModelId) -> RuntimeActionReceipt:
+        self.calls.append(("stop", model_id))
+        return self._receipt("stop", model_id)
+
+    @staticmethod
+    def _receipt(action: str, model_id: ModelId) -> RuntimeActionReceipt:
+        return RuntimeActionReceipt(
+            model_id=model_id,
+            action=action,
+            evidence_path=f"/evidence/{model_id.value}-{action}.json",
+        )
+
+
+def model_coordinator() -> tuple[ModelSwitchCoordinator, SuccessfulRuntimePort]:
+    port = SuccessfulRuntimePort()
+    coordinator = ModelSwitchCoordinator(
+        process_port=port,
+        runtimes={
+            ModelId.GEMMA4_12B: ModelRuntime(
+                model_id=ModelId.GEMMA4_12B.value,
+                state=ModelRuntimeState.READY,
+            ),
+            ModelId.GEMMA4_31B: ModelRuntime(
+                model_id=ModelId.GEMMA4_31B.value,
+            ),
+        },
+    )
+    return coordinator, port
+
+
 def test_health_is_read_only_and_does_not_disclose_secrets() -> None:
     response = client().get("/health")
     assert response.status_code == 200
@@ -92,6 +144,111 @@ def test_agent_status_returns_only_provider_contract() -> None:
         "schema_version": "1.0",
         "agents": [expected],
     }
+
+
+def test_model_status_and_switch_require_pairing_token() -> None:
+    coordinator, _ = model_coordinator()
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        model_switch_coordinator=coordinator,
+    )
+    api = TestClient(app)
+
+    assert api.get("/v1/models/status").status_code == 401
+    assert api.post(
+        "/v1/models/switch",
+        json={
+            "request_id": str(uuid4()),
+            "idempotency_key": str(uuid4()),
+            "target_model": "gemma4-31b",
+        },
+    ).status_code == 401
+
+
+def test_model_switch_broadcasts_progress_to_connected_session() -> None:
+    coordinator, port = model_coordinator()
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        model_switch_coordinator=coordinator,
+    )
+    session_id = uuid4()
+    request_id = uuid4()
+    idempotency_key = uuid4()
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+
+    with TestClient(app) as api:
+        status = api.get("/v1/models/status", headers=headers)
+        assert status.status_code == 200
+        assert status.json()["runtimes"][0]["state"] == "READY"
+
+        with api.websocket_connect(
+            f"/v1/sessions/{session_id}/events",
+            headers=headers,
+        ) as websocket:
+            websocket.receive_json()
+            response = api.post(
+                "/v1/models/switch",
+                headers=headers,
+                json={
+                    "request_id": str(request_id),
+                    "idempotency_key": str(idempotency_key),
+                    "target_model": "gemma4-31b",
+                },
+            )
+            progress = [websocket.receive_json() for _ in range(5)]
+
+    assert response.status_code == 200
+    assert response.json()["ready_model"] == "gemma4-31b"
+    assert response.json()["degraded"] is False
+    assert response.json()["replayed"] is False
+    assert _ready_model_name(coordinator, default="gemma4-12b") == "gemma4-31b"
+    assert port.calls == [
+        ("stop", ModelId.GEMMA4_12B),
+        ("start", ModelId.GEMMA4_31B),
+        ("health", ModelId.GEMMA4_31B),
+    ]
+    assert [item["type"] for item in progress] == [
+        "model.switch.started",
+        "model.switch.started",
+        "model.switch.started",
+        "model.switch.started",
+        "model.switch.completed",
+    ]
+    assert all(item["request_id"] == str(request_id) for item in progress)
+    assert [item["sequence"] for item in progress] == [1, 2, 3, 4, 5]
+
+
+def test_model_switch_rejects_conflicting_idempotency_reuse() -> None:
+    coordinator, _ = model_coordinator()
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        model_switch_coordinator=coordinator,
+    )
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    key = str(uuid4())
+    with TestClient(app) as api:
+        first = api.post(
+            "/v1/models/switch",
+            headers=headers,
+            json={
+                "request_id": str(uuid4()),
+                "idempotency_key": key,
+                "target_model": "gemma4-31b",
+            },
+        )
+        conflict = api.post(
+            "/v1/models/switch",
+            headers=headers,
+            json={
+                "request_id": str(uuid4()),
+                "idempotency_key": key,
+                "target_model": "gemma4-12b",
+            },
+        )
+
+    assert first.status_code == 200
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"] == "model switch idempotency conflict"
 
 
 def test_short_pairing_token_is_rejected() -> None:

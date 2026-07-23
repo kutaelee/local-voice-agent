@@ -114,10 +114,23 @@ Every transition uses an integer version for optimistic locking.
 
 Failures transition to `FAILED`, then attempt a recorded fallback. Switching
 to 31B first persists conversation and tool state and blocks new executions.
-The current pure planner emits ordered switch actions but does not control
-runtime processes. It rejects concurrent READY models, defers while any
-switch is active, and requires failed-31B cleanup before routing fallback
-work to 12B.
+The pure planner emits ordered switch actions but does not control runtime
+processes. It rejects concurrent READY models, defers while any switch is
+active, and requires failed-31B cleanup before routing fallback work to 12B.
+
+An optional runtime coordinator executes only the closed 12B/31B vLLM
+profiles. It serializes transitions, drains and stops the exact registered
+source process, starts the target, verifies the status PID plus `/health` and
+`/v1/models`, and marks READY only after those checks. Every
+start/health/stop action writes external evidence. A 31B load or health
+failure is recorded, the failed owned process is cleaned, and 12B is restored;
+cleanup failure prevents the fallback load. Authenticated REST requests start
+the operation and connected WebSocket sessions receive versioned
+`model.switch.*` phase events. A shared activity barrier rejects no active
+turn: it stops admission of new turns, waits for capture, response generation,
+and approval continuation to drain, then permits the registered stop. A
+bounded drain timeout leaves the current runtime untouched. The live
+shared-GPU switch test remains gated on an idle ComfyUI queue.
 
 ## Persistence
 

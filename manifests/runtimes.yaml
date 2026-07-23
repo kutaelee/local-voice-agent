@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T05:16:00+09:00"
+generated_at: "2026-07-24T05:57:41+09:00"
 runtimes:
   - id: tls-tools-49.0.0
     role: private_debug_ca_generator
@@ -74,6 +74,8 @@ runtimes:
     gemma4_31b_smoke_evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\vllm-31b-textonly-smoke.json'
     gemma4_31b_smoke_evidence_sha256: 987b979d458ac62b01e82c1f5e38187083e10b0bc3e7bad64c5b08268401126d
     gemma4_mtp_status: blocked_by_embedding_share_regression_fixed_after_release
+    registered_switch_profiles: 12b_and_31b_closed_profiles_unit_validated
+    registered_switch_live_status: pending_shared_gpu_idle_window
     rollback: retain previous versioned environment and switch config pointer
   - id: vllm-b2b8f679d058-cu130
     role: mtp_fix_candidate
@@ -103,7 +105,7 @@ runtimes:
   - id: pc-server-0.1.0
     role: pc_server
     version: 0.1.0
-    status: installed_live_voice_durable_tool_lifecycle_and_approved_tool_loop_smokes_passed
+    status: installed_live_voice_durable_tools_streaming_and_registered_model_switch_integration_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/pc-server
     python: "3.12.13"
     installed_at: "2026-07-23T18:49:55+09:00"
@@ -117,7 +119,17 @@ runtimes:
     starlette: "1.3.1"
     uvicorn: "0.51.0"
     test_client: httpx2-2.7.0
-    test_status: 121_passed_including_durable_tool_lifecycle_vad_and_inflight_cancellation
+    test_status: 147_passed_including_postgresql_streaming_and_safe_registered_model_switch
+    model_switch_coordinator:
+      status: unit_and_authenticated_api_integration_passed_live_gpu_switch_pending
+      lifecycle_tests: 8
+      adapter_tests: 6
+      active_turn_barrier: capture_response_and_pending_approval_drained_before_stop
+      drain_timeout_failure_code: MODEL_SWITCH_DRAIN_TIMEOUT
+      allowed_models: [gemma4-12b, gemma4-31b]
+      status_path: 'E:\Data\LocalVoiceAgent\runtime\status\vllm.json'
+      evidence_root: 'E:\Data\LocalVoiceAgent\runtime\evidence\model-switch'
+      idempotency_cache_bound: 256
     live_voice_smoke:
       status: passed
       input_pcm_bytes: 149760

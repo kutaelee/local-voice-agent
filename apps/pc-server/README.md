@@ -29,15 +29,21 @@ transport- and persistence-neutral:
   tool call, argument digest, precondition version, and execution version.
 - a versioned model-runtime lifecycle that cannot skip load/health/drain
   states and requires an error code plus evidence path on failure;
-- a pure 12B/31B router that defaults to 12B, plans exclusive model switches,
+- a 12B/31B router that defaults to 12B, plans exclusive model switches,
   defers 31B for voice/GPU priority, enforces measured modality/context
-  capability, and cleans a failed 31B runtime before fallback to 12B.
+  capability, and cleans a failed 31B runtime before fallback to 12B;
+- an optional registered vLLM process coordinator that executes only fixed
+  12B/31B profiles, verifies PID/status/health/API model identity, broadcasts
+  model-switch phases, drains capture/response/approval model leases before
+  stop, and writes external evidence for every action.
 
 The current composition executes approved plans only through the separately
 authenticated Tool Executor and persists the lifecycle in PostgreSQL.
-Model-switch actions remain plans only; no runtime process is started or
-stopped by the router. The FastAPI composition root exposes a read-only health
-route and a bearer-token-authenticated WebSocket gateway. It rejects
+The pure router never starts a process. When explicitly enabled, the separate
+runtime coordinator executes the router lifecycle through registered scripts;
+live 12B↔31B switching remains gated on an idle shared GPU. The FastAPI
+composition root exposes a read-only health route and a
+bearer-token-authenticated WebSocket gateway. It rejects
 missing/short tokens, closed-schema violations, session mismatches, and
 replayed sequence numbers. Its incremental outbound emitter can send state and
 transcript events before a handler returns. The plain-conversation vLLM
