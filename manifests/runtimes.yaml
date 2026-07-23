@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T15:37:38+09:00"
+generated_at: "2026-07-23T17:07:38+09:00"
 runtimes:
   - id: huggingface-hub-1.24.0
     role: model_download_tool
@@ -14,15 +14,19 @@ runtimes:
   - id: vllm-0.25.1
     role: primary_candidate
     version: 0.25.1
-    status: planned
+    status: installed_import_and_cuda_smoke_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/vllm-0.25.1
-    python: "3.12"
-    cuda: runtime-resolved-cu13
-    pytorch: runtime-resolved-2.11-class
+    python: "3.12.13"
+    cuda: "13.0"
+    pytorch: "2.11.0+cu130"
+    installed_at: "2026-07-23T17:07:38+09:00"
+    lock_file: manifests/locks/vllm-0.25.1.txt
     source: https://github.com/vllm-project/vllm/releases/tag/v0.25.1
     wheel_source: https://pypi.org/project/vllm/0.25.1/
     wheel_size_bytes: 250100306
     wheel_sha256: 16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e
+    package_check: 192_packages_compatible
+    gpu_smoke: rtx_5090_compute_capability_12_0_cuda_matmul_passed
     rollback: retain previous versioned environment and switch config pointer
   - id: sglang-0.5.15.post1
     role: comparison_candidate

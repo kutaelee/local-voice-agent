@@ -27,9 +27,11 @@ Status: Slice 0 only. No product acceptance test has run.
 | 12B MTP pair offline structure | Passed | Dedicated unified assistant; vocab, context, and backbone width match target |
 | Identical-hash mirror resume | Passed | vLLM wheel reused 1/4 ranges after GitHub-to-PyPI URL change |
 | vLLM wheel SHA-256 | Passed | `16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e` |
-| vLLM isolated dependency install | In progress | uv-managed Python 3.12, CUDA 13 backend |
+| vLLM isolated dependency install | Passed | vLLM 0.25.1, Python 3.12.13, torch 2.11.0+cu130; 192-package compatibility check |
+| vLLM RTX 5090 CUDA smoke | Passed | Compute capability 12.0; CUDA matrix multiplication returned expected 1024.0 |
+| vLLM CLI capability inspection | Passed | `gemma4` tool parser and speculative/chat/model/GPU configuration flags present |
 | Download state isolation | Passed | Explicit cache-side state path; 29,372-byte live transfer and 1/1 resume passed |
-| Protocol/tool contract catalog consistency | Passed | 22 event types and 3 seed tool definitions; JSON parse and dependency-free drift checks passed |
+| Protocol/tool contract catalog consistency | Passed | 22 events, 3 seed tools; drift checks and Draft 2020-12 schema validation passed |
 | Benchmark prompt catalog | Passed | 160 unique Korean cases with required 20/30/20/20/20/20/10/20 category counts |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 
