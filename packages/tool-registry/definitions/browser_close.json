@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "name": "browser_close",
+  "description": "Close an executor-owned isolated browser session.",
+  "risk_level": 1,
+  "timeout_seconds": 30,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": ["browser_session_id", "idempotency_key"],
+    "properties": {
+      "browser_session_id": {"type": "string", "format": "uuid"},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

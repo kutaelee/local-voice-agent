@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "name": "browser_launch",
+  "description": "Launch an isolated registered browser profile and return an executor session handle.",
+  "risk_level": 1,
+  "timeout_seconds": 60,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": ["browser_profile_id", "headless", "idempotency_key"],
+    "properties": {
+      "browser_profile_id": {"type": "string", "minLength": 1, "maxLength": 128},
+      "headless": {"type": "boolean"},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

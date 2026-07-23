@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "name": "browser_click",
+  "description": "Click a freshly observed non-submit DOM or accessibility element.",
+  "risk_level": 1,
+  "timeout_seconds": 30,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "browser_session_id",
+      "element_ref",
+      "page_state_fingerprint",
+      "external_submission",
+      "idempotency_key"
+    ],
+    "properties": {
+      "browser_session_id": {"type": "string", "format": "uuid"},
+      "element_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+      "page_state_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "external_submission": {"const": false},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

@@ -20,6 +20,9 @@ The current definitions are contracts, not an executable registry:
   identity-bound Level 2 process stop
 - restricted shell: exact allowlisted executable/arguments/environment at
   Level 2, while remaining disabled in the model-visible registry by default
+- browser: isolated session lifecycle, bounded DOM/accessibility/evidence
+  reads, and freshness-bound interaction; external form submission is a
+  separate Level 2 tool
 
 Path normalization, workspace containment, reparse-point defense, approval,
 execution, and rollback remain executor responsibilities; JSON Schema alone
@@ -42,3 +45,8 @@ and auditability, not to make destructive operations normally available.
 Process termination binds the executor handle, PID, and observed start time to
 defend against PID reuse. The restricted shell has no raw shell command
 string, elevation path, or caller-supplied environment variables.
+
+Browser click, type, and select operations bind a fresh page-state
+fingerprint. They cannot submit; `browser_submit` separately binds the reviewed
+page and redacted payload fingerprints to an exact approval. Downloads remain
+executor-tracked evidence and are never opened automatically.

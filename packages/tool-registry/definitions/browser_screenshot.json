@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "name": "browser_screenshot",
+  "description": "Capture a browser screenshot into the evidence store.",
+  "risk_level": 0,
+  "timeout_seconds": 30,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["browser_session_id"],
+    "properties": {
+      "browser_session_id": {"type": "string", "format": "uuid"},
+      "full_page": {"type": "boolean", "default": false}
+    },
+    "additionalProperties": false
+  }
+}

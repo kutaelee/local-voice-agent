@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "name": "browser_download_status",
+  "description": "Inspect one executor-tracked browser download without opening it.",
+  "risk_level": 0,
+  "timeout_seconds": 15,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["browser_session_id", "download_id"],
+    "properties": {
+      "browser_session_id": {"type": "string", "format": "uuid"},
+      "download_id": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

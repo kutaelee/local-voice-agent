@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "name": "browser_submit",
+  "description": "Submit a freshly reviewed browser form after exact per-execution approval.",
+  "risk_level": 2,
+  "timeout_seconds": 60,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "browser_session_id",
+      "element_ref",
+      "page_state_fingerprint",
+      "redacted_payload_fingerprint",
+      "approval_id",
+      "idempotency_key"
+    ],
+    "properties": {
+      "browser_session_id": {"type": "string", "format": "uuid"},
+      "element_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+      "page_state_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "redacted_payload_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "approval_id": {"type": "string", "format": "uuid"},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

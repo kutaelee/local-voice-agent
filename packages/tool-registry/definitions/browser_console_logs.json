@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "name": "browser_console_logs",
+  "description": "Read a bounded page-console event range from browser evidence.",
+  "risk_level": 0,
+  "timeout_seconds": 15,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["browser_session_id"],
+    "properties": {
+      "browser_session_id": {"type": "string", "format": "uuid"},
+      "minimum_level": {
+        "type": "string",
+        "enum": ["debug", "info", "warning", "error"],
+        "default": "warning"
+      },
+      "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 100}
+    },
+    "additionalProperties": false
+  }
+}

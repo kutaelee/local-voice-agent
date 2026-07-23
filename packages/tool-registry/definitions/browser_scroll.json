@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "name": "browser_scroll",
+  "description": "Scroll an isolated browser page by a bounded amount.",
+  "risk_level": 1,
+  "timeout_seconds": 15,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": ["browser_session_id", "delta_y", "idempotency_key"],
+    "properties": {
+      "browser_session_id": {"type": "string", "format": "uuid"},
+      "delta_x": {"type": "integer", "minimum": -5000, "maximum": 5000, "default": 0},
+      "delta_y": {"type": "integer", "minimum": -5000, "maximum": 5000},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

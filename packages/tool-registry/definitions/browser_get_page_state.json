@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "name": "browser_get_page_state",
+  "description": "Read bounded URL, title, DOM, and accessibility state from a browser session.",
+  "risk_level": 0,
+  "timeout_seconds": 30,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["browser_session_id"],
+    "properties": {
+      "browser_session_id": {"type": "string", "format": "uuid"},
+      "include_dom": {"type": "boolean", "default": false},
+      "include_accessibility_tree": {"type": "boolean", "default": true},
+      "max_bytes": {"type": "integer", "minimum": 1, "maximum": 1048576, "default": 262144}
+    },
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "name": "browser_navigate",
+  "description": "Navigate an isolated browser session to an allowlisted HTTP(S) URL.",
+  "risk_level": 1,
+  "timeout_seconds": 60,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": ["browser_session_id", "url", "idempotency_key"],
+    "properties": {
+      "browser_session_id": {"type": "string", "format": "uuid"},
+      "url": {"type": "string", "format": "uri", "maxLength": 4096},
+      "wait_until": {
+        "type": "string",
+        "enum": ["commit", "domcontentloaded", "load"],
+        "default": "domcontentloaded"
+      },
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

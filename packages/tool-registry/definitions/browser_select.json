@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "name": "browser_select",
+  "description": "Select an observed option without submitting a form.",
+  "risk_level": 1,
+  "timeout_seconds": 30,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "browser_session_id",
+      "element_ref",
+      "page_state_fingerprint",
+      "option_value",
+      "idempotency_key"
+    ],
+    "properties": {
+      "browser_session_id": {"type": "string", "format": "uuid"},
+      "element_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+      "page_state_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "option_value": {"type": "string", "maxLength": 4096},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}
