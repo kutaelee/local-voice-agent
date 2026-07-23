@@ -1,22 +1,22 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T02:22:00+09:00"
+generated_at: "2026-07-24T03:25:00+09:00"
 application_id: dev.localvoiceagent.android
-version_code: 5
-version_name: "0.4.1"
+version_code: 6
+version_name: "0.4.2"
 min_sdk: 26
 compile_sdk: 37
 target_sdk: 37
 artifacts:
   - kind: debug_apk
-    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.4.1-api37\local-voice-agent-0.4.1-debug.apk'
-    size_bytes: 12456668
-    sha256: b020672fc3b5b85574def24cebfb3fa30f2a2ed8c5da8eaeb689499d259659f1
+    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.4.2-api37\local-voice-agent-0.4.2-debug.apk'
+    size_bytes: 12457527
+    sha256: eff2be35a5613b26f701a73c305e88994f3b959a9ce7b8417c98a58b07c072a7
     signature: android_debug_v2_verified
     installable: true
   - kind: release_unsigned_apk
-    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.4.1-api37\local-voice-agent-0.4.1-release-unsigned.apk'
-    size_bytes: 8869323
-    sha256: cee2bdc920580f7e3c723e177ae6f74001be87cf52e0d68df9b9f1e160ce5f7f
+    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.4.2-api37\local-voice-agent-0.4.2-release-unsigned.apk'
+    size_bytes: 8869791
+    sha256: 1a8ad16eb5c10a3d72bdecea9d9ea802122964e2846303feb0502bd654315f47
     signature: unsigned_verified
     installable: false
 validation:

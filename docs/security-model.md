@@ -95,9 +95,10 @@ gone.
 
 The Android client permits only WSS, stores the pairing token in Android
 Keystore, and keeps cleartext, raw-audio retention, and full-conversation
-retention disabled. It trusts system CAs and device-owner-installed CAs to
-support a private CA without embedding a mutable certificate in the APK.
-The server remains loopback-only by default. A private listener must use an
+retention disabled. Release builds trust only system CAs. Debug builds may
+trust a device-owner-installed CA for private-LAN testing, avoiding a mutable
+CA or a broad user-CA trust anchor in the release candidate. The server remains
+loopback-only by default. A private listener must use an
 explicit launcher switch, an RFC1918 IPv4 or IPv6 ULA address, and a PEM TLS
 certificate/key; wildcard, public-address, and non-TLS bindings fail before a
 server process starts. The launcher never creates a firewall rule. Device CA

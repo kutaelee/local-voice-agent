@@ -202,12 +202,11 @@ bash scripts/stop-audio-workers.sh
 
 ### Android private-network TLS
 
-The Android app accepts only `wss://` origins. Its Network Security
-Configuration permits the system store and device-owner-installed CAs while
-continuing to reject cleartext traffic. This supports either a certificate from
-a publicly trusted private-network name or a device-owner-installed private CA.
-The certificate subject alternative name must match the exact LAN IP address or
-DNS name entered in the app.
+The Android app accepts only `wss://` origins and continues to reject
+cleartext traffic. The unsigned release candidate trusts the Android platform
+system CA store only. The debug APK also permits a device-owner-installed
+private CA for local testing. The certificate subject alternative name must
+match the exact LAN IP address or DNS name entered in the app.
 
 Keep the server loopback-only by default. A LAN listener is intentionally an
 explicit runtime action: it accepts only RFC1918 IPv4 or IPv6 ULA addresses,
@@ -225,12 +224,13 @@ $env:LVA_PAIRING_TOKEN = '<at-least-32-random-characters>'
   -TlsPrivateKeyPath 'E:\Data\LocalVoiceAgent\tls\server-key.pem'
 ```
 
-The private key and certificate are runtime data, not repository files. Import
-the private CA on the Android device using the device-owner flow, then pair the
-app with `wss://192.168.1.20:8765` and the pairing token. Treat every installed
-user CA as part of the device trust boundary. For an Android Emulator, prefer
-the loopback-only listener through `adb reverse` rather than exposing a LAN
-port; authorizing USB debugging remains a physical-device action.
+The private key and certificate are runtime data, not repository files. For a
+debug APK test, import the private CA on the Android device using the
+device-owner flow, then pair the app with `wss://192.168.1.20:8765` and the
+pairing token. A release candidate instead needs a system-trusted certificate
+(for example, from an approved private-network solution). For an Android
+Emulator, prefer the loopback-only listener through `adb reverse` rather than
+exposing a LAN port; authorizing USB debugging remains a physical-device action.
 
 ## Tool Executor
 
@@ -372,7 +372,7 @@ Install the verified debug APK only when a device is visible in
 ```powershell
 C:\Dev\SDK\Android\platform-tools\adb.exe devices
 C:\Dev\SDK\Android\platform-tools\adb.exe install -r `
-  E:\Data\LocalVoiceAgent\artifacts\android\0.4.1-api37\local-voice-agent-0.4.1-debug.apk
+  E:\Data\LocalVoiceAgent\artifacts\android\0.4.2-api37\local-voice-agent-0.4.2-debug.apk
 ```
 
 The release APK is intentionally unsigned and cannot be installed until the
