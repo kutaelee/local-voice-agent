@@ -63,3 +63,6 @@ WebSocket envelopes contain `schema_version`, `type`, `session_id`,
 `request_id`, `sequence`, and `timestamp`. Binary audio frames are correlated
 with JSON control events. PCM is the baseline; Opus becomes the default only
 after measured LAN latency and complexity comparisons.
+
+Android UDF state, audio interruption, pairing, reconnection, and device-test
+boundaries are detailed in [`android-design.md`](android-design.md).
