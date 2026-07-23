@@ -40,6 +40,24 @@
       "oom_or_crash": 0,
       "evidence": "E:\\Data\\LocalVoiceAgent\\benchmarks\\results\\vllm-12b-mtp-off-20260723T221500000Z.json",
       "evidence_sha256": "fdd417bc62bdb573badff432e5541971d2326e94e3f7d53663c3c2b61401ced2"
+    },
+    {
+      "runtime": "sglang",
+      "runtime_version": "0.5.15.post1",
+      "model": "gemma4-12b",
+      "model_revision": "1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee",
+      "condition": "12b-mtp-off",
+      "mtp_enabled": false,
+      "successful_samples": 10,
+      "ttft_ms_p50": 42.635,
+      "ttft_ms_p95": 50.426,
+      "tpot_ms_p50": 18.561,
+      "tpot_ms_p95": 18.931,
+      "output_tokens_per_second_mean": 54.335,
+      "observed_total_vram_mib": 17957,
+      "oom_or_crash": 0,
+      "evidence": "E:\\Data\\LocalVoiceAgent\\benchmarks\\results\\sglang-12b-mtp-off-latency.json",
+      "evidence_sha256": "947a95570509d4bbe2cca87eed17ddfaa88cf83c895bdeb97eb818f2bafe03dc"
     }
   ]
 }

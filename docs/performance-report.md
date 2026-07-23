@@ -1,8 +1,9 @@
 # Performance report
 
-Status: partial fixed-condition benchmark. The vLLM 12B MTP-OFF baseline
-completed; all other comparison rows remain open. Shared-GPU SGLang MTP
-retries on 2026-07-24 were safely yielded when ComfyUI reclaimed the device.
+Status: partial fixed-condition benchmark. Matching vLLM and SGLang 12B
+MTP-OFF baselines completed; MTP-ON and 31B comparison rows remain open.
+Shared-GPU SGLang MTP retries on 2026-07-24 were safely yielded when ComfyUI
+reclaimed the device.
 
 The project does not claim TTFT, TPOT, tokens/s, first-audio latency, MTP
 speedup, VRAM peak, or end-to-end voice latency until the benchmark harness
@@ -36,6 +37,26 @@ SHA-256
 `fdd417bc62bdb573badff432e5541971d2326e94e3f7d53663c3c2b61401ced2`.
 The unusually wide TTFT p95 includes the first warm-up sample; no outlier was
 removed. This single row is not evidence of an MTP speedup or runtime win.
+
+## Fixed-condition SGLang 12B MTP-OFF baseline
+
+The same exact model revision, prompt catalog, temperature, 128-token cap,
+streaming mode, and concurrency-1 conditions completed for SGLang
+0.5.15.post1:
+
+- successful samples: 10 / 10
+- TTFT p50 / p95: 42.635 / 50.426 ms
+- TPOT p50 / p95: 18.561 / 18.931 ms
+- mean output rate: 54.335 tokens/s
+- observed total GPU memory at the endpoint snapshot: 17,957 MiB
+- OOM or crash: 0
+
+Evidence:
+`E:\Data\LocalVoiceAgent\benchmarks\results\sglang-12b-mtp-off-latency.json`,
+SHA-256
+`947a95570509d4bbe2cca87eed17ddfaa88cf83c895bdeb97eb818f2bafe03dc`.
+This matching base row enables a direct MTP-OFF comparison, but does not settle
+MTP behavior, model-switch reliability, or the final runtime selection.
 
 ## Preliminary vLLM 12B smoke
 
