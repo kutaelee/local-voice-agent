@@ -4,7 +4,10 @@ param(
     [int]$CpuOffloadGiB = 36,
 
     [ValidateRange(1024, 65535)]
-    [int]$Port = 8767
+    [int]$Port = 8767,
+
+    [ValidatePattern('^http://(localhost|127\.0\.0\.1|\[::1\]):[0-9]+/$')]
+    [string]$ComfyUiBaseUrl = 'http://127.0.0.1:8188/'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -63,9 +66,10 @@ function Write-ProbeStatus {
     Move-Item -LiteralPath $temporary -Destination $runStatus -Force
 }
 
-function Get-ComfyUiProcessCount {
-    return @(
-        Get-CimInstance Win32_Process |
+function Get-ComfyUiQueueState {
+    $queueUri = [Uri]::new([Uri]$ComfyUiBaseUrl, 'queue')
+    $processCount = @(
+        Get-CimInstance Win32_Process -Filter "Name = 'python.exe'" |
             Where-Object {
                 $_.CommandLine -and
                 $_.CommandLine -match (
@@ -73,6 +77,41 @@ function Get-ComfyUiProcessCount {
                 )
             }
     ).Count
+    try {
+        $queue = Invoke-RestMethod -Uri $queueUri -TimeoutSec 2
+    }
+    catch {
+        return [pscustomobject]@{
+            reachable = $false
+            process_count = $processCount
+            running = 0
+            pending = 0
+            busy = $processCount -gt 0
+        }
+    }
+    $running = @($queue.queue_running).Count
+    $pending = @($queue.queue_pending).Count
+    return [pscustomobject]@{
+        reachable = $true
+        process_count = $processCount
+        running = $running
+        pending = $pending
+        busy = ($running + $pending) -gt 0
+    }
+}
+
+function Get-FreeGpuMemoryMiB {
+    $value = (
+        nvidia-smi `
+            --query-gpu=memory.free `
+            --format=csv,noheader,nounits |
+            Select-Object -First 1
+    ).Trim()
+    $memory = 0
+    if (-not [int]::TryParse($value, [ref]$memory)) {
+        throw 'Unable to measure free GPU memory.'
+    }
+    return $memory
 }
 
 function Stop-OwnedProbe {
@@ -97,8 +136,8 @@ function Wait-ChildOrYield {
     )
 
     while (-not $Process.HasExited) {
-        $comfyCount = Get-ComfyUiProcessCount
-        if ($comfyCount -gt 0) {
+        $queue = Get-ComfyUiQueueState
+        if ($queue.busy) {
             try {
                 Stop-OwnedProbe
             }
@@ -112,8 +151,9 @@ function Wait-ChildOrYield {
                 -Phase 'yielded' `
                 -Result 'yielded' `
                 -Detail (
-                    "ComfyUI appeared during $Phase " +
-                    "(processes=$comfyCount); stopped only owned 31B vLLM."
+                    "ComfyUI became active during $Phase " +
+                    "(running=$($queue.running), pending=$($queue.pending)); " +
+                    'stopped only owned 31B vLLM.'
                 )
             return $false
         }
@@ -137,14 +177,17 @@ $apiKey = (
 
 try {
     for ($sample = 1; $sample -le 2; $sample += 1) {
-        $comfyCount = Get-ComfyUiProcessCount
-        if ($comfyCount -gt 0) {
+        $queue = Get-ComfyUiQueueState
+        $freeMemory = Get-FreeGpuMemoryMiB
+        if ($queue.busy -or $freeMemory -lt 28500) {
             Write-ProbeStatus `
                 -Phase 'yielded' `
                 -Result 'yielded' `
                 -Detail (
-                    "ComfyUI is present (processes=$comfyCount); no vLLM " +
-                    'process was started.'
+                    "Shared GPU unavailable: ComfyUI running=" +
+                    "$($queue.running), pending=$($queue.pending), " +
+                    "processes=$($queue.process_count), " +
+                    "free_vram_mib=$freeMemory. No vLLM process was started."
                 )
             exit 20
         }

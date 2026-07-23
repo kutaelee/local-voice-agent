@@ -292,12 +292,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 ```
 
 The default 36 GiB CPU-offload budget additionally requires at least 48 GiB
-available inside WSL and 28,500 MiB free VRAM. The wrapper starts only when no
-ComfyUI process exists and stops only the registered 31B vLLM process if
-ComfyUI reappears. A passing probe must produce text, tool, strict-schema, and
-streaming evidence before the production 31B MTP gate can be changed. A load
-failure or impractical latency remains a measured unsupported result, not a
-reason to enable the profile.
+available inside WSL and 28,500 MiB free VRAM. An idle, reachable ComfyUI
+process may remain running; the wrapper requires two empty-queue and
+free-memory samples, never calls `/free`, and stops only the registered 31B
+vLLM process if a render enters the queue. An unreachable ComfyUI endpoint
+with a matching process fails closed. A passing probe must produce text, tool,
+strict-schema, and streaming evidence before the production 31B MTP gate can
+be changed. A load failure or impractical latency remains a measured
+unsupported result, not a reason to enable the profile.
 
 Do not run MTP API smoke until `/health` returns success. Preserve server
 stdout/stderr under the external runtime log root. On startup failure, stop

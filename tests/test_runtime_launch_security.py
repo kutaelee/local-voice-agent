@@ -104,15 +104,18 @@ def test_31b_mtp_probe_is_bounded_and_yields_to_comfyui() -> None:
     assert "VLLM_SMOKE_KV_CACHE_MEMORY_BYTES=\"268435456\"" in start
     assert "serve-vllm-smoke.sh\" 31b on" in start
     assert "--api-key" not in start
-    assert "Get-ComfyUiProcessCount" in shared
+    assert "Get-ComfyUiQueueState" in shared
+    assert "Get-FreeGpuMemoryMiB" in shared
+    assert "freeMemory -lt 28500" in shared
     assert "Stop-OwnedProbe" in shared
     assert "$Process.WaitForExit()" in shared
     assert "independent health probe failed" in shared
     assert "Test-Path -LiteralPath $evidence" in shared
     assert "-ExpectedModelSize 31b" in shared
-    assert "'process was started.'" in shared
+    assert "No vLLM process was started." in shared
     assert "LVA_VLLM_API_KEY = $apiKey" in shared
     assert "Bearer " not in shared
+    assert "/free" not in shared
 
 
 def test_shared_vllm_mtp_benchmark_is_functionally_gated_and_yields() -> None:
