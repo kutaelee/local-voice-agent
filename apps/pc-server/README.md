@@ -19,7 +19,12 @@ transport- and persistence-neutral:
 - deterministic UTF-8 JSON digests;
 - WebSocket envelope construction matching protocol schema version 1.0.
 - immutable loading of all 74 tool contracts with definition/argument
-  validation and stable hashes; disabled tools are not exposed to the model.
+  validation and stable hashes; disabled tools are not exposed to the model,
+  and server-issued approval/idempotency fields are stripped from model
+  function schemas while retained in executor validation contracts.
+- a non-executing planner that maps validated Level 0 requests to `QUEUED`,
+  Level 1/2 requests to exact approval-bound `WAITING_APPROVAL`, and Level 3
+  or disabled tools to a denial without creating an execution aggregate.
 
 No tool is executed by this slice. PostgreSQL adapters and application use
 cases remain follow-up work. The FastAPI composition root currently exposes a

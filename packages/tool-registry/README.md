@@ -3,7 +3,8 @@
 Every model-visible tool is a checked-in definition with a closed parameter
 object, bounded timeout, explicit risk level, and idempotency policy.
 
-The current definitions are contracts, not an executable registry:
+The current definitions are validated runtime contracts, not tool
+implementations:
 
 - system observation: CPU, memory, GPU, disk, network, processes, local port
 - workspace observation: list/search/recent files, bounded reads, SHA-256
@@ -29,6 +30,12 @@ The current definitions are contracts, not an executable registry:
 Path normalization, workspace containment, reparse-point defense, approval,
 execution, and rollback remain executor responsibilities; JSON Schema alone
 is not treated as a security boundary.
+
+The PC-server loader derives model-visible function schemas by removing the
+server-managed `approval_id` and `idempotency_key` properties. The server
+issues those values; the model never invents them. Immediately before
+execution, fully composed arguments must be validated again against the
+original executor contract.
 
 `write_file.expected_sha256 = null` means the target must not exist. Archive
 extraction must reject absolute members, `..` traversal, links/reparse points,

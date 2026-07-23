@@ -15,6 +15,9 @@ from ..domain.digests import sha256_json
 from ..domain.policy import RiskLevel
 
 
+SERVER_MANAGED_ARGUMENTS = frozenset({"approval_id", "idempotency_key"})
+
+
 class ToolRegistryError(ValueError):
     code = "TOOL_REGISTRY_ERROR"
 
@@ -42,13 +45,30 @@ class ToolDefinition:
     sha256: str
     enabled: bool
 
+    def model_parameters(self) -> dict[str, Any]:
+        parameters = _thaw_json(self.parameters)
+        properties = parameters.get("properties", {})
+        parameters["properties"] = {
+            key: value
+            for key, value in properties.items()
+            if key not in SERVER_MANAGED_ARGUMENTS
+        }
+        if "required" in parameters:
+            parameters["required"] = [
+                key
+                for key in parameters["required"]
+                if key not in SERVER_MANAGED_ARGUMENTS
+            ]
+        Draft202012Validator.check_schema(parameters)
+        return parameters
+
     def as_function_tool(self) -> dict[str, Any]:
         return {
             "type": "function",
             "function": {
                 "name": self.name,
                 "description": self.description,
-                "parameters": _thaw_json(self.parameters),
+                "parameters": self.model_parameters(),
             },
         }
 
@@ -144,6 +164,30 @@ class ToolRegistry:
             ]
             raise ToolArgumentsInvalid(
                 f"{name}: invalid arguments at {', '.join(paths)}"
+            )
+        return sha256_json(dict(arguments))
+
+    def validate_model_arguments(
+        self,
+        name: str,
+        arguments: Mapping[str, Any],
+    ) -> str:
+        definition = self.get(name, require_enabled=True)
+        validator = Draft202012Validator(
+            definition.model_parameters(),
+            format_checker=FormatChecker(),
+        )
+        errors = sorted(
+            validator.iter_errors(dict(arguments)),
+            key=lambda item: list(item.path),
+        )
+        if errors:
+            paths = [
+                ".".join(str(part) for part in error.absolute_path) or "$"
+                for error in errors[:5]
+            ]
+            raise ToolArgumentsInvalid(
+                f"{name}: invalid model arguments at {', '.join(paths)}"
             )
         return sha256_json(dict(arguments))
 

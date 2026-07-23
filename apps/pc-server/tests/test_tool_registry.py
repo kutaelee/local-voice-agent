@@ -111,6 +111,33 @@ def test_disabled_tool_is_omitted_from_model_schema(
     assert len(names) == 73
 
 
+def test_server_managed_fields_are_not_exposed_to_model(
+    registry: ToolRegistry,
+) -> None:
+    for item in registry.as_function_tools():
+        parameters = item["function"]["parameters"]
+        properties = parameters.get("properties", {})
+        required = parameters.get("required", [])
+        assert "approval_id" not in properties
+        assert "idempotency_key" not in properties
+        assert "approval_id" not in required
+        assert "idempotency_key" not in required
+
+
+def test_model_and_execution_argument_validation_are_separate(
+    registry: ToolRegistry,
+) -> None:
+    model_arguments = {
+        "workspace_id": "repo",
+        "relative_path": "notes.txt",
+        "expected_sha256": None,
+        "content": "draft",
+    }
+    registry.validate_model_arguments("write_file", model_arguments)
+    with pytest.raises(ToolArgumentsInvalid):
+        registry.validate_arguments("write_file", model_arguments)
+
+
 def test_unknown_tool_fails_closed(registry: ToolRegistry) -> None:
     with pytest.raises(ToolNotFound):
         registry.get("invented_tool", require_enabled=True)
