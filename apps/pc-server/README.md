@@ -27,9 +27,15 @@ transport- and persistence-neutral:
   or disabled tools to a denial without creating an execution aggregate;
   queue activation requires an approved record with the same approval ID,
   tool call, argument digest, precondition version, and execution version.
+- a versioned model-runtime lifecycle that cannot skip load/health/drain
+  states and requires an error code plus evidence path on failure;
+- a pure 12B/31B router that defaults to 12B, plans exclusive model switches,
+  defers 31B for voice/GPU priority, enforces measured modality/context
+  capability, and cleans a failed 31B runtime before fallback to 12B.
 
 No tool is executed by this slice. PostgreSQL adapters and application use
-cases remain follow-up work. The FastAPI composition root currently exposes a
+cases remain follow-up work. Model switch actions are plans only; no runtime
+process is started or stopped by the router. The FastAPI composition root exposes a
 read-only health route and a bearer-token-authenticated WebSocket gateway. It
 rejects missing/short tokens, closed-schema violations, session mismatches,
 and replayed sequence numbers.

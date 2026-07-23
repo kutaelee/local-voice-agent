@@ -7,6 +7,8 @@ models:
     max_model_len_initial: 8192
     mtp_enabled_by_default: false
     modalities: [text, image, video, audio]
+    validated_modalities: [text, image]
+    pending_modalities: [video, audio]
   gemma4-12b-mtp:
     manifest_role: mtp_target_12b
     assistant_manifest_role: default_mtp_assistant
@@ -20,9 +22,12 @@ models:
     blocked_modalities: [image, video, audio]
   gemma4-31b:
     manifest_role: escalation_target
-    max_model_len_initial: 8192
+    max_model_len_initial: 256
+    increase_context_after: exclusive_gpu_fixed_condition_vram_gate
     mtp_enabled_by_default: false
     modalities: [text, image]
+    validated_modalities: [text]
+    pending_modalities: [image]
   gemma4-31b-mtp:
     manifest_role: mtp_target_31b
     assistant_manifest_role: escalation_mtp_assistant

@@ -13,7 +13,7 @@ runtime; its multimodal initialization remains blocked and MTP stays disabled
 by default. The pinned 31B W4A16 model passed a constrained text, tool,
 structured-output, and streaming smoke run with an explicit small KV cache.
 A locked PC-server environment now runs the first state, approval, policy,
-protocol, and authenticated FastAPI/WebSocket tests. A separate read-only
+protocol, model-runtime/router, and authenticated FastAPI/WebSocket tests. A separate read-only
 Tool Executor implements six bounded Level 0 filesystem tools and passed both
 Windows-native and WSL tests, including Windows junction rejection. It is not
 yet connected to the PC server. No end-to-end product acceptance criterion is

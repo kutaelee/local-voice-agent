@@ -45,10 +45,14 @@ Every transition uses an integer version for optimistic locking.
 
 `ModelRuntime`:
 
-`UNLOADED → LOADING → VERIFYING → READY → DRAINING → UNLOADING`
+`UNLOADED → LOADING → HEALTH_CHECKING → READY → DRAINING → UNLOADING`
 
 Failures transition to `FAILED`, then attempt a recorded fallback. Switching
 to 31B first persists conversation and tool state and blocks new executions.
+The current pure planner emits ordered switch actions but does not control
+runtime processes. It rejects concurrent READY models, defers while any
+switch is active, and requires failed-31B cleanup before routing fallback
+work to 12B.
 
 ## Persistence
 

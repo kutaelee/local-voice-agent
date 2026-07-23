@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T19:24:00+09:00"
+generated_at: "2026-07-23T19:29:00+09:00"
 runtimes:
   - id: huggingface-hub-1.24.0
     role: model_download_tool
@@ -60,7 +60,7 @@ runtimes:
   - id: pc-server-0.1.0
     role: pc_server
     version: 0.1.0
-    status: installed_domain_and_api_tests_passed_persistence_not_installed
+    status: installed_domain_api_tool_planner_and_model_router_tests_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/pc-server
     python: "3.12.13"
     installed_at: "2026-07-23T18:49:55+09:00"
@@ -74,7 +74,7 @@ runtimes:
     starlette: "1.3.1"
     uvicorn: "0.51.0"
     test_client: httpx2-2.7.0
-    test_status: 46_passed
+    test_status: 67_passed
     rollback: stop the registered server and switch away before archiving only this environment
   - id: tool-executor-0.1.0
     role: tool_executor
