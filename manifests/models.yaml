@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T18:43:00+09:00"
+generated_at: "2026-07-23T19:18:00+09:00"
 model_root: 'E:\AI\Models\Standalone\LocalVoiceAgent'
 status: partially_downloaded
 models:
@@ -69,8 +69,8 @@ models:
       sha256: 1b9b1d622a93f02c0d33f98e502f233b5d707443af6ddc464ed0bf5498506c20
     runtime_candidates: [vllm-0.25.1, sglang-0.5.15.post1]
     mtp_assistant: null
-    downloaded_at: null
-    validation_status: paused_resumable_147_of_347_chunks
+    downloaded_at: "2026-07-23T19:07:44+09:00"
+    validation_status: vllm_0_25_1_v1_text_tool_structured_stream_passed_multimodal_pending
   - role: escalation_mtp_assistant
     model_id: google/gemma-4-31B-it-qat-q4_0-unquantized-assistant
     repository: https://huggingface.co/google/gemma-4-31B-it-qat-q4_0-unquantized-assistant
@@ -86,8 +86,8 @@ models:
       sha256: 50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9
     runtime_candidates: [vllm-0.25.1, sglang-0.5.15.post1]
     mtp_target: google/gemma-4-31B-it-qat-q4_0-unquantized
-    downloaded_at: null
-    validation_status: planned_pair_compatibility_gate
+    downloaded_at: "2026-07-23T19:10:26+09:00"
+    validation_status: sha256_passed_exact_target_not_downloaded
   - role: mtp_target_31b
     model_id: google/gemma-4-31B-it-qat-q4_0-unquantized
     repository: https://huggingface.co/google/gemma-4-31B-it-qat-q4_0-unquantized

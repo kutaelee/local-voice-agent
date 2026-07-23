@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-23T18:35:00+09:00",
+  "generated_at": "2026-07-23T19:18:00+09:00",
   "canonical_cache": "E:\\Cache\\LocalVoiceAgent\\huggingface",
   "free_space_before_bytes": 3636472119296,
   "status": "partially_downloaded",
@@ -58,8 +58,8 @@
         "sha256": "1b9b1d622a93f02c0d33f98e502f233b5d707443af6ddc464ed0bf5498506c20"
       },
       "requires_credential": false,
-      "downloaded_at": null,
-      "validation_status": "paused_resumable_147_of_347_chunks"
+      "downloaded_at": "2026-07-23T19:07:44+09:00",
+      "validation_status": "sha256_and_safetensors_structure_passed"
     },
     {
       "model_id": "google/gemma-4-31B-it-qat-q4_0-unquantized-assistant",
@@ -72,8 +72,8 @@
         "sha256": "50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9"
       },
       "requires_credential": false,
-      "downloaded_at": null,
-      "validation_status": "not_downloaded"
+      "downloaded_at": "2026-07-23T19:10:26+09:00",
+      "validation_status": "sha256_passed_exact_target_not_downloaded"
     },
     {
       "model_id": "google/gemma-4-31B-it-qat-q4_0-unquantized",

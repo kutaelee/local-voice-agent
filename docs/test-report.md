@@ -35,6 +35,14 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | 12B exact MTP text API smoke | Passed | Korean text, `inspect_gpu` tool call with valid `{}`, strict JSON Schema, and 32-chunk streaming all passed; evidence `vllm-12b-mtp-textonly-smoke.json` |
 | 12B exact MTP speculative metrics | Passed (preliminary) | 48 draft tokens, 43 accepted (89.6%); 4/4 API requests succeeded, no request errors |
 | 12B exact MTP controlled stop | Passed | Only owned API/engine PIDs stopped; port closed and total GPU use fell from 32,038 MiB to 2,957 MiB |
+| 31B W4A16 parallel range transfer | Passed | Resumed at 147/347 chunks; completed 347/347 at approximately 13.06 MiB/s near transfer end |
+| 31B W4A16 SHA-256 | Passed | Downloader and wrapper both matched `1b9b1d622a93f02c0d33f98e502f233b5d707443af6ddc464ed0bf5498506c20`; partial finalized atomically |
+| 31B W4A16 safetensors structure | Passed | 23,265,352,448-byte file, 2,009 tensors; final tensor offset exactly matches file end; compressed-tensors W4 group size 32 |
+| 31B MTP assistant SHA-256 | Passed | 939,042,560-byte weight matched `50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9`; exact 31B Q4_0 target remains not downloaded |
+| vLLM 31B first text-only load | Failed, corrected | W4A16 weights loaded in 110.04 s using 18.7 GiB, but the shared-host 0.72 utilization budget left -3.17 GiB for KV cache; the owned processes exited and GPU memory returned before retry |
+| vLLM 31B explicit-KV load/health | Passed | V1 runner, text-only, eager, 256-token context, one sequence, and 384 MiB explicit KV cache; weights loaded in 106.34 s, model load used 18.7 GiB, engine initialization took 2.31 s, and health returned HTTP 200 |
+| vLLM 31B text API smoke | Passed | Korean text, `inspect_gpu({})`, strict JSON Schema, and 51-chunk streaming passed; streaming TTFT 67.33 ms; evidence `vllm-31b-textonly-smoke.json` SHA-256 `987b979d…` |
+| vLLM 31B controlled stop | Passed | Only owned API/engine PIDs 53260/53453 were terminated; port 8767 closed and total GPU use fell from 27,187 MiB to 6,720 MiB while the unrelated Ollama process remained running |
 | Identical-hash mirror resume | Passed | vLLM wheel reused 1/4 ranges after GitHub-to-PyPI URL change |
 | vLLM wheel SHA-256 | Passed | `16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e` |
 | vLLM isolated dependency install | Passed | vLLM 0.25.1, Python 3.12.13, torch 2.11.0+cu130; 192-package compatibility check |
@@ -75,7 +83,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Workspace configuration guard | Passed | Closed schema validated; drive root, user profile root, backup-only D:, protected E: backup root, wildcard, and WSL mounted-drive cases rejected |
 | Application and pairing security defaults | Passed | Public bind, raw-audio retention, cleartext pairing, and plaintext token storage cases rejected |
 | Network-free repository validation using PC-server env | Passed after dependency addition | Initial run stopped at missing `jsonschema`; the runtime tool registry now requires official stable 4.26.0, and all 10 validators passed in 3,927.26 ms |
-| Network-free repository validation suite | Passed | Latest run: 10 validators completed in 918.48 ms using the isolated validation-capable WSL runtime; configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
+| Network-free repository validation suite | Passed | Latest run: 10 validators completed in 3,863.41 ms using the isolated validation-capable WSL runtime; configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
 | Read-only health check | Passed | Detected both isolated vLLM versions, two finalized 12B artifacts, active partial MTP target, RTX 5090/WSL GPU state, canonical paths, and stopped server without mutation |
 | Event payload contract coverage | Passed | All 24 catalog events have closed, bounded Draft 2020-12 payload definitions |
 | Explicit cancellation protocol | Passed (static) | Idempotent request/result events distinguish cancelled, draining, non-cancellable, already-terminal, and missing operations |
@@ -90,8 +98,9 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Approval-to-queue binding | Passed | Approved exact binding queued; denied approval and mismatched approval ID were rejected; execution CAS version remained enforced |
 | PC-server process smoke first wrapper | Failed, corrected | Inline Bash used command substitution that PowerShell parsed first; command failed before starting a process, so a shell-isolated smoke script was added |
 | PC-server Uvicorn process smoke | Passed | Loopback `127.0.0.1:8787`, `/health` HTTP 200, owned PID 51847 cleanly stopped, port confirmed closed |
+| vLLM smoke explicit-cache argument guards | Passed after wrapper correction | Bash syntax passed; invalid KV-cache bytes exited 8 and invalid max sequences exited 9. The first combined assertion was invalid because PowerShell expanded Bash `$?` before execution; no server was launched |
 
 Exact Q4_0 MTP multimodal compatibility, statistical MTP quality/latency
-benchmark, 31B artifact completion, SGLang, audio/video, full benchmark, security,
+benchmark, 31B multimodal and exact-pair MTP, SGLang, audio/video, full benchmark, security,
 Android, rollback, and product acceptance tests remain `NOT_RUN` or in
 progress.

@@ -40,6 +40,12 @@ measurements:
     gpu_memory_utilization: 0.90
     minimum_observed_free_vram_mib: 138
   gemma4-31b:
-    peak_vram_mib: null
+    peak_vram_mib: 27187
+    measurement_kind: preliminary_shared_host_poll_not_true_peak
+    max_model_len: 256
+    kv_cache_memory_bytes: 402653184
+    max_num_seqs: 1
+    minimum_observed_free_vram_mib: 5001
+    note: first_utilization_based_launch_failed_after_weight_load_due_to_no_available_kv_cache
   gemma4-31b-mtp:
     peak_vram_mib: null

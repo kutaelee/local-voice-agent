@@ -11,6 +11,8 @@ port="${VLLM_SMOKE_PORT:-8766}"
 speculative_tokens="${VLLM_SMOKE_SPECULATIVE_TOKENS:-1}"
 enforce_eager="${VLLM_SMOKE_ENFORCE_EAGER:-0}"
 language_model_only="${VLLM_SMOKE_LANGUAGE_MODEL_ONLY:-0}"
+kv_cache_memory="${VLLM_SMOKE_KV_CACHE_MEMORY_BYTES:-}"
+max_num_seqs="${VLLM_SMOKE_MAX_NUM_SEQS:-}"
 # WSL did not expose CUDA UVA to vLLM's V2 runner on this workstation.
 # vLLM 0.25.1 officially supports forcing the V1 runner with this variable.
 export VLLM_USE_V2_MODEL_RUNNER="${VLLM_USE_V2_MODEL_RUNNER:-0}"
@@ -46,6 +48,14 @@ esac
   echo "VLLM_SMOKE_LANGUAGE_MODEL_ONLY must be 0 or 1" >&2
   exit 7
 }
+if [[ -n "${kv_cache_memory}" && ! "${kv_cache_memory}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "VLLM_SMOKE_KV_CACHE_MEMORY_BYTES must be a positive integer" >&2
+  exit 8
+fi
+if [[ -n "${max_num_seqs}" && ! "${max_num_seqs}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "VLLM_SMOKE_MAX_NUM_SEQS must be a positive integer" >&2
+  exit 9
+fi
 
 case "${mtp_mode}" in
   off)
@@ -111,6 +121,12 @@ if [[ "${enforce_eager}" == "1" ]]; then
 fi
 if [[ "${language_model_only}" == "1" ]]; then
   args+=(--language-model-only)
+fi
+if [[ -n "${kv_cache_memory}" ]]; then
+  args+=(--kv-cache-memory "${kv_cache_memory}")
+fi
+if [[ -n "${max_num_seqs}" ]]; then
+  args+=(--max-num-seqs "${max_num_seqs}")
 fi
 
 echo \

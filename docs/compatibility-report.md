@@ -65,10 +65,10 @@ model repositories, and upstream release notes are used for selections.
 | Gemma default target | `google/gemma-4-12B-it-qat-w4a16-ct` @ `1d2c2d7…` | Google HF | Passed on local V1 runner | Yes | N/A | No matching W4A16 assistant selected | Text/image/video/audio | Native model protocol | W4A16 compressed-tensors | Yes, MTP OFF default |
 | Gemma MTP target | `google/gemma-4-12B-it-qat-q4_0-unquantized` @ `b6ed862…` | Google HF | Text-only API passed on exact-fix runtime | Yes | N/A | Exact target for 12B assistant; measured 89.6% preliminary acceptance | Text passed; multimodal config blocked | Tool/schema smoke passed; statistical gate required | Q4_0 QAT extracted half precision | Yes, disabled benchmark candidate |
 | Gemma assistant | `google/gemma-4-12B-it-qat-q4_0-unquantized-assistant` @ `1893406…` | Google HF | Exact pair loaded and generated | Yes | N/A | Dedicated assistant detected as `Gemma4MTPModel` | Follows target path; multimodal blocked | Tool/schema smoke passed; statistical gate required | Q4_0 QAT assistant | Yes, disabled exact-pair candidate |
-| Gemma default target | `google/gemma-4-31B-it-qat-w4a16-ct` @ `52f3f65…` | Google HF | Download/test pending | N/A | Yes | No matching W4A16 assistant selected | Text/image, no audio | Native model protocol | W4A16 compressed-tensors | Yes, on-demand candidate |
+| Gemma default target | `google/gemma-4-31B-it-qat-w4a16-ct` @ `52f3f65…` | Google HF | Text API passed with explicit KV cache | N/A | Yes | No matching W4A16 assistant selected | Text passed; image pending; no audio | Tool/schema smoke passed | W4A16 compressed-tensors | Yes, on-demand text candidate |
 | Gemma MTP target | `google/gemma-4-31B-it-qat-q4_0-unquantized` @ `1e4d8be…` | Google HF | CPU-offload feasibility gate | N/A | Yes | Exact target for 31B assistant | Text/image, no audio | Output-equivalence test required | Q4_0 QAT extracted half precision | Conditional |
-| Gemma assistant | `google/gemma-4-31B-it-qat-q4_0-unquantized-assistant` @ `96d4c8c…` | Google HF | Download/test pending | N/A | Yes | Dedicated assistant | Follows target path | Output-equivalence test required | Q4_0 QAT assistant | Yes, exact-pair gated |
-| vLLM | 0.25.1 stable | vLLM docs/releases | CUDA passed locally | Passed MTP OFF | Download pending | Dispatch passes; embedding share regression blocks run | Image passed; audio/video pending | Gemma4 parser + structured outputs passed | compressed-tensors passed | Stable baseline |
+| Gemma assistant | `google/gemma-4-31B-it-qat-q4_0-unquantized-assistant` @ `96d4c8c…` | Google HF | SHA-256 passed; exact target absent | N/A | Yes | Dedicated assistant | Follows target path | Output-equivalence test required | Q4_0 QAT assistant | Yes, exact-pair gated |
+| vLLM | 0.25.1 stable | vLLM docs/releases | CUDA passed locally | Passed MTP OFF | Text/tool/schema/stream passed | Dispatch passes; embedding share regression blocks stable MTP | 12B image passed; 31B image and audio/video pending | Gemma4 parser + structured outputs passed | compressed-tensors passed | Stable baseline |
 | vLLM MTP fix | commit `b2b8f679d058…`, cu130 wheel | vLLM commit/PR/nightly index | RTX 5090 text MTP passed | Exact-pair text API passed | Conditional | Exact pair loaded; 48 drafted / 43 accepted | Q4 target config blocks multimodal init | Tool + structured-output smoke passed | Exact wheel/package check passed | Disabled pending quality and multimodal gates |
 | SGLang | 0.5.15.post1 stable | SGLang releases/docs | CUDA 13 / Blackwell features; local test required | Official | Official | Added in 0.5.12 | Official VLM path | Local parser validation required | Multiple; exact QAT path test required | Comparison |
 | Transformers | >=5.10.1, lock after runtime resolution | Google Gemma function-calling guide | Wheels/test required | Official | Official | Official MTP guide | Official | `apply_chat_template(tools=…)` | Model dependent | Validation oracle |
@@ -111,7 +111,12 @@ model repositories, and upstream release notes are used for selections.
    about 17.5 GB static inference memory for Q4_0, excluding KV cache and
    software. The exact 31B MTP target is about 58.3 GiB on disk and cannot
    reside wholly in 32 GB VRAM; it is conditional on a measured CPU-offload
-   feasibility test. Context length must start conservatively.
+   feasibility test. Context length must start conservatively. On this shared
+   host, a utilization-based 31B launch loaded the weights but failed because
+   no KV-cache blocks remained. A retry with an explicit 384 MiB KV cache,
+   256-token context, and one sequence passed health, Korean text, tool call,
+   strict structured output, and streaming. These constrained smoke settings
+   are not production defaults and 31B multimodal input remains untested.
 4. MTP is disabled by default for tool execution until JSON-schema validity,
    tool selection, and argument accuracy are statistically no worse than MTP
    off.

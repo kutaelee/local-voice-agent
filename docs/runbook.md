@@ -76,6 +76,19 @@ VLLM_SMOKE_SPECULATIVE_TOKENS=1 \
 bash scripts/serve-vllm-smoke.sh 12b on
 ```
 
+For a shared-GPU 31B compatibility probe, prefer an explicit small KV cache
+over inflating total GPU utilization. Example values are test conditions, not
+production defaults:
+
+```bash
+VLLM_SMOKE_MAX_MODEL_LEN=256 \
+VLLM_SMOKE_MAX_NUM_SEQS=1 \
+VLLM_SMOKE_KV_CACHE_MEMORY_BYTES=402653184 \
+VLLM_SMOKE_ENFORCE_EAGER=1 \
+VLLM_SMOKE_LANGUAGE_MODEL_ONLY=1 \
+bash scripts/serve-vllm-smoke.sh 31b off
+```
+
 Do not run MTP API smoke until `/health` returns success. Preserve server
 stdout/stderr under the external runtime log root. On startup failure, stop
 only that runtime process, retain logs/evidence, verify VRAM returned, and

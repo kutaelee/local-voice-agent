@@ -84,3 +84,31 @@ The first PowerShell 5.1 request encoded Korean incorrectly. Sending explicit
 UTF-8 bytes, and then repeating with the WSL Python client, produced correct
 Korean input/output. Android and PC clients must always set and test UTF-8
 transport explicitly.
+
+## Preliminary vLLM 31B text smoke
+
+This is a constrained compatibility run on a GPU shared with an unrelated
+Ollama workload, not a fixed-condition benchmark. Multimodal input and MTP
+were disabled. Polling does not capture a true VRAM peak.
+
+The first launch used `gpu-memory-utilization=0.72`. It loaded the weights in
+110.04 seconds and reported 18.7 GiB model memory, then failed cleanly because
+the computed KV-cache budget was -3.17 GiB. The retry used an explicit 384 MiB
+KV cache rather than claiming more shared GPU memory.
+
+| Item | Observed |
+|---|---:|
+| Runtime/model | vLLM 0.25.1 V1 runner / pinned 31B W4A16 |
+| Filesystem/context | WSL 9P `/mnt/e` / 256 tokens |
+| Concurrency / KV cache | 1 sequence / 384 MiB, 421 tokens |
+| Checkpoint size reported by vLLM | 21.67 GiB |
+| Weight read time | 106.34 s |
+| Model load time / memory | 107.34 s / 18.7 GiB |
+| Engine profile/cache/warmup | 2.31 s |
+| Highest polled total GPU memory | 27,187 MiB |
+| Minimum observed free GPU memory | 5,001 MiB |
+| Korean text | 2,719.56 ms, correct answer; includes first-inference JIT |
+| Automatic tool call | 302.84 ms, valid `inspect_gpu({})` |
+| JSON Schema request | 1,575.09 ms, valid object |
+| Streaming | 67.33 ms TTFT, 1,504.65 ms total, 51 chunks |
+| Completed API requests | 4 / 4; zero error/abort |

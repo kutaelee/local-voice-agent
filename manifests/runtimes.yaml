@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T18:50:00+09:00"
+generated_at: "2026-07-23T19:18:00+09:00"
 runtimes:
   - id: huggingface-hub-1.24.0
     role: model_download_tool
@@ -14,7 +14,7 @@ runtimes:
   - id: vllm-0.25.1
     role: primary_candidate
     version: 0.25.1
-    status: installed_import_and_cuda_smoke_passed
+    status: installed_12b_multimodal_and_31b_text_api_smoke_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/vllm-0.25.1
     python: "3.12.13"
     cuda: "13.0"
@@ -27,6 +27,9 @@ runtimes:
     wheel_sha256: 16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e
     package_check: 192_packages_compatible
     gpu_smoke: rtx_5090_compute_capability_12_0_cuda_matmul_passed
+    gemma4_31b_status: text_tool_structured_stream_passed_multimodal_pending
+    gemma4_31b_smoke_evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\vllm-31b-textonly-smoke.json'
+    gemma4_31b_smoke_evidence_sha256: 987b979d458ac62b01e82c1f5e38187083e10b0bc3e7bad64c5b08268401126d
     gemma4_mtp_status: blocked_by_embedding_share_regression_fixed_after_release
     rollback: retain previous versioned environment and switch config pointer
   - id: vllm-b2b8f679d058-cu130
