@@ -44,12 +44,15 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | vLLM W4A16 + Q4_0 assistant MTP compile | Failed | Stable guard kept the 1,024-wide assistant embedding separate: measured 4,864 versus required 7,680; no health endpoint |
 | vLLM MTP regression root-cause check | Passed | Upstream PR 47953 changes the width guard to EAGLE-only; exact fix commit `b2b8f679d058…` pinned |
 | vLLM MTP fix wheel integrity | Passed | Official exact-commit cu130 wheel, 308,229,710 bytes, SHA-256 `d19e66ce501be98d2790a64c01d07d10c376e7785b0b4ca623db23ca4ebf0d61`; embedded source contains the EAGLE-only guard |
+| vLLM MTP fix isolated install | Passed | Exact commit wheel installed in a separate Python 3.12.13 environment; 192-package compatibility check passed |
+| vLLM MTP fix RTX 5090 CUDA smoke | Passed | torch 2.11.0+cu130, CUDA 13.0, compute capability 12.0; 32×32 matrix result 32.0 |
+| vLLM MTP fix installed source guard | Passed | Installed proposer applies embedding-width rejection only when the draft exposes the EAGLE `has_own_embed_tokens` contract |
 | Official exact MTP target metadata | Passed | 12B `b6ed862…` and 31B `1e4d8be…` revisions, sizes, and SHA-256 values pinned |
 | Chatterbox Multilingual V3 metadata | Passed | Official HF revision `5bb1f6e…`, source `5de7a54…`, MIT license, Korean support, 3,208,951,924 selected bytes, and primary weight hashes pinned |
 | Chatterbox runtime dependency gate | Passed | Package 0.1.7 torch/torchaudio 2.6 pin detected; isolated Blackwell runtime remains uninstalled |
 | STT candidate metadata | Passed | faster-whisper 1.2.1 source/package pinned; linked large-v3-turbo and Systran small revisions, sizes, licenses, and SHA-256 values recorded |
 | OpenAI-compatible smoke client static checks | Passed | Python compile and generated 32×32 red PNG decode/pixel validation |
-| Runtime/model/GPU config references | Passed | 4 configured models, 6 manifest roles, and 9 runtime IDs cross-validated; unvalidated MTP routes remain disabled |
+| Runtime/model/GPU config references | Passed | 4 configured models, 9 manifest roles, and 9 runtime IDs cross-validated; unvalidated MTP routes remain disabled |
 | Model/download manifest metadata consistency | Passed | 9 exact model ID/revision pairs, declared sizes, weight lists, SHA-256 syntax, timestamps, and revision-pinned paths cross-validated without reading active large transfers |
 | Download state isolation | Passed | Explicit cache-side state path; 29,372-byte live transfer and 1/1 resume passed |
 | Protocol/tool contract catalog consistency | Passed | 22 events, 74 tools; drift checks and Draft 2020-12 schema validation passed |

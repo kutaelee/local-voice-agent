@@ -3,14 +3,13 @@ set -euo pipefail
 
 model_size="${1:-12b}"
 mtp_mode="${2:-off}"
-runtime_root="${HOME}/.local/share/local-voice-agent/runtimes/vllm-0.25.1"
-vllm_bin="${runtime_root}/.venv/bin/vllm"
+stable_runtime_root="${HOME}/.local/share/local-voice-agent/runtimes/vllm-0.25.1"
+mtp_runtime_root="${VLLM_MTP_RUNTIME_ROOT:-${HOME}/.local/share/local-voice-agent/runtimes/vllm-b2b8f679d058-cu130}"
 model_root="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4"
 host="${VLLM_SMOKE_HOST:-127.0.0.1}"
 port="${VLLM_SMOKE_PORT:-8766}"
-max_model_len="${VLLM_SMOKE_MAX_MODEL_LEN:-8192}"
-gpu_memory_utilization="${VLLM_SMOKE_GPU_MEMORY_UTILIZATION:-0.55}"
 speculative_tokens="${VLLM_SMOKE_SPECULATIVE_TOKENS:-1}"
+enforce_eager="${VLLM_SMOKE_ENFORCE_EAGER:-0}"
 # WSL did not expose CUDA UVA to vLLM's V2 runner on this workstation.
 # vLLM 0.25.1 officially supports forcing the V1 runner with this variable.
 export VLLM_USE_V2_MODEL_RUNNER="${VLLM_USE_V2_MODEL_RUNNER:-0}"
@@ -34,20 +33,26 @@ case "${model_size}" in
     ;;
 esac
 
-[[ -x "${vllm_bin}" ]] || {
-  echo "missing vLLM runtime: ${vllm_bin}" >&2
-  exit 3
-}
 [[ "${speculative_tokens}" =~ ^[1-3]$ ]] || {
   echo "VLLM_SMOKE_SPECULATIVE_TOKENS must be 1, 2, or 3" >&2
   exit 5
 }
+[[ "${enforce_eager}" =~ ^[01]$ ]] || {
+  echo "VLLM_SMOKE_ENFORCE_EAGER must be 0 or 1" >&2
+  exit 6
+}
 
 case "${mtp_mode}" in
   off)
+    runtime_root="${stable_runtime_root}"
+    max_model_len="${VLLM_SMOKE_MAX_MODEL_LEN:-8192}"
+    gpu_memory_utilization="${VLLM_SMOKE_GPU_MEMORY_UTILIZATION:-0.55}"
     speculative_args=()
     ;;
   on)
+    runtime_root="${mtp_runtime_root}"
+    max_model_len="${VLLM_SMOKE_MAX_MODEL_LEN:-2048}"
+    gpu_memory_utilization="${VLLM_SMOKE_GPU_MEMORY_UTILIZATION:-0.90}"
     target="${mtp_target}"
     served_name="${served_name}-mtp"
     [[ -f "${assistant}/model.safetensors" ]] || {
@@ -64,6 +69,12 @@ case "${mtp_mode}" in
     exit 2
     ;;
 esac
+
+vllm_bin="${runtime_root}/.venv/bin/vllm"
+[[ -x "${vllm_bin}" ]] || {
+  echo "missing vLLM runtime: ${vllm_bin}" >&2
+  exit 3
+}
 
 if [[ "${model_size}" == "31b" && "${mtp_mode}" == "on" ]]; then
   target_weight="${target}/model-00001-of-00002.safetensors"
@@ -90,8 +101,11 @@ args=(
   --reasoning-parser gemma4
   "${speculative_args[@]}"
 )
+if [[ "${enforce_eager}" == "1" ]]; then
+  args+=(--enforce-eager)
+fi
 
 echo \
-  "Starting ${served_name} MTP=${mtp_mode} runner_v2=${VLLM_USE_V2_MODEL_RUNNER} on ${host}:${port}" \
+  "Starting ${served_name} MTP=${mtp_mode} runtime=${runtime_root} runner_v2=${VLLM_USE_V2_MODEL_RUNNER} enforce_eager=${enforce_eager} on ${host}:${port}" \
   >&2
 exec "${vllm_bin}" "${args[@]}"
