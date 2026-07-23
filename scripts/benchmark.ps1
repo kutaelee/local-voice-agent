@@ -1,10 +1,20 @@
 [CmdletBinding()]
 param(
-    [switch]$PlanOnly
+    [switch]$PlanOnly,
+    [switch]$ValidateCatalog
 )
 
+if ($ValidateCatalog) {
+    $repoRoot = Split-Path -Parent $PSScriptRoot
+    $validator = (Join-Path $repoRoot 'scripts\validate-benchmark-catalog.py').
+        Replace('\', '/').
+        Replace('C:', '/mnt/c')
+    & wsl.exe -d Ubuntu -- python3 $validator
+    exit $LASTEXITCODE
+}
+
 if (-not $PlanOnly) {
-    throw 'Benchmark harness is not implemented in Slice 0. Use -PlanOnly.'
+    throw 'Runtime benchmark is not implemented. Use -PlanOnly or -ValidateCatalog.'
 }
 
 @'
