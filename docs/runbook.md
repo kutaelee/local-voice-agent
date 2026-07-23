@@ -5,9 +5,25 @@
 ```powershell
 pwsh -File scripts\health-check.ps1
 pwsh -File scripts\install.ps1 -PlanOnly
+pwsh -File scripts\install.ps1 -ValidatePrerequisites
 pwsh -File scripts\download-models.ps1 -PlanOnly
 pwsh -File scripts\download-models.ps1 -PlanOnly -Only mtp_target_12b
 ```
+
+After prerequisites pass, install only the project-owned Windows/WSL
+environments and browser assets:
+
+```powershell
+pwsh -File scripts\install.ps1 -InstallProjectEnvironments
+pwsh -File scripts\install.ps1 -BuildAndroid
+```
+
+`-InstallAndBuild` combines those two actions. The installer does not enable
+WSL, install a distribution, change PATH, install a driver, accept SDK
+licenses, modify the firewall, or require administrator rights. On
+2026-07-24, the idempotent live verification checked 53 Tool Executor
+packages, 52 PC-server packages, three hash-locked TLS packages, the pinned
+Playwright browser, and completed 104 Android build tasks successfully.
 
 WSL planning:
 

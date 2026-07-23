@@ -100,8 +100,16 @@ Tool Executor have isolated lockfiles.
 ```powershell
 pwsh -File scripts\health-check.ps1
 pwsh -File scripts\install.ps1 -PlanOnly
+pwsh -File scripts\install.ps1 -ValidatePrerequisites
+pwsh -File scripts\install.ps1 -InstallProjectEnvironments
+pwsh -File scripts\install.ps1 -BuildAndroid
 pwsh -File scripts\download-models.ps1 -PlanOnly
 ```
+
+The installer mutates only the registered project runtime/cache paths. It
+uses locked Windows and WSL environments, hash-locks the TLS tools, keeps the
+Playwright browser outside Git, and never installs a driver, Windows feature,
+system PATH entry, firewall rule, or administrator package.
 
 After setting an untracked `LVA_TOOL_EXECUTOR_TOKEN` with at least 32 random
 characters, the isolated executor can be started and stopped with
