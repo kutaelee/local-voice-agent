@@ -23,6 +23,8 @@ Status: Slice 0 only. No product acceptance test has run.
 | 12B parallel range transfer | Passed | 153/153 chunks; 1,227.345 s wall time including restart = 7.98 MiB/s |
 | 12B target SHA-256 | Passed | `60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3` |
 | 12B MTP assistant SHA-256 | Passed | `67f1420cf24aa5065089aaed175223f7c245ccfda16111b6c56765afd7280db6` |
+| 12B target safetensors structure | Passed | 1,334 tensors; file end matches final tensor offset |
+| 12B MTP pair offline structure | Passed | Dedicated unified assistant; vocab, context, and backbone width match target |
 | Identical-hash mirror resume | Passed | vLLM wheel reused 1/4 ranges after GitHub-to-PyPI URL change |
 | vLLM wheel SHA-256 | Passed | `16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e` |
 | vLLM isolated dependency install | In progress | uv-managed Python 3.12, CUDA 13 backend |
