@@ -79,21 +79,32 @@ function Write-RunStatus {
 
 function Get-ComfyUiQueueState {
     $queueUri = [Uri]::new([Uri]$ComfyUiBaseUrl, 'queue')
+    $processCount = @(
+        Get-CimInstance Win32_Process -Filter "Name = 'python.exe'" |
+            Where-Object {
+                $_.CommandLine -and
+                $_.CommandLine -match (
+                    '(?i)[\\/]AI[\\/]Apps[\\/]ComfyUI[\\/]main\.py'
+                )
+            }
+    ).Count
     try {
         $queue = Invoke-RestMethod -Uri $queueUri -TimeoutSec 2
     }
     catch {
         return [pscustomobject]@{
             reachable = $false
+            process_count = $processCount
             running = 0
             pending = 0
-            busy = $true
+            busy = $processCount -gt 0
         }
     }
     $running = @($queue.queue_running).Count
     $pending = @($queue.queue_pending).Count
     return [pscustomobject]@{
         reachable = $true
+        process_count = $processCount
         running = $running
         pending = $pending
         busy = ($running + $pending) -gt 0
@@ -133,7 +144,8 @@ function Wait-ChildOrYield {
                     "$($queue.pending) pending)."
             }
             else {
-                'ComfyUI queue endpoint became unavailable.'
+                "A ComfyUI process appeared before its queue endpoint " +
+                    "became ready (processes=$($queue.process_count))."
             }
             Write-RunStatus `
                 -Phase 'yielded' `
@@ -161,10 +173,22 @@ try {
     for ($sample = 1; $sample -le 2; $sample += 1) {
         $queue = Get-ComfyUiQueueState
         if ($queue.busy) {
-            throw (
-                'ComfyUI must be reachable with an empty queue for two ' +
-                'consecutive samples before reserving the shared GPU.'
-            )
+            $reason = if ($queue.reachable) {
+                "ComfyUI queue is active ($($queue.running) running, " +
+                    "$($queue.pending) pending)."
+            }
+            else {
+                "A ComfyUI process is present while its queue endpoint is " +
+                    "unavailable (processes=$($queue.process_count))."
+            }
+            Write-RunStatus `
+                -Phase 'yielded' `
+                -Result 'yielded' `
+                -Detail (
+                    "$reason The shared GPU was not reserved and no SGLang " +
+                    'process was started.'
+                )
+            exit 20
         }
         if ($sample -eq 1) {
             Start-Sleep -Seconds 3

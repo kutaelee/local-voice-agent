@@ -111,11 +111,13 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -File .\scripts\run-shared-sglang-mtp-benchmark.ps1
 ```
 
-It requires two idle queue samples, generates an in-process API key, starts
-only the registered SGLang pair, and polls the configured loopback ComfyUI
-queue every two seconds. If a render appears or the queue endpoint becomes
-unreachable, it stops only the owned SGLang process group and records the run
-as `yielded`; it does not create a partial benchmark result. The 2026-07-24
+It requires two idle samples, generates an in-process API key, starts only the
+registered SGLang pair, and polls the configured loopback ComfyUI queue and
+process identity every two seconds. A stopped ComfyUI instance permits an
+alternate GPU turn. If its process reappears before the endpoint is ready or a
+render enters the queue, the wrapper stops only the owned SGLang process group
+and records the run as `yielded`; it does not create a partial benchmark
+result. The 2026-07-24
 live guard test yielded during target loading when one ComfyUI render arrived,
 then verified that port 8768, the SGLang PID file, and the incomplete result
 were absent.

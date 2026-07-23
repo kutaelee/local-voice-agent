@@ -62,10 +62,14 @@ def test_shared_sglang_benchmark_yields_to_comfyui() -> None:
 
     assert "Get-ComfyUiQueueState" in shared
     assert "Wait-ChildOrYield" in shared
+    assert "Get-CimInstance Win32_Process" in shared
+    assert "ComfyUI[\\\\/]main\\.py" in shared
+    assert "busy = $processCount -gt 0" in shared
     assert "$queue.busy" in shared
     assert "Stop-OwnedSglang" in shared
     assert "stop-sglang.sh" in shared
-    assert "ComfyUI queue endpoint became unavailable" in shared
+    assert "A ComfyUI process appeared before its queue endpoint" in shared
+    assert "The shared GPU was not reserved" in shared
     assert "LVA_SGLANG_API_KEY = $apiKey" in shared
     assert "LVA_RUNTIME_API_KEY = $apiKey" in shared
     assert "Bearer " not in shared
