@@ -16,6 +16,9 @@ Status: Slice 0 only. No product acceptance test has run.
 | Model-download environment bootstrap, retry | Passed | Python 3.12.13, Hugging Face Hub 1.24.0 |
 | PowerShell script parse | Passed | All tracked `.ps1` scripts parsed with `ScriptBlock::Create` |
 | Bash syntax check | Passed | `bash -n` for both WSL scripts |
+| `hf --local-dir` interrupted-transfer resume | Failed | Xet and HTTP fallback created different random partial names; preserved as evidence |
+| Stable range-resume strategy | Passed (small-file test) | 29,372-byte official file; HTTP 206, SHA-256 pass, second run reused 1/1 completed chunk |
+| 12B parallel range transfer | In progress | Eight workers, 64 MiB chunks, atomic completed-range state |
 
 Model artifact download and SHA-256 validation are in progress. All functional,
 security, Android, model-loading, MTP, benchmark, and rollback tests are

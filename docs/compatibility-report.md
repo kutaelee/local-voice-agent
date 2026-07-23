@@ -18,6 +18,11 @@ model repositories, and upstream release notes are used for selections.
 - SGLang stable 0.5.15.post1 supports Gemma 4; the dedicated Gemma 4 MTP head
   landed in 0.5.12. It remains a benchmark candidate until function calling,
   multimodal paths, and MTP are tested on this workstation.
+- vLLM's official 0.25.1 x86_64 release wheel is pinned by its GitHub release
+  SHA-256 and installed with uv's explicit CUDA 13.0 backend selection.
+- SGLang's official 0.5.15.post1 CPython 3.12 x86_64 PyPI wheel is pinned by
+  its PyPI SHA-256. Its official installation guide states CUDA 13 is the
+  default runtime line.
 - NVIDIA reports RTX 5090 compute capability 12.0. The installed driver
   advertises CUDA 13.3. Current vLLM and SGLang release lines use CUDA 13 /
   PyTorch 2.11-class stacks.
@@ -32,8 +37,11 @@ model repositories, and upstream release notes are used for selections.
 - Hugging Face Hub 1.24.0 is the current stable download client and supports
   Python 3.10+; it is isolated in a uv-managed Python 3.12 environment.
 - Hugging Face Hub 1.24.0 rejects simultaneous `--local-dir` and
-  `--cache-dir`. The download script uses the official `HF_HOME` mechanism and
-  `HF_XET_HIGH_PERFORMANCE=1`, while retaining per-target resume metadata.
+  `--cache-dir`. Xet and the HTTP fallback both created new random partial
+  names after restart when used with `--local-dir` in this environment. The
+  script therefore downloads small repository metadata with `hf`, transfers
+  each pinned weight URL to a stable `.partial` file with HTTP range resume,
+  and renames it only after exact size and SHA-256 validation.
 
 ## Runtime and model matrix
 
@@ -98,6 +106,7 @@ model repositories, and upstream release notes are used for selections.
 - [vLLM Gemma 4 recipe](https://docs.vllm.ai/projects/recipes/en/stable/Google/Gemma4.html)
 - [vLLM releases](https://github.com/vllm-project/vllm/releases)
 - [SGLang releases](https://github.com/sgl-project/sglang/releases)
+- [SGLang installation](https://docs.sglang.ai/get-started/install.html)
 - [NVIDIA CUDA GPU compute capability](https://developer.nvidia.com/cuda/gpus)
 - [NVIDIA CUDA on WSL guide](https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
 - [Silero VAD](https://github.com/snakers4/silero-vad)

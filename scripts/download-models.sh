@@ -4,6 +4,8 @@ set -euo pipefail
 mode="${1:---plan-only}"
 download_env="${HOME}/.local/share/local-voice-agent/runtimes/model-download/.venv"
 hf_bin="${download_env}/bin/hf"
+python_bin="${download_env}/bin/python"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 model_root="/mnt/e/AI/Models/Standalone/LocalVoiceAgent"
 cache_root="/mnt/e/Cache/LocalVoiceAgent/huggingface"
 
@@ -53,18 +55,50 @@ fi
 
 mkdir -p "${cache_root}"
 export HF_HOME="${cache_root}"
-export HF_XET_HIGH_PERFORMANCE=1
 
 for entry in "${models[@]}"; do
   IFS='|' read -r model revision target filename expected_sha expected_bytes <<<"${entry}"
   mkdir -p "${target}"
+
+  # Repository metadata is small. The large weight is transferred separately
+  # to a stable partial path so interrupted downloads can safely resume.
   "${hf_bin}" download "${model}" \
     --revision "${revision}" \
+    --exclude "${filename}" \
     --local-dir "${target}"
 
   actual_file="${target}/${filename}"
-  actual_bytes="$(stat -c '%s' "${actual_file}")"
-  actual_sha="$(sha256sum "${actual_file}" | awk '{print $1}')"
+  partial_file="${actual_file}.partial"
+  weight_url="https://huggingface.co/${model}/resolve/${revision}/${filename}?download=true"
+
+  if [[ -f "${actual_file}" ]]; then
+    actual_bytes="$(stat -c '%s' "${actual_file}")"
+    actual_sha="$(sha256sum "${actual_file}" | awk '{print $1}')"
+    [[ "${actual_bytes}" == "${expected_bytes}" && "${actual_sha}" == "${expected_sha}" ]] || {
+      echo "Refusing to overwrite an existing invalid file: ${actual_file}" >&2
+      exit 6
+    }
+  else
+    "${python_bin}" "${script_dir}/download-file.py" \
+      "${weight_url}" \
+      "${partial_file}" \
+      "${expected_bytes}" \
+      "${expected_sha}" \
+      --workers 8
+
+    actual_bytes="$(stat -c '%s' "${partial_file}")"
+    actual_sha="$(sha256sum "${partial_file}" | awk '{print $1}')"
+    [[ "${actual_bytes}" == "${expected_bytes}" ]] || {
+      echo "Size mismatch for ${partial_file}" >&2
+      exit 6
+    }
+    [[ "${actual_sha}" == "${expected_sha}" ]] || {
+      echo "SHA-256 mismatch for ${partial_file}" >&2
+      exit 7
+    }
+    mv -- "${partial_file}" "${actual_file}"
+  fi
+
   [[ "${actual_bytes}" == "${expected_bytes}" ]] || {
     echo "Size mismatch for ${actual_file}" >&2
     exit 6

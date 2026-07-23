@@ -20,6 +20,7 @@ runtimes:
     cuda: runtime-resolved-cu13
     pytorch: runtime-resolved-2.11-class
     source: https://github.com/vllm-project/vllm/releases/tag/v0.25.1
+    wheel_sha256: 16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e
     rollback: retain previous versioned environment and switch config pointer
   - id: sglang-0.5.15.post1
     role: comparison_candidate
@@ -30,6 +31,7 @@ runtimes:
     cuda: "13.0"
     pytorch: runtime-resolved-2.11-class
     source: https://github.com/sgl-project/sglang/releases/tag/v0.5.15.post1
+    wheel_sha256: d1cf208d6ed6bd1d66e6c284635cb671519855dcdfe119e3c4011b6797c90679
     rollback: retain previous versioned environment and switch config pointer
   - id: faster-whisper-1.2.1
     role: stt_candidate
