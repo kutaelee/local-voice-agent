@@ -39,6 +39,17 @@ must be under `/home/<user>/src`, never `/mnt/c` or `/mnt/e`. Registered
 command profiles store executable IDs and argv arrays, not shell strings or
 environment values.
 
+The implemented read-only executor repeats contract validation at its own
+process boundary. It rejects absolute and drive-relative paths, `..`, empty
+or dot segments, Windows alternate streams, reserved device names, trailing
+spaces/dots, symlinks, junctions, and other reparse points. Before reading a
+file it compares the pre-open path, opened handle, and post-open path identity
+and re-resolves the workspace boundary. Directory walks report but never
+follow blocked links. Windows-native junction tests and WSL symlink tests pass.
+This does not authorize writes: the executor is not connected to the server,
+the workspace allowlist is empty, and mutation/approval/rollback adapters do
+not exist yet.
+
 The checked-in application and pairing schemas permit only loopback server
 binding and WSS, require Android Keystore token storage, and keep cleartext,
 raw-audio retention, and full-conversation retention disabled. LAN or VPN

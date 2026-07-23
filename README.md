@@ -5,16 +5,19 @@ conversation and policy-controlled computer use. The target workstation is a
 Windows 11 PC with an RTX 5090 32 GB GPU; inference runtimes run in WSL2 and
 the Android client uses Kotlin and Jetpack Compose.
 
-Current status: **Slice 2 validation plus an early Slice 5 server core**.
+Current status: **Slice 2/3 validation plus an early Slice 5 server core**.
 The pinned 12B W4A16 model passed text, image, structured-output, streaming,
 and function-calling smoke tests. The exact 12B Q4_0 target/assistant pair
 also passed text-only MTP loading and API smoke on a pinned upstream-fix
 runtime; its multimodal initialization remains blocked and MTP stays disabled
-by default. A locked PC-server environment now runs the first state,
-approval, policy, protocol, and authenticated FastAPI/WebSocket tests. No
-tool executor is connected, but the runtime registry now validates all 74
-tracked tool definitions and exposes only enabled contracts to the model. No
-end-to-end product acceptance criterion is claimed yet.
+by default. The pinned 31B W4A16 model passed a constrained text, tool,
+structured-output, and streaming smoke run with an explicit small KV cache.
+A locked PC-server environment now runs the first state, approval, policy,
+protocol, and authenticated FastAPI/WebSocket tests. A separate read-only
+Tool Executor implements six bounded Level 0 filesystem tools and passed both
+Windows-native and WSL tests, including Windows junction rejection. It is not
+yet connected to the PC server. No end-to-end product acceptance criterion is
+claimed yet.
 
 ## Architecture
 
@@ -35,6 +38,7 @@ See [docs/architecture.md](docs/architecture.md) and
 | Download and Hugging Face cache | `E:\Cache\LocalVoiceAgent` |
 | Runtime logs, sessions, evidence, backups, temp | `E:\Data\LocalVoiceAgent` |
 | PostgreSQL active data | `E:\Data\DB\Active\LocalVoiceAgent` |
+| Windows Tool Executor runtime | `C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor` |
 | WSL user runtimes | `/home/kutae/.local/share/local-voice-agent/runtimes` |
 
 `D:` is backup-only on this workstation and must never host active workloads.
@@ -46,8 +50,9 @@ peaks fail closed until measured.
 ## Build, test, and run
 
 Installation scripts default to planning or validation and do not silently
-install system components. The PC-server domain/API slice is runnable only
-from its isolated, locked environment and does not execute tools yet.
+install system components. The PC-server domain/API slice and the standalone
+read-only Tool Executor have isolated lockfiles. The two processes are not
+connected yet.
 
 ```powershell
 pwsh -File scripts\health-check.ps1

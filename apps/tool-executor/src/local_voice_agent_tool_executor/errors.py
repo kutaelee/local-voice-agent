@@ -1,0 +1,47 @@
+"""Stable expected errors for tool-executor boundaries."""
+
+from __future__ import annotations
+
+
+class ToolExecutorError(Exception):
+    code = "TOOL_EXECUTOR_ERROR"
+
+
+class ToolContractError(ToolExecutorError):
+    code = "TOOL_CONTRACT_ERROR"
+
+
+class ToolArgumentsInvalid(ToolExecutorError):
+    code = "SCHEMA_INVALID"
+
+
+class ToolNotSupported(ToolExecutorError):
+    code = "TOOL_NOT_SUPPORTED"
+
+
+class WorkspaceConfigurationError(ToolExecutorError):
+    code = "WORKSPACE_CONFIGURATION_INVALID"
+
+
+class WorkspaceNotFound(ToolExecutorError):
+    code = "WORKSPACE_NOT_FOUND"
+
+
+class WorkspacePathRejected(ToolExecutorError):
+    code = "WORKSPACE_PATH_REJECTED"
+
+
+class WorkspacePathNotFound(ToolExecutorError):
+    code = "WORKSPACE_PATH_NOT_FOUND"
+
+
+class WorkspaceTypeMismatch(ToolExecutorError):
+    code = "WORKSPACE_PATH_TYPE_MISMATCH"
+
+
+class WorkspacePathChanged(ToolExecutorError):
+    code = "WORKSPACE_PATH_CHANGED"
+
+
+class TextDecodingError(ToolExecutorError):
+    code = "TEXT_DECODING_ERROR"

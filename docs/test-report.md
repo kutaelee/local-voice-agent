@@ -1,6 +1,7 @@
 # Test report
 
-Status: Slice 2 validation in progress. No product acceptance test has run.
+Status: Slice 2/3 validation and early Slice 5 implementation are in
+progress. No product acceptance test has run.
 
 ## Checks completed
 
@@ -83,7 +84,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Workspace configuration guard | Passed | Closed schema validated; drive root, user profile root, backup-only D:, protected E: backup root, wildcard, and WSL mounted-drive cases rejected |
 | Application and pairing security defaults | Passed | Public bind, raw-audio retention, cleartext pairing, and plaintext token storage cases rejected |
 | Network-free repository validation using PC-server env | Passed after dependency addition | Initial run stopped at missing `jsonschema`; the runtime tool registry now requires official stable 4.26.0, and all 10 validators passed in 3,927.26 ms |
-| Network-free repository validation suite | Passed | Latest run: 10 validators completed in 3,863.41 ms using the isolated validation-capable WSL runtime; configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
+| Network-free repository validation suite | Passed | Latest run: 10 validators completed in 3,898.24 ms using the isolated validation-capable WSL runtime; configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
 | Read-only health check | Passed | Detected both isolated vLLM versions, two finalized 12B artifacts, active partial MTP target, RTX 5090/WSL GPU state, canonical paths, and stopped server without mutation |
 | Event payload contract coverage | Passed | All 24 catalog events have closed, bounded Draft 2020-12 payload definitions |
 | Explicit cancellation protocol | Passed (static) | Idempotent request/result events distinguish cancelled, draining, non-cancellable, already-terminal, and missing operations |
@@ -99,6 +100,9 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | PC-server process smoke first wrapper | Failed, corrected | Inline Bash used command substitution that PowerShell parsed first; command failed before starting a process, so a shell-isolated smoke script was added |
 | PC-server Uvicorn process smoke | Passed | Loopback `127.0.0.1:8787`, `/health` HTTP 200, owned PID 51847 cleanly stopped, port confirmed closed |
 | vLLM smoke explicit-cache argument guards | Passed after wrapper correction | Bash syntax passed; invalid KV-cache bytes exited 8 and invalid max sequences exited 9. The first combined assertion was invalid because PowerShell expanded Bash `$?` before execution; no server was launched |
+| Tool Executor first Windows-native run | Failed, corrected | 22/26 passed; one assertion assumed LF after a Windows text write, and three fixtures attempted privileged symlink creation. No production file was accessed |
+| Tool Executor Windows-native suite | Passed | Latest run: 26 tests in 0.80 s using isolated Python 3.12.13; contract revalidation, traversal/absolute/ADS/reserved-name rejection, real directory-junction blocking, bounded reads/search/list/recent/hash, and UTF-8 handling |
+| Tool Executor WSL suite | Passed | Latest run: same 26 tests in 0.84 s using a separate WSL Python 3.12.13 environment; internal and escaping symlinks rejected |
 
 Exact Q4_0 MTP multimodal compatibility, statistical MTP quality/latency
 benchmark, 31B multimodal and exact-pair MTP, SGLang, audio/video, full benchmark, security,

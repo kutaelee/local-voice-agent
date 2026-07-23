@@ -26,6 +26,14 @@ rollback, model runtime state, and agent task state.
 - GPU workers: separate runtime processes for vLLM/SGLang, STT, and TTS.
 - Android client: only communicates with the API gateway.
 
+The current Tool Executor slice independently reloads the checked-in
+contracts and supports only six Level 0 filesystem reads. It resolves an
+explicit workspace before every operation, rejects ambiguous or escaping
+paths and link/reparse segments, verifies the opened file identity against
+pre/post path state, and bounds traversal and output. It has no transport
+connection to `pc-server` yet; write, delete, Git, process, browser, UI, and
+shell adapters remain unavailable.
+
 ## State machines
 
 `ToolExecution`:

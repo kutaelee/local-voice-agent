@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T19:18:00+09:00"
+generated_at: "2026-07-23T19:24:00+09:00"
 runtimes:
   - id: huggingface-hub-1.24.0
     role: model_download_tool
@@ -76,6 +76,30 @@ runtimes:
     test_client: httpx2-2.7.0
     test_status: 46_passed
     rollback: stop the registered server and switch away before archiving only this environment
+  - id: tool-executor-0.1.0
+    role: tool_executor
+    version: 0.1.0
+    status: level_0_filesystem_tests_passed_not_connected
+    windows_environment: 'C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv'
+    wsl_environment: /home/kutae/.local/share/local-voice-agent/runtimes/tool-executor/.venv
+    python: "3.12.13"
+    installed_at: "2026-07-23T19:21:00+09:00"
+    lock_file: apps/tool-executor/uv.lock
+    lock_sha256: 9deae904501bad8f17280bbb5250b39789f10d4e2ada7da511b440c64a4cc20c
+    package_source: https://pypi.org/simple
+    dependency_integrity: exact_versions_urls_sizes_and_sha256_in_uv_lock
+    jsonschema: "4.26.0"
+    windows_test_status: 26_passed_including_directory_junction_rejection
+    wsl_test_status: 26_passed_including_symlink_rejection
+    enabled_tools:
+      - calculate_hash
+      - list_files
+      - list_recent_files
+      - read_file
+      - read_file_range
+      - search_files
+    connection_status: not_connected_to_pc_server
+    rollback: stop future executor process and switch away before archiving only its isolated environments
   - id: sglang-0.5.15.post1
     role: comparison_candidate
     version: 0.5.15.post1
