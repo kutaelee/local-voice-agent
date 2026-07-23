@@ -10,7 +10,10 @@ param(
         'mtp_target_12b',
         'escalation_target_31b',
         'mtp_assistant_31b',
-        'mtp_target_31b'
+        'mtp_target_31b',
+        'stt_large_v3_turbo',
+        'stt_small',
+        'tts_chatterbox_v3'
     )]
     [string]$Only
 )

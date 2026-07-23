@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -42,18 +43,13 @@ fun LocalVoiceAgentApp(
             }
         },
         bottomBar = {
-            Row(
+            LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                listOf(
-                    AppDestination.PAIRING,
-                    AppDestination.VOICE,
-                    AppDestination.APPROVAL,
-                    AppDestination.DIAGNOSTICS,
-                ).forEach { destination ->
+                items(AppDestination.entries) { destination ->
                     TextButton(onClick = {
                         onAction(AppAction.Navigate(destination))
                     }) {
@@ -158,7 +154,21 @@ private fun ApprovalScreen(
 ) {
     Text("Tool approval", style = MaterialTheme.typography.headlineSmall)
     Spacer(Modifier.height(12.dp))
-    Text(state.pendingApproval ?: "No approval is pending")
+    val approval = state.pendingApproval
+    if (approval == null) {
+        Text("No approval is pending")
+    } else {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Text("${approval.toolName} · Level ${approval.riskLevel}")
+                Text("Target: ${approval.target}")
+                Text("Changes: ${approval.expectedChanges}")
+                Text("Impact: ${approval.impactScope}")
+                Text("Rollback: ${approval.rollback}")
+                Text("Digest: ${approval.argumentsDigest}")
+            }
+        }
+    }
     Spacer(Modifier.height(12.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(

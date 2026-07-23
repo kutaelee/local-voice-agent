@@ -89,7 +89,7 @@ manifests. The Android API 37 command-line build is operational; see
 - Runtime evidence is written outside Git under
   `E:\Data\LocalVoiceAgent\runtime\evidence`.
 - Verified Android APKs are copied to
-  `E:\Data\LocalVoiceAgent\artifacts\android\0.1.0-api37`; hashes and signing
+  `E:\Data\LocalVoiceAgent\artifacts\android\0.2.0-api37`; hashes and signing
   state are recorded in
   [manifests/android-artifacts.yaml](manifests/android-artifacts.yaml).
 

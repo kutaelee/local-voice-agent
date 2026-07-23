@@ -93,7 +93,7 @@ progress. No product acceptance test has run.
 | Benchmark result/report envelopes | Passed (static) | Raw result remains explicitly `not_run` with zero runs; model/runtime comparison matrices exist and every unmeasured cell is `NOT_RUN` |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 | PC-server isolated dependency lock/install | Passed | Python 3.12.13 environment outside repo; FastAPI 0.139.2, JSON Schema 4.26.0, Pydantic 2.13.4, Starlette 1.3.1, Uvicorn 0.51.0; lock SHA-256 `5a223baf0ace969d7d8d35010f0a7800e99dcc27d4256bb861e533c360a74b0b` |
-| PC-server domain/API/registry/planner/router/adapter unit tests | Passed | Latest run: 79 tests in 5.33 s; prior coverage plus RUNNING/VERIFYING/SUCCEEDED and failure outcomes, duplicate receipt acceptance, receipt hash rejection, explicit loopback URL enforcement, exact execution/digest/expiry IPC binding, Level 0-only dispatch, and closed executor-response validation |
+| PC-server domain/API/registry/planner/router/adapter/audio unit tests | Passed | Latest run: 85 tests; prior coverage plus ordered bounded PCM input, cancellation, and the STT/conversation/TTS voice-turn event sequence |
 | Runtime tool registry | Passed | Draft 2020-12 definition and argument validation; stable definition hashes; unknown tools fail closed; disabled `restricted_shell` omitted from 73 model-visible tools; server-issued approval/idempotency fields hidden from model schemas |
 | Tool planner risk routing | Passed | Level 0 queued; Level 1 waits unless a valid session grant exists; Level 2 always waits for exact approval; Level 3 and disabled tools create no execution aggregate |
 | Approval-to-queue binding | Passed | Approved exact binding queued; denied approval and mismatched approval ID were rejected; execution CAS version remained enforced |
@@ -113,11 +113,13 @@ progress. No product acceptance test has run.
 | Git metadata escape gates | Passed | Non-Git and disabled workspaces, `.git` file/worktree, object alternates, config includes, and Windows junction/WSL symlink metadata paths rejected |
 | Android command-line SDK integrity | Passed | Official 155,655,386-byte command-line tools archive matched SHA-256 `90ae805d20434428bffcb699c290860f19bb5f66a67e6b330067e3de801fb04a`; API 37, Build Tools 36.0.0, Platform Tools 37.0.0 installed without PATH/registry changes |
 | Android API 37 clean build | Passed | Gradle 9.6.1 distribution checksum pinned; AGP 9.3.0; `clean testDebugUnitTest lintDebug assembleDebug assembleRelease` succeeded in 2m32s |
-| Android reducer unit tests | Passed | 4 tests, 0 failures, 0 errors, 0 skipped |
+| Android network/reducer unit tests | Passed | 11 tests, 0 failures, 0 errors, 0 skipped; strict protocol envelopes, secure endpoint parsing, authenticated trusted-TLS WebSocket exchange, and reducer state covered |
 | Android lint | Passed | 0 findings after secure backup rules, current stable AndroidX dependencies, and adaptive/monochrome icon fixes |
 | Android package metadata | Passed | AAPT2 verified application ID `dev.localvoiceagent.android`, min SDK 26, compile/target SDK 37 |
 | Android debug signature | Passed | APK Signature Scheme v2 verified with the generated Android debug certificate |
 | Android unsigned release state | Passed | `apksigner verify` rejected the release artifact as expected; no release key was created or assumed |
+| Android 0.2.0 artifacts | Passed | Debug APK 12,440,284 bytes SHA-256 `36198e020a7b233649748e928c885b5d897b8960cf3af4c2173e9b009641064e`; unsigned release APK 8,852,939 bytes SHA-256 `1010c0da4223222decffff9c7a7b714532e0cde5de598a691c8cfd7a67a195a6` |
+| faster-whisper small download integrity | Passed | Official pinned revision `536b0662742c02347bc0e980a01041f333bce120`; 483,546,902-byte `model.bin` matched SHA-256 `3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671`; runtime loading remains pending |
 | Android device install and interaction | NOT_RUN | No ADB device is connected; device permission, audio, rotation, reconnect, and Bluetooth QA remain open |
 
 Exact Q4_0 MTP multimodal compatibility, statistical MTP quality/latency

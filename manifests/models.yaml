@@ -162,5 +162,5 @@ models:
       size_bytes: 483546902
       sha256: 3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671
     runtime_candidates: [faster-whisper-1.2.1]
-    downloaded_at: null
-    validation_status: planned_korean_accuracy_latency_cpu_gate
+    downloaded_at: "2026-07-24T00:08:28+09:00"
+    validation_status: sha256_passed_runtime_loading_pending

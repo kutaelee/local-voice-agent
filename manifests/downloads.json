@@ -147,8 +147,8 @@
         "sha256": "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671"
       },
       "requires_credential": false,
-      "downloaded_at": null,
-      "validation_status": "not_downloaded"
+      "downloaded_at": "2026-07-24T00:08:28+09:00",
+      "validation_status": "sha256_passed"
     }
   ]
 }

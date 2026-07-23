@@ -13,8 +13,8 @@ android {
         applicationId = "dev.localvoiceagent.android"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -60,11 +60,18 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    //noinspection NewerVersionAvailable -- upstream README currently declares 5.3.0 stable.
+    implementation("com.squareup.okhttp3:okhttp:5.3.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     testImplementation("junit:junit:4.13.2")
+    //noinspection NewerVersionAvailable -- keep test transport aligned with upstream stable.
+    testImplementation("com.squareup.okhttp3:mockwebserver3:5.3.0")
+    //noinspection NewerVersionAvailable -- keep test TLS aligned with upstream stable.
+    testImplementation("com.squareup.okhttp3:okhttp-tls:5.3.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

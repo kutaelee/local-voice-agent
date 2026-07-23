@@ -19,12 +19,14 @@ class PairingTokenStore(context: Context) {
 
     fun hasToken(): Boolean = preferences.contains(CIPHERTEXT_KEY)
 
-    fun save(token: String) {
+    fun save(serverUrl: String, token: String) {
+        require(serverUrl.length in 1..2048) { "Server URL length is invalid" }
         require(token.length in 32..4096) { "Pairing token length is invalid" }
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
         val encrypted = cipher.doFinal(token.encodeToByteArray())
         preferences.edit {
+            putString(SERVER_URL_KEY, serverUrl)
             putString(IV_KEY, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             putString(
                 CIPHERTEXT_KEY,
@@ -49,8 +51,11 @@ class PairingTokenStore(context: Context) {
         }.getOrNull()
     }
 
+    fun serverUrl(): String? = preferences.getString(SERVER_URL_KEY, null)
+
     fun clear() {
         preferences.edit {
+            remove(SERVER_URL_KEY)
             remove(IV_KEY)
             remove(CIPHERTEXT_KEY)
         }
@@ -81,6 +86,7 @@ class PairingTokenStore(context: Context) {
         const val KEYSTORE_PROVIDER = "AndroidKeyStore"
         const val KEY_ALIAS = "local_voice_agent_pairing_v1"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
+        const val SERVER_URL_KEY = "server_url"
         const val IV_KEY = "iv"
         const val CIPHERTEXT_KEY = "ciphertext"
     }

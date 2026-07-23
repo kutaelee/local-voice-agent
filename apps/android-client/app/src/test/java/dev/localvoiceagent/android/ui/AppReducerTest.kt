@@ -19,7 +19,7 @@ class AppReducerTest {
     fun validPairingAllowsConnectionAttempt() {
         val paired = AppReducer.reduce(
             AppUiState(),
-            AppAction.SavePairing("https://pc.example", "x".repeat(32)),
+            AppAction.SavePairing("wss://pc.example", "x".repeat(32)),
         )
         val connecting = AppReducer.reduce(paired, AppAction.Connect)
 
@@ -40,7 +40,16 @@ class AppReducerTest {
     fun denialClearsPendingApprovalWithoutExecuting() {
         val waiting = AppUiState(
             assistantState = AssistantState.WAITING_APPROVAL,
-            pendingApproval = "delete file",
+            pendingApproval = PendingApproval(
+                approvalId = "a",
+                toolName = "delete_file",
+                riskLevel = 2,
+                target = "file.txt",
+                argumentsDigest = "a".repeat(64),
+                expectedChanges = "delete one file",
+                impactScope = "workspace",
+                rollback = "restore backup",
+            ),
         )
         val denied = AppReducer.reduce(
             waiting,
