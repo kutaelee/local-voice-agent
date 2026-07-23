@@ -1,6 +1,6 @@
 # Test report
 
-Status: Slice 0 only. No product acceptance test has run.
+Status: Slice 2 validation in progress. No product acceptance test has run.
 
 ## Checks completed
 
@@ -24,7 +24,7 @@ Status: Slice 0 only. No product acceptance test has run.
 | 12B target SHA-256 | Passed | `60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3` |
 | 12B MTP assistant SHA-256 | Passed | `67f1420cf24aa5065089aaed175223f7c245ccfda16111b6c56765afd7280db6` |
 | 12B target safetensors structure | Passed | 1,334 tensors; file end matches final tensor offset |
-| 12B MTP pair offline structure | Passed | Dedicated unified assistant; vocab, context, and backbone width match target |
+| 12B W4A16 + Q4_0 assistant offline metadata check | Inconclusive | Shared vocab/context metadata did not prove runtime tensor compatibility |
 | Identical-hash mirror resume | Passed | vLLM wheel reused 1/4 ranges after GitHub-to-PyPI URL change |
 | vLLM wheel SHA-256 | Passed | `16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e` |
 | vLLM isolated dependency install | Passed | vLLM 0.25.1, Python 3.12.13, torch 2.11.0+cu130; 192-package compatibility check |
@@ -38,11 +38,15 @@ Status: Slice 0 only. No product acceptance test has run.
 | vLLM 12B streaming | Passed | 49 SSE chunks; preliminary single-sample TTFT 175.88 ms |
 | vLLM 12B image input | Passed | In-memory 32x32 red PNG classified as `Red` |
 | vLLM 12B controlled stop | Passed | API and engine processes exited; VRAM returned to 1,107 MiB |
+| vLLM W4A16 + Q4_0 assistant MTP dispatch | Passed | vLLM selected `Gemma4MTPModel` and `method='mtp'`, not generic draft decoding |
+| vLLM W4A16 + Q4_0 assistant MTP compile | Failed | Measured activation/projection mismatch: 4,864 versus 7,680; no health endpoint |
+| Official exact MTP target metadata | Passed | 12B `b6ed862…` and 31B `1e4d8be…` revisions, sizes, and SHA-256 values pinned |
 | Download state isolation | Passed | Explicit cache-side state path; 29,372-byte live transfer and 1/1 resume passed |
 | Protocol/tool contract catalog consistency | Passed | 22 events, 3 seed tools; drift checks and Draft 2020-12 schema validation passed |
 | Benchmark prompt catalog | Passed | 160 unique Korean cases with required 20/30/20/20/20/20/10/20 category counts |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 
-31B artifact download, SGLang, MTP, audio/video, full benchmark, security,
+Exact Q4_0 MTP-target download/runtime test, 31B artifact completion, SGLang,
+audio/video, full benchmark, security,
 Android, rollback, and product acceptance tests remain `NOT_RUN` or in
 progress.

@@ -18,11 +18,13 @@ export VLLM_USE_V2_MODEL_RUNNER="${VLLM_USE_V2_MODEL_RUNNER:-0}"
 case "${model_size}" in
   12b)
     target="${model_root}/12b/target/1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee"
+    mtp_target="${model_root}/12b/mtp-target/b6ed86275a6a5735884e208bfed95b445a684ca2"
     assistant="${model_root}/12b/mtp-assistant/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd"
     served_name="gemma4-12b"
     ;;
   31b)
     target="${model_root}/31b/target/52f3f65bc7a02d555763bc923bd1d9094898219d"
+    mtp_target="${model_root}/31b/mtp-target/1e4d8beecacb8b7590c1d8bedd7335f687bf311f"
     assistant="${model_root}/31b/mtp-assistant/96d4c8ca3cb38c107a8478587878124895d1e844"
     served_name="gemma4-31b"
     ;;
@@ -36,13 +38,41 @@ esac
   echo "missing vLLM runtime: ${vllm_bin}" >&2
   exit 3
 }
-[[ -f "${target}/model.safetensors" ]] || {
-  echo "missing validated target weight: ${target}" >&2
-  exit 4
-}
 [[ "${speculative_tokens}" =~ ^[1-3]$ ]] || {
   echo "VLLM_SMOKE_SPECULATIVE_TOKENS must be 1, 2, or 3" >&2
   exit 5
+}
+
+case "${mtp_mode}" in
+  off)
+    speculative_args=()
+    ;;
+  on)
+    target="${mtp_target}"
+    served_name="${served_name}-mtp"
+    [[ -f "${assistant}/model.safetensors" ]] || {
+      echo "missing validated MTP assistant weight: ${assistant}" >&2
+      exit 6
+    }
+    speculative_args=(
+      --speculative-config
+      "{\"method\":\"mtp\",\"model\":\"${assistant}\",\"num_speculative_tokens\":${speculative_tokens}}"
+    )
+    ;;
+  *)
+    echo "MTP mode must be off or on" >&2
+    exit 2
+    ;;
+esac
+
+if [[ "${model_size}" == "31b" && "${mtp_mode}" == "on" ]]; then
+  target_weight="${target}/model-00001-of-00002.safetensors"
+else
+  target_weight="${target}/model.safetensors"
+fi
+[[ -f "${target_weight}" ]] || {
+  echo "missing validated target weight: ${target_weight}" >&2
+  exit 4
 }
 
 args=(
@@ -58,26 +88,8 @@ args=(
   --enable-auto-tool-choice
   --tool-call-parser gemma4
   --reasoning-parser gemma4
+  "${speculative_args[@]}"
 )
-
-case "${mtp_mode}" in
-  off)
-    ;;
-  on)
-    [[ -f "${assistant}/model.safetensors" ]] || {
-      echo "missing validated MTP assistant weight: ${assistant}" >&2
-      exit 6
-    }
-    args+=(
-      --speculative-config
-      "{\"method\":\"mtp\",\"model\":\"${assistant}\",\"num_speculative_tokens\":${speculative_tokens}}"
-    )
-    ;;
-  *)
-    echo "MTP mode must be off or on" >&2
-    exit 2
-    ;;
-esac
 
 echo \
   "Starting ${served_name} MTP=${mtp_mode} runner_v2=${VLLM_USE_V2_MODEL_RUNNER} on ${host}:${port}" \

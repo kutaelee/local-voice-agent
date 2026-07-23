@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-23T16:38:12+09:00",
-  "canonical_cache": "E:\\Cache\\LocalVoiceAgent\\downloads",
+  "generated_at": "2026-07-23T17:24:00+09:00",
+  "canonical_cache": "E:\\Cache\\LocalVoiceAgent\\huggingface",
   "free_space_before_bytes": 3636472119296,
   "license": "Apache-2.0",
   "official_owner": "google",
-  "status": "downloading",
+  "status": "partially_downloaded",
   "downloads": [
     {
       "model_id": "google/gemma-4-12B-it-qat-w4a16-ct",
@@ -34,6 +34,19 @@
       "validation_status": "sha256_passed"
     },
     {
+      "model_id": "google/gemma-4-12B-it-qat-q4_0-unquantized",
+      "revision": "b6ed86275a6a5735884e208bfed95b445a684ca2",
+      "size_bytes": 23951777679,
+      "largest_file": {
+        "path": "model.safetensors",
+        "size_bytes": 23919549408,
+        "sha256": "26f2cee4292298a3f9f92209643c37c80e34e011381e22434088870d9439a0a0"
+      },
+      "requires_credential": false,
+      "downloaded_at": null,
+      "validation_status": "not_downloaded"
+    },
+    {
       "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
       "revision": "52f3f65bc7a02d555763bc923bd1d9094898219d",
       "size_bytes": 23297596043,
@@ -44,7 +57,7 @@
       },
       "requires_credential": false,
       "downloaded_at": null,
-      "validation_status": "downloading"
+      "validation_status": "paused_resumable_147_of_347_chunks"
     },
     {
       "model_id": "google/gemma-4-31B-it-qat-q4_0-unquantized-assistant",
@@ -55,6 +68,26 @@
         "size_bytes": 939042560,
         "sha256": "50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9"
       },
+      "requires_credential": false,
+      "downloaded_at": null,
+      "validation_status": "not_downloaded"
+    },
+    {
+      "model_id": "google/gemma-4-31B-it-qat-q4_0-unquantized",
+      "revision": "1e4d8beecacb8b7590c1d8bedd7335f687bf311f",
+      "size_bytes": 62578687966,
+      "weight_files": [
+        {
+          "path": "model-00001-of-00002.safetensors",
+          "size_bytes": 49784788364,
+          "sha256": "8ad3c67895dca6184c70d88a31f042eca42971728782dfb2c18edb736f3060a0"
+        },
+        {
+          "path": "model-00002-of-00002.safetensors",
+          "size_bytes": 12761549884,
+          "sha256": "a373e71426e369a2498a7a69793ce9ccdb07d2c96aa807c6baf675520f9add87"
+        }
+      ],
       "requires_credential": false,
       "downloaded_at": null,
       "validation_status": "not_downloaded"

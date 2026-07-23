@@ -6,6 +6,7 @@
 pwsh -File scripts\health-check.ps1
 pwsh -File scripts\install.ps1 -PlanOnly
 pwsh -File scripts\download-models.ps1 -PlanOnly
+pwsh -File scripts\download-models.ps1 -PlanOnly -Only mtp_target_12b
 ```
 
 WSL planning:
@@ -22,9 +23,11 @@ bash scripts/download-models.sh --plan-only
 3. Confirm license and whether credentials are required.
 4. Create isolated uv environments.
 5. Install locked packages and save `uv.lock`/package inventory.
-6. Download into `E:\Cache\LocalVoiceAgent\downloads`.
+6. Keep resumable state and the Hugging Face cache under
+   `E:\Cache\LocalVoiceAgent`; stream the pinned file to a stable partial path
+   beside its revision-addressed canonical target.
 7. Verify upstream LFS OIDs/ETags and compute local SHA-256.
-8. Materialize the validated snapshot under the canonical model root.
+8. Atomically rename the fully validated partial file to its final filename.
 9. Run minimal load, generation, multimodal, tool, and MTP-path tests.
 10. Record results before selecting a runtime.
 

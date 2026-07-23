@@ -5,9 +5,11 @@ conversation and policy-controlled computer use. The target workstation is a
 Windows 11 PC with an RTX 5090 32 GB GPU; inference runtimes run in WSL2 and
 the Android client uses Kotlin and Jetpack Compose.
 
-Current status: **Slice 0 (environment and compatibility investigation)**.
-No model has been downloaded, no package has been installed, and no
-acceptance criterion is claimed as passed yet.
+Current status: **Slice 2 (model/runtime validation in progress)**.
+The pinned 12B W4A16 target and 12B MTP assistant are hash-validated, and
+vLLM 0.25.1 is installed in an isolated WSL environment. The 12B W4A16 model
+has passed text, image, structured-output, streaming, and function-calling
+smoke tests. No end-to-end product acceptance criterion is claimed yet.
 
 ## Architecture
 

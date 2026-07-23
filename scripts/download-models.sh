@@ -10,15 +10,28 @@ model_root="/mnt/e/AI/Models/Standalone/LocalVoiceAgent"
 cache_root="/mnt/e/Cache/LocalVoiceAgent/huggingface"
 state_root="/mnt/e/Cache/LocalVoiceAgent/download-state"
 download_workers="${MODEL_DOWNLOAD_WORKERS:-16}"
+download_only="${MODEL_DOWNLOAD_ONLY:-}"
+
+case "${download_only}" in
+  ""|default_target_12b|mtp_assistant_12b|mtp_target_12b|escalation_target_31b|mtp_assistant_31b|mtp_target_31b)
+    ;;
+  *)
+    echo "Unknown MODEL_DOWNLOAD_ONLY role: ${download_only}" >&2
+    exit 8
+    ;;
+esac
 
 models=(
-  "google/gemma-4-12B-it-qat-w4a16-ct|1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|${model_root}/gemma4/12b/target/1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|model.safetensors|60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3|10264229896"
-  "google/gemma-4-12B-it-qat-q4_0-unquantized-assistant|18934064dd4c5c6cc3621f6381e7d377fc8cb7bd|${model_root}/gemma4/12b/mtp-assistant/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd|model.safetensors|67f1420cf24aa5065089aaed175223f7c245ccfda16111b6c56765afd7280db6|845719296"
-  "google/gemma-4-31B-it-qat-w4a16-ct|52f3f65bc7a02d555763bc923bd1d9094898219d|${model_root}/gemma4/31b/target/52f3f65bc7a02d555763bc923bd1d9094898219d|model.safetensors|1b9b1d622a93f02c0d33f98e502f233b5d707443af6ddc464ed0bf5498506c20|23265352448"
-  "google/gemma-4-31B-it-qat-q4_0-unquantized-assistant|96d4c8ca3cb38c107a8478587878124895d1e844|${model_root}/gemma4/31b/mtp-assistant/96d4c8ca3cb38c107a8478587878124895d1e844|model.safetensors|50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9|939042560"
+  "default_target_12b|google/gemma-4-12B-it-qat-w4a16-ct|1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|${model_root}/gemma4/12b/target/1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|model.safetensors|60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3|10264229896"
+  "mtp_assistant_12b|google/gemma-4-12B-it-qat-q4_0-unquantized-assistant|18934064dd4c5c6cc3621f6381e7d377fc8cb7bd|${model_root}/gemma4/12b/mtp-assistant/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd|model.safetensors|67f1420cf24aa5065089aaed175223f7c245ccfda16111b6c56765afd7280db6|845719296"
+  "mtp_target_12b|google/gemma-4-12B-it-qat-q4_0-unquantized|b6ed86275a6a5735884e208bfed95b445a684ca2|${model_root}/gemma4/12b/mtp-target/b6ed86275a6a5735884e208bfed95b445a684ca2|model.safetensors|26f2cee4292298a3f9f92209643c37c80e34e011381e22434088870d9439a0a0|23919549408"
+  "escalation_target_31b|google/gemma-4-31B-it-qat-w4a16-ct|52f3f65bc7a02d555763bc923bd1d9094898219d|${model_root}/gemma4/31b/target/52f3f65bc7a02d555763bc923bd1d9094898219d|model.safetensors|1b9b1d622a93f02c0d33f98e502f233b5d707443af6ddc464ed0bf5498506c20|23265352448"
+  "mtp_assistant_31b|google/gemma-4-31B-it-qat-q4_0-unquantized-assistant|96d4c8ca3cb38c107a8478587878124895d1e844|${model_root}/gemma4/31b/mtp-assistant/96d4c8ca3cb38c107a8478587878124895d1e844|model.safetensors|50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9|939042560"
+  "mtp_target_31b|google/gemma-4-31B-it-qat-q4_0-unquantized|1e4d8beecacb8b7590c1d8bedd7335f687bf311f|${model_root}/gemma4/31b/mtp-target/1e4d8beecacb8b7590c1d8bedd7335f687bf311f|model-00001-of-00002.safetensors|8ad3c67895dca6184c70d88a31f042eca42971728782dfb2c18edb736f3060a0|49784788364"
+  "mtp_target_31b|google/gemma-4-31B-it-qat-q4_0-unquantized|1e4d8beecacb8b7590c1d8bedd7335f687bf311f|${model_root}/gemma4/31b/mtp-target/1e4d8beecacb8b7590c1d8bedd7335f687bf311f|model-00002-of-00002.safetensors|a373e71426e369a2498a7a69793ce9ccdb07d2c96aa807c6baf675520f9add87|12761549884"
 )
 
-required_bytes=36000000000
+required_bytes=125000000000
 available_bytes="$(df -B1 --output=avail /mnt/e | tail -1 | tr -d ' ')"
 
 [[ "${download_workers}" =~ ^([1-9]|1[0-6])$ ]] || {
@@ -40,8 +53,9 @@ if (( available_bytes < required_bytes * 5 )); then
 fi
 
 for entry in "${models[@]}"; do
-  IFS='|' read -r model revision target filename sha bytes <<<"${entry}"
-  echo "${model}@${revision}"
+  IFS='|' read -r role model revision target filename sha bytes <<<"${entry}"
+  [[ -z "${download_only}" || "${download_only}" == "${role}" ]] || continue
+  echo "${role}: ${model}@${revision}"
   echo "  target=${target}"
   echo "  largest_file=${filename} bytes=${bytes} sha256=${sha}"
 done
@@ -66,14 +80,15 @@ mkdir -p "${state_root}"
 export HF_HOME="${cache_root}"
 
 for entry in "${models[@]}"; do
-  IFS='|' read -r model revision target filename expected_sha expected_bytes <<<"${entry}"
+  IFS='|' read -r role model revision target filename expected_sha expected_bytes <<<"${entry}"
+  [[ -z "${download_only}" || "${download_only}" == "${role}" ]] || continue
   mkdir -p "${target}"
 
   # Repository metadata is small. The large weight is transferred separately
   # to a stable partial path so interrupted downloads can safely resume.
   "${hf_bin}" download "${model}" \
     --revision "${revision}" \
-    --exclude "${filename}" \
+    --exclude "*.safetensors" \
     --local-dir "${target}"
 
   actual_file="${target}/${filename}"

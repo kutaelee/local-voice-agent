@@ -3,7 +3,16 @@ param(
     [Parameter(ParameterSetName = 'Plan')]
     [switch]$PlanOnly,
     [Parameter(ParameterSetName = 'Execute')]
-    [switch]$Execute
+    [switch]$Execute,
+    [ValidateSet(
+        'default_target_12b',
+        'mtp_assistant_12b',
+        'mtp_target_12b',
+        'escalation_target_31b',
+        'mtp_assistant_31b',
+        'mtp_target_31b'
+    )]
+    [string]$Only
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,10 +21,12 @@ $wslScript = (Join-Path $repoRoot 'scripts\download-models.sh').
     Replace('\', '/').
     Replace('C:', '/mnt/c')
 
-if ($Execute) {
-    & wsl.exe -d Ubuntu -- bash $wslScript --execute
-    exit $LASTEXITCODE
+$mode = if ($Execute) { '--execute' } else { '--plan-only' }
+$wslArgs = @('-d', 'Ubuntu', '--')
+if ($Only) {
+    $wslArgs += @('env', "MODEL_DOWNLOAD_ONLY=$Only")
 }
+$wslArgs += @('bash', $wslScript, $mode)
 
-& wsl.exe -d Ubuntu -- bash $wslScript --plan-only
+& wsl.exe @wslArgs
 exit $LASTEXITCODE

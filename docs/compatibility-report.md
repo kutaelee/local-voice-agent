@@ -11,6 +11,10 @@ model repositories, and upstream release notes are used for selections.
 - Gemma 4 31B is text/image multimodal and has no native audio input.
 - Official Google W4A16 compressed-tensors QAT checkpoints are available for
   both sizes and are intended for vLLM/SGLang-class servers.
+- Google's runtime routing guide distinguishes the server target
+  `{model}-qat-w4a16-ct` from the exact speculative-decoding target
+  `{model}-qat-q4_0-unquantized`. The published MTP assistant must be paired
+  with the latter target of the same size and QAT precision.
 - The 32 GB RTX 5090 cannot safely host 31B BF16 (Google estimates 69.9 GB
   including 20% loading overhead). Q4/W4A16 is required for 31B.
 - vLLM stable 0.25.1 explicitly supports Gemma 4 Unified, multimodal inputs,
@@ -48,10 +52,12 @@ model repositories, and upstream release notes are used for selections.
 
 | Component | Candidate | Official source | RTX 5090 | 12B | 31B | MTP | Multimodal | Function calling | Quantization | Selected |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Gemma target | `google/gemma-4-12B-it-qat-w4a16-ct` @ `1d2c2d7…` | Google HF | Expected; test required | Yes | N/A | Matching assistant must be validated | Text/image/video/audio | Native model protocol | W4A16 compressed-tensors | Yes, default candidate |
-| Gemma assistant | `google/gemma-4-12B-it-qat-q4_0-unquantized-assistant` @ `1893406…` | Google HF | Expected; test required | Matched by size/QAT family | N/A | Dedicated assistant | Follows target path | Output-equivalence test required | QAT assistant | Yes, compatibility-gated |
-| Gemma target | `google/gemma-4-31B-it-qat-w4a16-ct` @ `52f3f65…` | Google HF | Expected; tight VRAM test | N/A | Yes | Matching assistant must be validated | Text/image, no audio | Native model protocol | W4A16 compressed-tensors | Yes, on-demand candidate |
-| Gemma assistant | `google/gemma-4-31B-it-qat-q4_0-unquantized-assistant` @ `96d4c8c…` | Google HF | Expected; test required | N/A | Matched by size/QAT family | Dedicated assistant | Follows target path | Output-equivalence test required | QAT assistant | Yes, compatibility-gated |
+| Gemma default target | `google/gemma-4-12B-it-qat-w4a16-ct` @ `1d2c2d7…` | Google HF | Passed on local V1 runner | Yes | N/A | No matching W4A16 assistant selected | Text/image/video/audio | Native model protocol | W4A16 compressed-tensors | Yes, MTP OFF default |
+| Gemma MTP target | `google/gemma-4-12B-it-qat-q4_0-unquantized` @ `b6ed862…` | Google HF | Download/test pending | Yes | N/A | Exact target for 12B assistant | Text/image/video/audio | Output-equivalence test required | Q4_0 QAT extracted half precision | Yes, MTP benchmark |
+| Gemma assistant | `google/gemma-4-12B-it-qat-q4_0-unquantized-assistant` @ `1893406…` | Google HF | Loads into MTP path; exact-pair run pending | Yes | N/A | Dedicated assistant | Follows target path | Output-equivalence test required | Q4_0 QAT assistant | Yes, exact-pair gated |
+| Gemma default target | `google/gemma-4-31B-it-qat-w4a16-ct` @ `52f3f65…` | Google HF | Download/test pending | N/A | Yes | No matching W4A16 assistant selected | Text/image, no audio | Native model protocol | W4A16 compressed-tensors | Yes, on-demand candidate |
+| Gemma MTP target | `google/gemma-4-31B-it-qat-q4_0-unquantized` @ `1e4d8be…` | Google HF | CPU-offload feasibility gate | N/A | Yes | Exact target for 31B assistant | Text/image, no audio | Output-equivalence test required | Q4_0 QAT extracted half precision | Conditional |
+| Gemma assistant | `google/gemma-4-31B-it-qat-q4_0-unquantized-assistant` @ `96d4c8c…` | Google HF | Download/test pending | N/A | Yes | Dedicated assistant | Follows target path | Output-equivalence test required | Q4_0 QAT assistant | Yes, exact-pair gated |
 | vLLM | 0.25.1 stable | vLLM docs/releases | CUDA supports NVIDIA; local test required | Official | Official | Official Gemma 4 path | Official | Gemma4 parser + structured outputs | compressed-tensors, FP8/NVFP4 paths | Primary |
 | SGLang | 0.5.15.post1 stable | SGLang releases/docs | CUDA 13 / Blackwell features; local test required | Official | Official | Added in 0.5.12 | Official VLM path | Local parser validation required | Multiple; exact QAT path test required | Comparison |
 | Transformers | >=5.10.1, lock after runtime resolution | Google Gemma function-calling guide | Wheels/test required | Official | Official | Official MTP guide | Official | `apply_chat_template(tools=…)` | Model dependent | Validation oracle |
@@ -74,19 +80,22 @@ model repositories, and upstream release notes are used for selections.
 
 ## Known issues and gates
 
-1. Google model cards state QAT assistants must match the target QAT precision.
-   The published W4A16 collection exposes target checkpoints while published
-   assistant checkpoints are labeled Q4_0-unquantized QAT. Do not claim MTP
-   compatibility until vLLM and SGLang load the exact pair and the log shows
-   the Gemma 4 MTP path, not generic draft decoding.
+1. Google requires the assistant and target QAT precision to match. A measured
+   vLLM attempt using the 12B W4A16 target with the Q4_0-unquantized assistant
+   correctly selected `Gemma4MTPModel` and `method='mtp'`, then failed during
+   compile: the activation width was 4,864 while the assistant projection
+   expected 7,680. This pair is rejected. The exact 12B and 31B
+   `qat-q4_0-unquantized` targets are pinned in the manifests for the next
+   runtime gate.
    vLLM 0.25.1 requires
    `{"method":"mtp","model":"<assistant>","num_speculative_tokens":1}` in
    `--speculative-config`; a log that resolves the method as `draft_model` is
    an explicit failure.
 2. The 31B W4A16 repository is about 21.7 GiB on disk and Google estimates
    about 17.5 GB static inference memory for Q4_0, excluding KV cache and
-   software. Context length must start at 8K with conservative GPU memory
-   utilization.
+   software. The exact 31B MTP target is about 58.3 GiB on disk and cannot
+   reside wholly in 32 GB VRAM; it is conditional on a measured CPU-offload
+   feasibility test. Context length must start conservatively.
 3. MTP is disabled by default for tool execution until JSON-schema validity,
    tool selection, and argument accuracy are statistically no worse than MTP
    off.

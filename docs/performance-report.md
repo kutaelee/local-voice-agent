@@ -41,6 +41,13 @@ true VRAM peak.
 | Streaming sample | 175.88 ms TTFT, 577.90 ms total, 48 tokens |
 | 32x32 PNG request | 812.56 ms, correct `Red` response |
 
+The first MTP launch used the already-downloaded W4A16 target only as a
+compatibility probe. vLLM selected its dedicated Gemma 4 MTP implementation,
+but compilation failed on a measured tensor-width mismatch (4,864 versus
+7,680). No latency, acceptance-rate, or speedup result is reported for that
+failed run. The benchmark now requires the exact
+`qat-q4_0-unquantized` target/assistant pair.
+
 The first PowerShell 5.1 request encoded Korean incorrectly. Sending explicit
 UTF-8 bytes, and then repeating with the WSL Python client, produced correct
 Korean input/output. Android and PC clients must always set and test UTF-8
