@@ -77,7 +77,7 @@ stamp="$(date --utc +%Y%m%dT%H%M%SZ)"
 log_file="${log_root}/vllm-31b-mtp-probe-${stamp}.log"
 export \
   VLLM_SMOKE_PORT="${port}" \
-  VLLM_SMOKE_GPU_MEMORY_UTILIZATION="0.95" \
+  VLLM_SMOKE_GPU_MEMORY_UTILIZATION="0.90" \
   VLLM_SMOKE_MAX_MODEL_LEN="256" \
   VLLM_SMOKE_MAX_NUM_SEQS="1" \
   VLLM_SMOKE_ENFORCE_EAGER="1" \

@@ -284,7 +284,7 @@ bash scripts/serve-vllm-smoke.sh 31b off
 The exact 31B target/assistant pair is substantially larger than the 32 GB
 device. Its validation-only wrapper therefore uses bounded official vLLM CPU
 offload, a 256-token text-only context, one sequence, a 256 MiB explicit KV
-cache, and one MTP token:
+cache, a 0.90 startup utilization ceiling, and one MTP token:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `

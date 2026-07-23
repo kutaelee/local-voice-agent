@@ -101,6 +101,7 @@ def test_31b_mtp_probe_is_bounded_and_yields_to_comfyui() -> None:
     assert "MemAvailable" in start
     assert "VLLM_SMOKE_CPU_OFFLOAD_GB" in start
     assert "VLLM_SMOKE_MAX_MODEL_LEN=\"256\"" in start
+    assert "VLLM_SMOKE_GPU_MEMORY_UTILIZATION=\"0.90\"" in start
     assert "VLLM_SMOKE_KV_CACHE_MEMORY_BYTES=\"268435456\"" in start
     assert "serve-vllm-smoke.sh\" 31b on" in start
     assert "--api-key" not in start
