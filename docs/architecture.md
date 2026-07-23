@@ -27,12 +27,14 @@ rollback, model runtime state, and agent task state.
 - Android client: only communicates with the API gateway.
 
 The current Tool Executor slice independently reloads the checked-in
-contracts and supports only six Level 0 filesystem reads. It resolves an
-explicit workspace before every operation, rejects ambiguous or escaping
-paths and link/reparse segments, verifies the opened file identity against
-pre/post path state, and bounds traversal and output. It has no transport
-connection to `pc-server` yet; write, delete, Git, process, browser, UI, and
-shell adapters remain unavailable.
+contracts and supports thirteen Level 0 filesystem and Git observations. It
+resolves an explicit workspace before every operation, rejects ambiguous or
+escaping paths and link/reparse segments, verifies the opened file identity
+against pre/post path state, and bounds traversal, subprocess time, and
+output. Git uses fixed argv with external execution features disabled and
+rejects metadata escape mechanisms. It has no transport connection to
+`pc-server` yet; write, delete, Git mutation, process, browser, UI, and shell
+adapters remain unavailable.
 
 ## State machines
 

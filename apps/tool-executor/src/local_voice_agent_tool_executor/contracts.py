@@ -14,7 +14,7 @@ from jsonschema.exceptions import SchemaError, ValidationError
 from .errors import ToolArgumentsInvalid, ToolContractError, ToolNotSupported
 
 
-SUPPORTED_READ_TOOLS = frozenset(
+FILESYSTEM_READ_TOOLS = frozenset(
     {
         "calculate_hash",
         "list_files",
@@ -24,6 +24,18 @@ SUPPORTED_READ_TOOLS = frozenset(
         "search_files",
     }
 )
+GIT_READ_TOOLS = frozenset(
+    {
+        "git_blame",
+        "git_branch",
+        "git_diff",
+        "git_diff_stat",
+        "git_log",
+        "git_show",
+        "git_status",
+    }
+)
+SUPPORTED_READ_TOOLS = FILESYSTEM_READ_TOOLS | GIT_READ_TOOLS
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +112,12 @@ class ReadToolContracts:
             raise ToolArgumentsInvalid(
                 f"{name}: invalid arguments at {', '.join(locations)}"
             )
+
+    def timeout_seconds(self, name: str) -> int:
+        try:
+            return self._contracts[name].timeout_seconds
+        except KeyError as error:
+            raise ToolNotSupported(name) from error
 
 
 def _read_object(path: Path) -> dict[str, Any]:

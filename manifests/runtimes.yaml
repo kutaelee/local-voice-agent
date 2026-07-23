@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T19:29:00+09:00"
+generated_at: "2026-07-23T19:34:00+09:00"
 runtimes:
   - id: huggingface-hub-1.24.0
     role: model_download_tool
@@ -79,7 +79,7 @@ runtimes:
   - id: tool-executor-0.1.0
     role: tool_executor
     version: 0.1.0
-    status: level_0_filesystem_tests_passed_not_connected
+    status: level_0_filesystem_and_git_tests_passed_not_connected
     windows_environment: 'C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv'
     wsl_environment: /home/kutae/.local/share/local-voice-agent/runtimes/tool-executor/.venv
     python: "3.12.13"
@@ -89,8 +89,8 @@ runtimes:
     package_source: https://pypi.org/simple
     dependency_integrity: exact_versions_urls_sizes_and_sha256_in_uv_lock
     jsonschema: "4.26.0"
-    windows_test_status: 26_passed_including_directory_junction_rejection
-    wsl_test_status: 26_passed_including_symlink_rejection
+    windows_test_status: 38_passed_including_directory_junction_and_git_metadata_escape_rejection
+    wsl_test_status: 38_passed_including_symlink_and_git_metadata_escape_rejection
     enabled_tools:
       - calculate_hash
       - list_files
@@ -98,6 +98,13 @@ runtimes:
       - read_file
       - read_file_range
       - search_files
+      - git_blame
+      - git_branch
+      - git_diff
+      - git_diff_stat
+      - git_log
+      - git_show
+      - git_status
     connection_status: not_connected_to_pc_server
     rollback: stop future executor process and switch away before archiving only its isolated environments
   - id: sglang-0.5.15.post1

@@ -17,8 +17,8 @@ There is no model-visible unrestricted shell. Elevation is unsupported.
 
 ## Current implementation
 
-The first executable slice is deliberately limited to six Level 0 filesystem
-tools:
+The first executable slice is deliberately limited to thirteen Level 0
+filesystem and Git observation tools:
 
 - `list_files`
 - `search_files`
@@ -26,6 +26,13 @@ tools:
 - `read_file_range`
 - `list_recent_files`
 - `calculate_hash`
+- `git_status`
+- `git_diff`
+- `git_diff_stat`
+- `git_log`
+- `git_branch`
+- `git_show`
+- `git_blame`
 
 The executor reloads and validates the repository tool contracts rather than
 trusting validation performed by the PC server. Workspace lookup is
@@ -33,9 +40,17 @@ fail-closed. Absolute paths, traversal, Windows alternate data streams,
 reserved device names, symlinks, junctions, and other reparse points are
 rejected. Directory walking never follows links and all outputs are bounded.
 
-No write, delete, Git, process, browser, UI, or shell operation is connected
-in this slice. The configured workspace allowlist is empty by default, so the
-executor cannot access user files until a workspace is explicitly registered.
+Git runs only as a fixed absolute executable with an argv array and no shell.
+The adapter disables prompting, pagers, optional locks, fsmonitor, external
+diff, textconv, hooks, and non-literal pathspecs. Revisions are resolved to a
+commit ID using `--end-of-options`. `.git` must be an internal directory; its
+metadata is scanned for links/reparse points, and linked worktrees, object
+alternates, and config include sections are rejected.
+
+No write, delete, Git mutation, process, browser, UI, or shell operation is
+connected in this slice. The configured workspace allowlist is empty by
+default, so the executor cannot access user files until a workspace is
+explicitly registered.
 
 The environment is isolated from the PC server and model runtimes:
 

@@ -45,10 +45,15 @@ or dot segments, Windows alternate streams, reserved device names, trailing
 spaces/dots, symlinks, junctions, and other reparse points. Before reading a
 file it compares the pre-open path, opened handle, and post-open path identity
 and re-resolves the workspace boundary. Directory walks report but never
-follow blocked links. Windows-native junction tests and WSL symlink tests pass.
-This does not authorize writes: the executor is not connected to the server,
-the workspace allowlist is empty, and mutation/approval/rollback adapters do
-not exist yet.
+follow blocked links. Read-only Git commands use an absolute executable and
+argv without a shell, literal pathspecs, commit-ID resolution, a minimal
+environment, timeouts, and temporary-file output bounds. Optional locks,
+prompts, pagers, hooks, fsmonitor, external diff, and textconv are disabled.
+The executor rejects `.git` links/reparse points, linked worktrees, alternate
+object stores, and config includes before invoking Git. Windows-native
+junction tests and WSL symlink tests pass. This does not authorize writes:
+the executor is not connected to the server, the workspace allowlist is
+empty, and mutation/approval/rollback adapters do not exist yet.
 
 The checked-in application and pairing schemas permit only loopback server
 binding and WSS, require Android Keystore token storage, and keep cleartext,

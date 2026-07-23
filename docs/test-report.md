@@ -84,7 +84,7 @@ progress. No product acceptance test has run.
 | Workspace configuration guard | Passed | Closed schema validated; drive root, user profile root, backup-only D:, protected E: backup root, wildcard, and WSL mounted-drive cases rejected |
 | Application and pairing security defaults | Passed | Public bind, raw-audio retention, cleartext pairing, and plaintext token storage cases rejected |
 | Network-free repository validation using PC-server env | Passed after dependency addition | Initial run stopped at missing `jsonschema`; the runtime tool registry now requires official stable 4.26.0, and all 10 validators passed in 3,927.26 ms |
-| Network-free repository validation suite | Passed | Latest run: 10 validators completed in 3,802.02 ms using the isolated validation-capable WSL runtime; configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
+| Network-free repository validation suite | Passed | Latest run: 10 validators completed in 3,798.71 ms using the isolated validation-capable WSL runtime; configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
 | Read-only health check | Passed | Detected both isolated vLLM versions, two finalized 12B artifacts, active partial MTP target, RTX 5090/WSL GPU state, canonical paths, and stopped server without mutation |
 | Event payload contract coverage | Passed | All 24 catalog events have closed, bounded Draft 2020-12 payload definitions |
 | Explicit cancellation protocol | Passed (static) | Idempotent request/result events distinguish cancelled, draining, non-cancellable, already-terminal, and missing operations |
@@ -93,7 +93,7 @@ progress. No product acceptance test has run.
 | Benchmark result/report envelopes | Passed (static) | Raw result remains explicitly `not_run` with zero runs; model/runtime comparison matrices exist and every unmeasured cell is `NOT_RUN` |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 | PC-server isolated dependency lock/install | Passed | Python 3.12.13 environment outside repo; latest stable FastAPI 0.139.2, JSON Schema 4.26.0, Pydantic 2.13.4, Starlette 1.3.1, Uvicorn 0.51.0; lock SHA-256 `5a223baf…` |
-| PC-server domain/API/registry/planner/router unit tests | Passed | Latest run: 67 tests in 1.90 s; tool/model state transitions, optimistic locks, approvals, risk policy, envelope, pairing security, session/replay checks, deep registry immutability, all 74 tool definitions, non-executing tool plans, and model routing |
+| PC-server domain/API/registry/planner/router unit tests | Passed | Latest run: 67 tests in 1.88 s; tool/model state transitions, optimistic locks, approvals, risk policy, envelope, pairing security, session/replay checks, deep registry immutability, all 74 tool definitions, non-executing tool plans, and model routing |
 | Runtime tool registry | Passed | Draft 2020-12 definition and argument validation; stable definition hashes; unknown tools fail closed; disabled `restricted_shell` omitted from 73 model-visible tools; server-issued approval/idempotency fields hidden from model schemas |
 | Tool planner risk routing | Passed | Level 0 queued; Level 1 waits unless a valid session grant exists; Level 2 always waits for exact approval; Level 3 and disabled tools create no execution aggregate |
 | Approval-to-queue binding | Passed | Approved exact binding queued; denied approval and mismatched approval ID were rejected; execution CAS version remained enforced |
@@ -103,8 +103,10 @@ progress. No product acceptance test has run.
 | PC-server Uvicorn process smoke | Passed | Loopback `127.0.0.1:8787`, `/health` HTTP 200, owned PID 51847 cleanly stopped, port confirmed closed |
 | vLLM smoke explicit-cache argument guards | Passed after wrapper correction | Bash syntax passed; invalid KV-cache bytes exited 8 and invalid max sequences exited 9. The first combined assertion was invalid because PowerShell expanded Bash `$?` before execution; no server was launched |
 | Tool Executor first Windows-native run | Failed, corrected | 22/26 passed; one assertion assumed LF after a Windows text write, and three fixtures attempted privileged symlink creation. No production file was accessed |
-| Tool Executor Windows-native suite | Passed | Latest run: 26 tests in 0.80 s using isolated Python 3.12.13; contract revalidation, traversal/absolute/ADS/reserved-name rejection, real directory-junction blocking, bounded reads/search/list/recent/hash, and UTF-8 handling |
-| Tool Executor WSL suite | Passed | Latest run: same 26 tests in 0.84 s using a separate WSL Python 3.12.13 environment; internal and escaping symlinks rejected |
+| Tool Executor Windows-native suite | Passed | Latest run: 38 tests in 3.36 s using isolated Python 3.12.13; contract revalidation, traversal/absolute/ADS/reserved-name rejection, real directory-junction blocking, bounded filesystem reads, and Git observations |
+| Tool Executor WSL suite | Passed | Latest run: same 38 tests in 1.94 s using a separate WSL Python 3.12.13 environment; internal and escaping symlinks rejected |
+| Read-only Git executor | Passed | Status/diff/staged diff/stat/log/branch/show/blame; literal `--stat` path, `--help` revision injection rejection, output truncation, no index modification, and external diff suppression |
+| Git metadata escape gates | Passed | Non-Git and disabled workspaces, `.git` file/worktree, object alternates, config includes, and Windows junction/WSL symlink metadata paths rejected |
 
 Exact Q4_0 MTP multimodal compatibility, statistical MTP quality/latency
 benchmark, 31B multimodal and exact-pair MTP, SGLang, audio/video, full benchmark, security,

@@ -49,6 +49,7 @@ class Workspace:
     platform: WorkspacePlatform
     root: Path
     access: WorkspaceAccess
+    git_enabled: bool = False
 
     def __post_init__(self) -> None:
         if not _WORKSPACE_ID.fullmatch(self.workspace_id):
@@ -108,6 +109,21 @@ class WorkspaceRegistry:
             return self._workspaces[workspace_id]
         except KeyError as error:
             raise WorkspaceNotFound(workspace_id) from error
+
+    def normalize_relative(
+        self,
+        workspace_id: str,
+        relative_path: str,
+        *,
+        allow_root: bool = True,
+    ) -> str:
+        workspace = self.get(workspace_id)
+        parts = _parse_relative_path(relative_path, workspace.platform)
+        if not parts:
+            if allow_root:
+                return "."
+            raise WorkspacePathRejected("workspace root is not a file path")
+        return "/".join(parts)
 
     def resolve_existing(
         self,

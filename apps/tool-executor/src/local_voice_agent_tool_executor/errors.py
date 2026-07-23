@@ -45,3 +45,19 @@ class WorkspacePathChanged(ToolExecutorError):
 
 class TextDecodingError(ToolExecutorError):
     code = "TEXT_DECODING_ERROR"
+
+
+class GitWorkspaceRejected(ToolExecutorError):
+    code = "GIT_WORKSPACE_REJECTED"
+
+
+class GitCommandFailed(ToolExecutorError):
+    code = "GIT_COMMAND_FAILED"
+
+
+class GitCommandTimedOut(ToolExecutorError):
+    code = "GIT_COMMAND_TIMED_OUT"
+
+
+class GitOutputDecodingError(ToolExecutorError):
+    code = "GIT_OUTPUT_DECODING_ERROR"
