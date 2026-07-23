@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "name": "git_push",
+  "description": "Push one exact commit to a registered remote branch without force.",
+  "risk_level": 2,
+  "timeout_seconds": 300,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "workspace_id",
+      "remote_id",
+      "branch_name",
+      "expected_commit",
+      "force",
+      "approval_id",
+      "idempotency_key"
+    ],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "remote_id": {"type": "string", "minLength": 1, "maxLength": 128},
+      "branch_name": {"type": "string", "minLength": 1, "maxLength": 255},
+      "expected_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+      "force": {"const": false},
+      "approval_id": {"type": "string", "format": "uuid"},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

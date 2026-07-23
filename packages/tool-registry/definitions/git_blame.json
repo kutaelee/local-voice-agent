@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "name": "git_blame",
+  "description": "Inspect bounded line attribution for one file in a registered Git workspace.",
+  "risk_level": 0,
+  "timeout_seconds": 30,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["workspace_id", "relative_path"],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "relative_path": {"type": "string", "minLength": 1, "maxLength": 1024},
+      "start_line": {"type": "integer", "minimum": 1, "default": 1},
+      "end_line": {"type": "integer", "minimum": 1, "maximum": 100000},
+      "revision": {"type": "string", "pattern": "^[a-f0-9]{40}$"}
+    },
+    "additionalProperties": false
+  }
+}

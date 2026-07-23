@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "name": "git_create_branch",
+  "description": "Create a new local branch from an exact expected HEAD without switching branches.",
+  "risk_level": 1,
+  "timeout_seconds": 30,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": ["workspace_id", "branch_name", "expected_head", "idempotency_key"],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "branch_name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255,
+        "pattern": "^(?!-)(?!.*\\.\\.)(?!.*[~^:?*\\\\\\[])(?!.*//$)(?!.*\\.lock$)[^\\s]+$"
+      },
+      "expected_head": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}
