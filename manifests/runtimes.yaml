@@ -76,11 +76,15 @@ runtimes:
     source: https://github.com/snakers4/silero-vad/releases/tag/v6.2.1
   - id: chatterbox-multilingual-v3
     role: tts_candidate
-    version: upstream-v3-model
-    status: planned
+    version: chatterbox-tts-0.1.7
+    status: planned_dependency_compatibility_gate
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-v3
-    python: "3.12"
-    source: https://github.com/resemble-ai/chatterbox
+    python: evaluate_3_12_pinned_torch_2_6_vs_3_14_torch_2_9_plus
+    source: https://github.com/resemble-ai/chatterbox/tree/5de7a54aa4e5e2baadb0182dde554908b48b85c2
+    package_source: https://pypi.org/project/chatterbox-tts/0.1.7/
+    package_wheel_size_bytes: 108543
+    package_wheel_sha256: 83782500e3ad4e7c919132e9d7eb8755f29f57c5bde5ec48c655ca23a4eb113c
+    known_issue: python_below_3_14_pins_torch_2_6_and_torchaudio_2_6
   - id: postgresql-18.4
     role: database
     version: "18.4"

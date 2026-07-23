@@ -37,8 +37,12 @@ model repositories, and upstream release notes are used for selections.
   so it must be isolated from the CUDA 13 inference runtimes or initially use
   CPU fallback.
 - Chatterbox Multilingual V3 officially lists Korean and uses the MIT
-  license. Kokoro's official language list does not include Korean, so it is
-  not selected as the primary Korean fallback.
+  license. Its 0.1.7 package pins torch/torchaudio 2.6 on Python below 3.14,
+  which is not mixed into the tested CUDA 13 inference environments. The
+  exact V3 checkpoint is pinned, but runtime installation waits for an
+  isolated Blackwell compatibility test. Kokoro's official language list
+  does not include Korean, so it is not selected as the primary Korean
+  fallback.
 - PostgreSQL 18.4 is current. SQLAlchemy 2.1 remains beta; stable 2.0.51 is
   selected initially.
 - Hugging Face Hub 1.24.0 is the current stable download client and supports
@@ -74,7 +78,7 @@ model repositories, and upstream release notes are used for selections.
 | VAD | Silero VAD 6.2.1 ONNX | MIT | Language-agnostic, 6000+ language training claim | Yes | Prefer CPU | Lightweight and independent of CUDA stack |
 | STT | faster-whisper 1.2.1 | MIT | Whisper multilingual | Chunk/partial orchestration required | CUDA 12 + cuDNN 9 or CPU | Benchmark candidate; isolate from CUDA 13 |
 | STT alternative | Gemma 4 12B audio understanding / newer runtime ASR | Apache-2.0/model-specific | Yes, measure | Runtime-dependent | GPU | Not the baseline until latency and tool contention are measured |
-| TTS | Chatterbox Multilingual V3 | MIT | Officially listed | Sentence/chunk orchestration | GPU/CPU support to measure | Primary quality candidate |
+| TTS | Chatterbox Multilingual V3, HF `5bb1f6e…`, package 0.1.7 | MIT | Officially listed | Sentence/chunk orchestration | PyTorch pin compatibility gate | Primary quality candidate |
 | TTS fallback | Kokoro 82M | Model/code license requires final inventory | Official list lacks Korean | Fast | CPU/GPU | Rejected as Korean default |
 | Android | Kotlin + Compose, target API 37 | Android licenses | N/A | WebSocket/audio APIs | Device | Android 17 is current; local-network permission must be handled |
 | Database | PostgreSQL 18.4 | PostgreSQL License | N/A | N/A | CPU | Current supported release |
@@ -124,6 +128,11 @@ model repositories, and upstream release notes are used for selections.
    requests remain separate gates. The default model sampling configuration
    is disabled in repeatable smoke/benchmark launches with
    `--generation-config vllm`; requests specify sampling explicitly.
+10. Chatterbox 0.1.7's Python <3.14 dependency pins torch and torchaudio 2.6,
+    while this RTX 5090 inference stack is validated on torch 2.11 + CUDA
+    13.0. The TTS environment remains separate and uninstalled until an
+    official-compatible Python/Torch combination passes import, CUDA, Korean
+    synthesis, first-audio, and long-form tests. Voice cloning stays disabled.
 
 ## Official references
 
