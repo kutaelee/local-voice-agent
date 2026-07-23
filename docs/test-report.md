@@ -55,7 +55,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Runtime/model/GPU config references | Passed | 4 configured models, 9 manifest roles, and 9 runtime IDs cross-validated; unvalidated MTP routes remain disabled |
 | Model/download manifest metadata consistency | Passed | 9 exact model ID/revision pairs, declared sizes, weight lists, SHA-256 syntax, timestamps, and revision-pinned paths cross-validated without reading active large transfers |
 | Download state isolation | Passed | Explicit cache-side state path; 29,372-byte live transfer and 1/1 resume passed |
-| Protocol/tool contract catalog consistency | Passed | 22 events, 74 tools; drift checks and Draft 2020-12 schema validation passed |
+| Protocol/tool contract catalog consistency | Passed | 24 events, 74 tools; drift checks and Draft 2020-12 schema validation passed |
 | Filesystem mutation contract safety | Passed (static) | Level 1 writes/copies/moves/archives require preconditions and idempotency; Level 2 deletion is limited to one hash-pinned file or one empty directory |
 | Registered development tool contracts | Passed (static) | Test/lint/format/build/server tools accept profile IDs instead of commands; dev servers are loopback-only and can be stopped only by executor-issued handles |
 | Git mutation contract safety | Passed (static) | Exact commit/fingerprint preconditions; force push unavailable; merge fast-forward-only; hard reset and clean remain Level 3 deny-by-default |
@@ -67,7 +67,8 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Workspace configuration guard | Passed | Closed schema validated; drive root, user profile root, backup-only D:, protected E: backup root, wildcard, and WSL mounted-drive cases rejected |
 | Application and pairing security defaults | Passed | Public bind, raw-audio retention, cleartext pairing, and plaintext token storage cases rejected |
 | Network-free repository validation suite | Passed | 10 validators completed in 849.11 ms: configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
-| Event payload contract coverage | Passed | All 22 catalog events have closed, bounded Draft 2020-12 payload definitions |
+| Event payload contract coverage | Passed | All 24 catalog events have closed, bounded Draft 2020-12 payload definitions |
+| Explicit cancellation protocol | Passed (static) | Idempotent request/result events distinguish cancelled, draining, non-cancellable, already-terminal, and missing operations |
 | Observability contracts | Passed | 18 required metrics, histogram p50/p95 coverage, and closed structured-log schema validated |
 | Benchmark prompt catalog | Passed | 160 unique Korean cases with required 20/30/20/20/20/20/10/20 category counts |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |

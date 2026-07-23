@@ -39,6 +39,8 @@
         "tool.rollback.completed",
         "model.switch.started",
         "model.switch.completed",
+        "operation.cancel.requested",
+        "operation.cancel.result",
         "error"
       ]
     },

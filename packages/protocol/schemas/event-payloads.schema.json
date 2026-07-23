@@ -327,6 +327,70 @@
       },
       "additionalProperties": false
     },
+    "operation.cancel.requested": {
+      "type": "object",
+      "required": [
+        "target_kind",
+        "target_id",
+        "reason",
+        "idempotency_key"
+      ],
+      "properties": {
+        "target_kind": {
+          "enum": [
+            "assistant_response",
+            "tool_execution",
+            "agent_task",
+            "model_switch"
+          ]
+        },
+        "target_id": {"$ref": "#/$defs/_uuid"},
+        "reason": {
+          "enum": [
+            "user_request",
+            "barge_in",
+            "app_background",
+            "session_closing"
+          ]
+        },
+        "idempotency_key": {"$ref": "#/$defs/_uuid"}
+      },
+      "additionalProperties": false
+    },
+    "operation.cancel.result": {
+      "type": "object",
+      "required": [
+        "target_kind",
+        "target_id",
+        "status",
+        "final_state",
+        "summary"
+      ],
+      "properties": {
+        "target_kind": {
+          "enum": [
+            "assistant_response",
+            "tool_execution",
+            "agent_task",
+            "model_switch"
+          ]
+        },
+        "target_id": {"$ref": "#/$defs/_uuid"},
+        "status": {
+          "enum": [
+            "cancelled",
+            "cancellation_requested",
+            "not_cancellable",
+            "already_terminal",
+            "not_found"
+          ]
+        },
+        "final_state": {"type": "string", "minLength": 1, "maxLength": 128},
+        "summary": {"type": "string", "maxLength": 4096},
+        "evidence_id": {"type": ["string", "null"], "maxLength": 256}
+      },
+      "additionalProperties": false
+    },
     "error": {
       "type": "object",
       "required": ["error_code", "message", "component", "retryable"],

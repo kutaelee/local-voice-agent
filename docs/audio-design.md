@@ -66,6 +66,10 @@ mixing a previous response into the next one.
    and its state is explained.
 5. STT processes the new stream and the conversation resumes.
 
+Steps 3-4 use the replayable `operation.cancel.requested` and
+`operation.cancel.result` contracts. Repeating the same cancellation
+idempotency key returns the prior result and never repeats tool execution.
+
 Each boundary has a timeout and a terminal error event. Raw audio and full
 conversation recording are off by default.
 

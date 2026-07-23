@@ -22,6 +22,8 @@
     {"type": "tool.rollback.completed", "direction": "pc_to_android", "replayable": true},
     {"type": "model.switch.started", "direction": "pc_to_android", "replayable": true},
     {"type": "model.switch.completed", "direction": "pc_to_android", "replayable": true},
+    {"type": "operation.cancel.requested", "direction": "android_to_pc", "replayable": true},
+    {"type": "operation.cancel.result", "direction": "pc_to_android", "replayable": true},
     {"type": "error", "direction": "bidirectional", "replayable": true}
   ]
 }
