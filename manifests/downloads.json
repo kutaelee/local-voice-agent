@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-23T19:18:00+09:00",
+  "generated_at": "2026-07-24T03:09:08+09:00",
   "canonical_cache": "E:\\Cache\\LocalVoiceAgent\\huggingface",
   "free_space_before_bytes": 3636472119296,
-  "status": "partially_downloaded",
+  "status": "all_selected_model_weights_downloaded",
   "downloads": [
     {
       "model_id": "google/gemma-4-12B-it-qat-w4a16-ct",
@@ -73,7 +73,7 @@
       },
       "requires_credential": false,
       "downloaded_at": "2026-07-23T19:10:26+09:00",
-      "validation_status": "sha256_passed_exact_target_not_downloaded"
+      "validation_status": "sha256_passed_exact_target_downloaded_cpu_offload_runtime_gate_required"
     },
     {
       "model_id": "google/gemma-4-31B-it-qat-q4_0-unquantized",
@@ -93,8 +93,8 @@
         }
       ],
       "requires_credential": false,
-      "downloaded_at": null,
-      "validation_status": "not_downloaded"
+      "downloaded_at": "2026-07-24T03:07:29+09:00",
+      "validation_status": "both_shards_sha256_passed_cpu_offload_runtime_gate_required"
     },
     {
       "model_id": "ResembleAI/chatterbox",

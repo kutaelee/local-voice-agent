@@ -68,8 +68,8 @@ model repositories, and upstream release notes are used for selections.
 | Gemma MTP target | `google/gemma-4-12B-it-qat-q4_0-unquantized` @ `b6ed862…` | Google HF | Text-only API passed on exact-fix runtime | Yes | N/A | Exact target for 12B assistant; measured 89.6% preliminary acceptance | Text passed; multimodal config blocked | Tool/schema smoke passed; statistical gate required | Q4_0 QAT extracted half precision | Yes, disabled benchmark candidate |
 | Gemma assistant | `google/gemma-4-12B-it-qat-q4_0-unquantized-assistant` @ `1893406…` | Google HF | Exact pair loaded and generated | Yes | N/A | Dedicated assistant detected as `Gemma4MTPModel` | Follows target path; multimodal blocked | Tool/schema smoke passed; statistical gate required | Q4_0 QAT assistant | Yes, disabled exact-pair candidate |
 | Gemma default target | `google/gemma-4-31B-it-qat-w4a16-ct` @ `52f3f65…` | Google HF | Text API passed with explicit KV cache | N/A | Yes | No matching W4A16 assistant selected | Text passed; image pending; no audio | Tool/schema smoke passed | W4A16 compressed-tensors | Yes, on-demand text candidate |
-| Gemma MTP target | `google/gemma-4-31B-it-qat-q4_0-unquantized` @ `1e4d8be…` | Google HF | CPU-offload feasibility gate | N/A | Yes | Exact target for 31B assistant | Text/image, no audio | Output-equivalence test required | Q4_0 QAT extracted half precision | Conditional |
-| Gemma assistant | `google/gemma-4-31B-it-qat-q4_0-unquantized-assistant` @ `96d4c8c…` | Google HF | SHA-256 passed; exact target absent | N/A | Yes | Dedicated assistant | Follows target path | Output-equivalence test required | Q4_0 QAT assistant | Yes, exact-pair gated |
+| Gemma MTP target | `google/gemma-4-31B-it-qat-q4_0-unquantized` @ `1e4d8be…` | Google HF | Both shards SHA-256 passed; CPU-offload feasibility gate remains | N/A | Yes | Exact target for 31B assistant | Text/image, no audio | Output-equivalence test required | Q4_0 QAT extracted half precision | Conditional |
+| Gemma assistant | `google/gemma-4-31B-it-qat-q4_0-unquantized-assistant` @ `96d4c8c…` | Google HF | SHA-256 passed; exact target downloaded | N/A | Yes | Dedicated assistant | Follows target path | Output-equivalence test required | Q4_0 QAT assistant | Yes, exact-pair gated |
 | vLLM | 0.25.1 stable | vLLM docs/releases | CUDA passed locally | Passed MTP OFF | Text/tool/schema/stream passed | Dispatch passes; embedding share regression blocks stable MTP | 12B image passed; 31B image and audio/video pending | Gemma4 parser + structured outputs passed | compressed-tensors passed | Stable baseline |
 | vLLM MTP fix | commit `b2b8f679d058…`, cu130 wheel | vLLM commit/PR/nightly index | RTX 5090 text MTP passed | Exact-pair text API passed | Conditional | Exact pair loaded; 48 drafted / 43 accepted | Q4 target config blocks multimodal init | Tool + structured-output smoke passed | Exact wheel/package check passed | Disabled pending quality and multimodal gates |
 | SGLang | 0.5.15.post1 stable + kernel 0.4.4 cu130 | SGLang releases/docs | Local CUDA 13/SM 12.0 matmul passed; model deferred for external VRAM contention | Official; load pending | Official; load pending | Added in 0.5.12; exact pair pending | Official VLM path; local pending | Parser configured; local pending | Multiple; W4A16 load pending | Installed comparison candidate |
@@ -113,7 +113,8 @@ model repositories, and upstream release notes are used for selections.
    rollback-safe environment; the stable environment remains untouched.
 3. The 31B W4A16 repository is about 21.7 GiB on disk and Google estimates
    about 17.5 GB static inference memory for Q4_0, excluding KV cache and
-   software. The exact 31B MTP target is about 58.3 GiB on disk and cannot
+   software. The exact 31B MTP target is about 58.3 GiB on disk, has passed
+   both shard hashes, and cannot
    reside wholly in 32 GB VRAM; it is conditional on a measured CPU-offload
    feasibility test. Context length must start conservatively. On this shared
    host, a utilization-based 31B launch loaded the weights but failed because

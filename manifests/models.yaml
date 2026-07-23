@@ -1,7 +1,7 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T19:18:00+09:00"
+generated_at: "2026-07-24T03:09:08+09:00"
 model_root: 'E:\AI\Models\Standalone\LocalVoiceAgent'
-status: partially_downloaded
+status: all_selected_model_weights_downloaded
 models:
   - role: default_target
     model_id: google/gemma-4-12B-it-qat-w4a16-ct
@@ -87,7 +87,7 @@ models:
     runtime_candidates: [vllm-0.25.1, sglang-0.5.15.post1]
     mtp_target: google/gemma-4-31B-it-qat-q4_0-unquantized
     downloaded_at: "2026-07-23T19:10:26+09:00"
-    validation_status: sha256_passed_exact_target_not_downloaded
+    validation_status: sha256_passed_exact_target_downloaded_cpu_offload_runtime_gate_required
   - role: mtp_target_31b
     model_id: google/gemma-4-31B-it-qat-q4_0-unquantized
     repository: https://huggingface.co/google/gemma-4-31B-it-qat-q4_0-unquantized
@@ -106,8 +106,8 @@ models:
         sha256: a373e71426e369a2498a7a69793ce9ccdb07d2c96aa807c6baf675520f9add87
     runtime_candidates: [vllm-0.25.1, sglang-0.5.15.post1]
     mtp_assistant: google/gemma-4-31B-it-qat-q4_0-unquantized-assistant
-    downloaded_at: null
-    validation_status: required_offload_feasibility_gate
+    downloaded_at: "2026-07-24T03:07:29+09:00"
+    validation_status: both_shards_sha256_passed_cpu_offload_runtime_gate_required
   - role: primary_tts_candidate
     model_id: ResembleAI/chatterbox
     repository: https://huggingface.co/ResembleAI/chatterbox
