@@ -69,6 +69,14 @@ case "${mtp_mode}" in
     gpu_memory_utilization="${VLLM_SMOKE_GPU_MEMORY_UTILIZATION:-0.55}"
     speculative_args=()
     ;;
+  exact-off)
+    runtime_root="${mtp_runtime_root}"
+    max_model_len="${VLLM_SMOKE_MAX_MODEL_LEN:-2048}"
+    gpu_memory_utilization="${VLLM_SMOKE_GPU_MEMORY_UTILIZATION:-0.90}"
+    target="${mtp_target}"
+    served_name="${served_name}-mtp-target-off"
+    speculative_args=()
+    ;;
   on)
     runtime_root="${mtp_runtime_root}"
     max_model_len="${VLLM_SMOKE_MAX_MODEL_LEN:-2048}"
@@ -85,7 +93,7 @@ case "${mtp_mode}" in
     )
     ;;
   *)
-    echo "MTP mode must be off or on" >&2
+    echo "MTP mode must be off, exact-off, or on" >&2
     exit 2
     ;;
 esac

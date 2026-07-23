@@ -122,6 +122,26 @@ live guard test yielded during target loading when one ComfyUI render arrived,
 then verified that port 8768, the SGLang PID file, and the incomplete result
 were absent.
 
+The equivalent vLLM exact-target comparison runs a functional gate before its
+latency samples:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\run-shared-vllm-mtp-benchmark.ps1 `
+  -MtpMode off
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\run-shared-vllm-mtp-benchmark.ps1 `
+  -MtpMode on -SpeculativeTokens 1
+```
+
+Both modes use the same exact target, fixed context, and runtime build. The
+functional gate checks text, tool choice, strict schema, and streaming before
+writing benchmark evidence. The wrapper never calls ComfyUI `/free`; if the
+queue is active or cached weights leave less than 28,500 MiB free, it records
+`yielded` without starting vLLM. If a render starts later, it stops only the
+owned 12B vLLM process.
+
 ### Windows-native recovery fallback
 
 The pinned llama.cpp runtime is installed without administrator rights from

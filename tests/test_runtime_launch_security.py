@@ -25,6 +25,7 @@ def test_sglang_launcher_keeps_api_key_out_of_argv() -> None:
 def test_vllm_launcher_uses_official_environment_key() -> None:
     serve = script("serve-vllm-smoke.sh")
     start = script("start-vllm.sh")
+    start_ps1 = script("start-vllm.ps1")
 
     assert 'export VLLM_API_KEY="${LVA_VLLM_API_KEY}"' in serve
     assert 'unset LVA_VLLM_API_KEY' in serve
@@ -37,6 +38,10 @@ def test_vllm_launcher_uses_official_environment_key() -> None:
     assert '31b:on)' in start
     assert "31B MTP is not enabled" in start
     assert "VLLM_SMOKE_CPU_OFFLOAD_GB" in serve
+    assert "exact-off)" in serve
+    assert 'served_name="${served_name}-mtp-target-off"' in serve
+    assert "'exact-off', 'on'" in start_ps1
+    assert "12b:exact-off)" in start
     assert '--cpu-offload-gb "${cpu_offload_gb}"' in serve
     assert "integer from 0 to 48" in serve
 
@@ -108,3 +113,23 @@ def test_31b_mtp_probe_is_bounded_and_yields_to_comfyui() -> None:
     assert "'process was started.'" in shared
     assert "LVA_VLLM_API_KEY = $apiKey" in shared
     assert "Bearer " not in shared
+
+
+def test_shared_vllm_mtp_benchmark_is_functionally_gated_and_yields() -> None:
+    shared = script("run-shared-vllm-mtp-benchmark.ps1")
+
+    assert "[ValidateSet('on', 'off')]" in shared
+    assert "'exact-off'" in shared
+    assert "Get-ComfyUiQueueState" in shared
+    assert "Get-FreeGpuMemoryMiB" in shared
+    assert "freeMemory -lt 28500" in shared
+    assert "Wait-ChildOrYield" in shared
+    assert "Stop-OwnedVllm" in shared
+    assert "-ExpectedModelSize 12b" in shared
+    assert "'Functional gate passed" in shared
+    assert "smoke-openai-api.py" in shared
+    assert "benchmark.ps1" in shared
+    assert "LVA_VLLM_API_KEY = $apiKey" in shared
+    assert "LVA_RUNTIME_API_KEY = $apiKey" in shared
+    assert "Bearer " not in shared
+    assert "/free" not in shared

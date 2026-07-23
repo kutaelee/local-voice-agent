@@ -3,7 +3,7 @@ param(
     [ValidateSet('12b', '31b')]
     [string]$ModelSize = '12b',
 
-    [ValidateSet('off', 'on')]
+    [ValidateSet('off', 'exact-off', 'on')]
     [string]$MtpMode = 'off',
 
     [ValidateRange(1024, 65535)]
@@ -37,7 +37,10 @@ $freeMemory = 0
 if (-not [int]::TryParse($freeMemoryText, [ref]$freeMemory)) {
     throw 'Unable to measure free GPU memory.'
 }
-$minimumFreeMemory = if ($ModelSize -eq '31b' -or $MtpMode -eq 'on') {
+$minimumFreeMemory = if (
+    $ModelSize -eq '31b' -or
+    $MtpMode -in @('exact-off', 'on')
+) {
     if ($ModelSize -eq '31b') { 27000 } else { 28500 }
 }
 else {

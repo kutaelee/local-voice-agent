@@ -29,6 +29,10 @@ case "${model_size}:${mtp_mode}" in
     minimum_free_mib=28500
     log_file="${log_root}/vllm-12b-mtp.log"
     ;;
+  12b:exact-off)
+    minimum_free_mib=28500
+    log_file="${log_root}/vllm-12b-mtp-target-off.log"
+    ;;
   31b:off)
     minimum_free_mib=27000
     log_file="${log_root}/vllm-31b.log"
@@ -38,7 +42,7 @@ case "${model_size}:${mtp_mode}" in
     exit 5
     ;;
   *)
-    echo "LVA_VLLM_MODEL_SIZE/MTP_MODE must be 12b|31b and off|on." >&2
+    echo "LVA_VLLM_MODEL_SIZE/MTP_MODE must be 12b|31b and off|exact-off|on." >&2
     exit 5
     ;;
 esac
@@ -92,7 +96,7 @@ export \
   VLLM_SMOKE_LANGUAGE_MODEL_ONLY="0" \
   VLLM_SMOKE_KV_CACHE_MEMORY_BYTES="" \
   VLLM_USE_V2_MODEL_RUNNER="0"
-if [[ "${model_size}:${mtp_mode}" == "12b:on" ]]; then
+if [[ "${model_size}" == "12b" && "${mtp_mode}" != "off" ]]; then
   export \
     VLLM_SMOKE_GPU_MEMORY_UTILIZATION="0.90" \
     VLLM_SMOKE_MAX_MODEL_LEN="2048" \
@@ -124,7 +128,11 @@ for ((elapsed = 0; elapsed < startup_timeout_seconds; elapsed += 1)); do
     --max-time 2 \
     "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then
     served_model="gemma4-${model_size}"
-    [[ "${mtp_mode}" == "off" ]] || served_model="${served_model}-mtp"
+    if [[ "${mtp_mode}" == "on" ]]; then
+      served_model="${served_model}-mtp"
+    elif [[ "${mtp_mode}" == "exact-off" ]]; then
+      served_model="${served_model}-mtp-target-off"
+    fi
     status_tmp="${status_file}.tmp.${pid}"
     printf \
       '{"schema_version":"1.0","component":"vllm","state":"ready","pid":%s,"port":%s,"model_size":"%s","model_id":"%s","mtp_mode":"%s","log_path":"%s","updated_at":"%s"}\n' \
