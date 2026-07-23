@@ -66,3 +66,5 @@ after measured LAN latency and complexity comparisons.
 
 Android UDF state, audio interruption, pairing, reconnection, and device-test
 boundaries are detailed in [`android-design.md`](android-design.md).
+VAD, STT/TTS isolation, streaming boundaries, and barge-in measurements are
+detailed in [`audio-design.md`](audio-design.md).
