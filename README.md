@@ -50,6 +50,13 @@ pwsh -File scripts\install.ps1 -PlanOnly
 pwsh -File scripts\download-models.ps1 -PlanOnly
 ```
 
+From an isolated project/runtime environment containing PyYAML and
+jsonschema, all network-free repository checks can be run with:
+
+```text
+python scripts/validate-repository.py
+```
+
 WSL runtime setup, model loading, server startup, Android builds, and
 benchmarks are enabled only after the corresponding compatibility gate is
 recorded in the manifests. See [docs/runbook.md](docs/runbook.md).
