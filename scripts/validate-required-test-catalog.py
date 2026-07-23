@@ -33,6 +33,8 @@ REQUIRED_IDS = {
     "screen_resolution_changed",
     "rollback_failure",
 }
+RUNNERS = {"pc_server", "tool_executor", "repository", "android"}
+KNOWN_COVERAGE_LEVELS = {"simulated_policy", "static_fail_closed"}
 
 
 def main() -> int:
@@ -51,9 +53,29 @@ def main() -> int:
             f"missing={sorted(REQUIRED_IDS - set(ids))}, "
             f"extra={sorted(set(ids) - REQUIRED_IDS)}"
         )
+    if catalog.get("status") != "automated_mapped":
+        raise ValueError("required test catalog must be automated_mapped")
+    selectors: list[tuple[str, str]] = []
     for case in cases:
-        if not case.get("layer") or not case.get("expected"):
+        if (
+            not case.get("layer")
+            or not case.get("expected")
+            or case.get("runner") not in RUNNERS
+            or not case.get("selector")
+        ):
             raise ValueError(f"incomplete required case: {case.get('id')}")
+        coverage_level = case.get("coverage_level")
+        if (
+            coverage_level is not None
+            and coverage_level not in KNOWN_COVERAGE_LEVELS
+        ):
+            raise ValueError(
+                f"unknown coverage level for {case.get('id')}: "
+                f"{coverage_level}"
+            )
+        selectors.append((case["runner"], case["selector"]))
+    if len(selectors) != len(set(selectors)):
+        raise ValueError("duplicate required-case test selector")
     print(
         json.dumps(
             {

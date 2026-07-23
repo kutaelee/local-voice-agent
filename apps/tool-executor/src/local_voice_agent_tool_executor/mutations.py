@@ -130,7 +130,12 @@ class FileMutationExecutor:
             relative_path,
         )
         current = _read_regular_file(target)
-        _require_hash(current, expected_current_sha256)
+        try:
+            _require_hash(current, expected_current_sha256)
+        except MutationPreconditionFailed as error:
+            raise RollbackRejected(
+                "rollback rejected because the current hash changed"
+            ) from error
         self._store_backup(
             execution_id=execution_id,
             target=target,

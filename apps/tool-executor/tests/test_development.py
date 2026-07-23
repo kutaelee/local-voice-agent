@@ -122,6 +122,31 @@ def test_output_limit_stops_success_claim(tmp_path: Path) -> None:
     assert result["output_bytes"] <= 128
 
 
+def test_registered_child_timeout_stops_success_claim_and_records_evidence(
+    tmp_path: Path,
+) -> None:
+    executor = adapter(
+        tmp_path,
+        arguments=("-c", "import time; time.sleep(10)"),
+        timeout_seconds=1,
+    )
+    result = executor.execute(
+        "run_tests",
+        {
+            "workspace_id": "test_workspace",
+            "profile_id": "unit-tests",
+            "idempotency_key": str(uuid4()),
+        },
+    )
+    assert result["succeeded"] is False
+    assert result["timed_out"] is True
+    assert result["exit_code"] != 0
+    metadata = (
+        tmp_path / "evidence" / f"{result['evidence_id']}.json"
+    ).read_text(encoding="utf-8")
+    assert '"timed_out":true' in metadata
+
+
 def test_log_workspace_binding_fails_closed(tmp_path: Path) -> None:
     executor = adapter(tmp_path)
     result = executor.execute(

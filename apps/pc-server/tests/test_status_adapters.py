@@ -95,6 +95,17 @@ def test_status_file_rejects_symlink_escape(tmp_path: Path) -> None:
         StatusFileAdapter().read(tmp_path)
 
 
+def test_corrupted_status_log_is_reported_without_inferred_success(
+    tmp_path: Path,
+) -> None:
+    status_path = tmp_path / ".local-voice-agent" / "agent-status.json"
+    status_path.parent.mkdir()
+    status_path.write_text('{"phase":"completed","tests":', encoding="utf-8")
+
+    with pytest.raises(StatusAdapterError, match="invalid"):
+        AgentStatusManager().observe(tmp_path)
+
+
 def test_process_adapter_classifies_supported_agents_without_exposing_command(
     tmp_path: Path,
 ) -> None:

@@ -1,126 +1,177 @@
 {
   "schema_version": "1.0",
-  "status": "specified_not_run",
+  "status": "automated_mapped",
   "cases": [
     {
       "id": "invalid_pairing_token",
       "layer": "gateway",
-      "expected": "reject authentication without creating a session or leaking token details"
+      "expected": "reject authentication without creating a session or leaking token details",
+      "runner": "pc_server",
+      "selector": "apps/pc-server/tests/test_api.py::test_websocket_rejects_invalid_pairing_token"
     },
     {
       "id": "path_traversal",
       "layer": "tool_executor",
-      "expected": "reject normalized path outside the selected workspace before filesystem access"
+      "expected": "reject normalized path outside the selected workspace before filesystem access",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_workspaces.py::test_resolver_rejects_absolute_traversal_and_ambiguous_paths"
     },
     {
       "id": "symlink_reparse_bypass",
       "layer": "tool_executor",
-      "expected": "reject a final resolved target outside the workspace root"
+      "expected": "reject a final resolved target outside the workspace root",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_workspaces.py::test_resolver_rejects_internal_and_escaping_symlinks"
     },
     {
       "id": "outside_allowlist_file",
       "layer": "policy",
-      "expected": "deny access and record a redacted audit event"
+      "expected": "deny access and record a redacted audit event",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_workspaces.py::test_file_outside_registered_workspace_is_denied_before_access"
     },
     {
       "id": "concurrent_file_modification",
       "layer": "tool_executor",
-      "expected": "detect changed precondition and require a new plan and approval"
+      "expected": "detect changed precondition and require a new plan and approval",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_mutations.py::test_concurrent_change_invalidates_write_precondition"
     },
     {
       "id": "hash_mismatch",
       "layer": "tool_executor",
-      "expected": "perform no write and return a precondition failure"
+      "expected": "perform no write and return a precondition failure",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_mutations.py::test_hash_mismatch_preserves_file_and_creates_no_backup"
     },
     {
       "id": "duplicate_tool_call",
       "layer": "tool_executor",
-      "expected": "return the prior terminal result for the same idempotency key"
+      "expected": "return the prior terminal result for the same idempotency key",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_service.py::test_exact_duplicate_returns_cached_result_and_conflict_is_rejected"
     },
     {
       "id": "tool_timeout",
       "layer": "tool_executor",
-      "expected": "terminate only the registered child when safe and report observed final state"
+      "expected": "terminate only the registered child when safe and report observed final state",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_development.py::test_registered_child_timeout_stops_success_claim_and_records_evidence"
     },
     {
       "id": "stt_timeout",
       "layer": "audio",
-      "expected": "end recognition, preserve session, and prompt for retry without fabricated transcript"
+      "expected": "end recognition, preserve session, and prompt for retry without fabricated transcript",
+      "runner": "pc_server",
+      "selector": "apps/pc-server/tests/test_audio_workers.py::test_stt_and_tts_timeout_preserve_no_fabricated_output[stt-transcribe]"
     },
     {
       "id": "llm_timeout",
       "layer": "model_router",
-      "expected": "cancel generation, emit error state, and keep tool execution blocked"
+      "expected": "cancel generation, emit error state, and keep tool execution blocked",
+      "runner": "pc_server",
+      "selector": "apps/pc-server/tests/test_vllm_conversation.py::test_llm_timeout_returns_typed_failure_without_content"
     },
     {
       "id": "tts_timeout",
       "layer": "audio",
-      "expected": "discard incomplete audio and keep final text available"
+      "expected": "discard incomplete audio and keep final text available",
+      "runner": "pc_server",
+      "selector": "apps/pc-server/tests/test_audio_workers.py::test_stt_and_tts_timeout_preserve_no_fabricated_output[tts-synthesize]"
     },
     {
       "id": "gpu_oom",
       "layer": "gpu_resource_manager",
-      "expected": "record peak evidence, recover worker, and enter configured degraded mode"
+      "expected": "record peak evidence, recover worker, and enter configured degraded mode",
+      "runner": "pc_server",
+      "selector": "apps/pc-server/tests/test_model_router.py::test_automatic_escalation_degrades_to_ready_12b_when_vram_is_denied",
+      "coverage_level": "simulated_policy"
     },
     {
       "id": "mtp_initialization_failure",
       "layer": "runtime",
-      "expected": "disable MTP, preserve target model availability, and report exact runtime log evidence"
+      "expected": "disable MTP, preserve target model availability, and report exact runtime log evidence",
+      "runner": "repository",
+      "selector": "tests/test_runtime_launch_security.py::test_vllm_launcher_uses_official_environment_key",
+      "coverage_level": "static_fail_closed"
     },
     {
       "id": "model_31b_load_failure",
       "layer": "model_router",
-      "expected": "unload failed state, reload 12B, pass health check, and disclose failure"
+      "expected": "unload failed state, reload 12B, pass health check, and disclose failure",
+      "runner": "pc_server",
+      "selector": "apps/pc-server/tests/test_model_switch.py::test_31b_start_failure_cleans_failed_process_and_restores_12b"
     },
     {
       "id": "wsl_failure",
       "layer": "runtime",
-      "expected": "avoid restart loops and expose the Windows fallback diagnostic path"
+      "expected": "avoid restart loops and expose the Windows fallback diagnostic path",
+      "runner": "repository",
+      "selector": "tests/test_fallback_scripts.py::test_fallback_start_uses_environment_only_api_key",
+      "coverage_level": "static_fail_closed"
     },
     {
       "id": "websocket_disconnect",
       "layer": "gateway",
-      "expected": "retain replayable state and never replay non-idempotent execution"
+      "expected": "retain replayable state and never replay non-idempotent execution",
+      "runner": "pc_server",
+      "selector": "apps/pc-server/tests/test_api.py::test_websocket_reconnect_replays_gap_and_resumes_sequence"
     },
     {
       "id": "android_reconnect",
       "layer": "android",
-      "expected": "resume from last accepted sequence and reconcile pending approvals"
+      "expected": "resume from last accepted sequence and reconcile pending approvals",
+      "runner": "android",
+      "selector": "dev.localvoiceagent.android.network.PcGatewayClientTest.reconnectPreservesSessionAndRequestsEventsAfterLastSequence"
     },
     {
       "id": "barge_in_during_tts",
       "layer": "audio",
-      "expected": "stop playback, discard queued audio, mark response interrupted, and accept new speech"
+      "expected": "stop playback, discard queued audio, mark response interrupted, and accept new speech",
+      "runner": "pc_server",
+      "selector": "apps/pc-server/tests/test_session_events.py::test_barge_in_cancels_active_capture"
     },
     {
       "id": "not_a_git_repository",
       "layer": "git_adapter",
-      "expected": "return a typed not_repository result without invoking mutating Git commands"
+      "expected": "return a typed not_repository result without invoking mutating Git commands",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_git.py::test_git_requires_enabled_workspace_and_internal_git_directory"
     },
     {
       "id": "large_diff",
       "layer": "git_adapter",
-      "expected": "cap output, retain hash and statistics, and offer bounded ranges"
+      "expected": "cap output, retain hash and statistics, and offer bounded ranges",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_git.py::test_git_diff_is_bounded_and_literal_pathspec_safe"
     },
     {
       "id": "corrupted_log",
       "layer": "status_adapter",
-      "expected": "mark corrupt segments and separate observed facts from inference"
+      "expected": "mark corrupt segments and separate observed facts from inference",
+      "runner": "pc_server",
+      "selector": "apps/pc-server/tests/test_status_adapters.py::test_corrupted_status_log_is_reported_without_inferred_success"
     },
     {
       "id": "browser_element_changed",
       "layer": "computer_use",
-      "expected": "invalidate stale locator, observe fresh page state, and replan"
+      "expected": "invalidate stale locator, observe fresh page state, and replan",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_browser.py::test_browser_loopback_state_actions_and_evidence"
     },
     {
       "id": "screen_resolution_changed",
       "layer": "computer_use",
-      "expected": "invalidate coordinate plan and require a fresh screenshot and dimensions"
+      "expected": "invalidate coordinate plan and require a fresh screenshot and dimensions",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_windows_ui.py::test_coordinate_action_rejects_screen_geometry_change"
     },
     {
       "id": "rollback_failure",
       "layer": "tool_executor",
-      "expected": "stop additional mutation, preserve evidence, and escalate manual recovery steps"
+      "expected": "stop additional mutation, preserve evidence, and escalate manual recovery steps",
+      "runner": "tool_executor",
+      "selector": "apps/tool-executor/tests/test_mutations.py::test_rollback_failure_preserves_concurrent_content_and_backup"
     }
   ]
 }

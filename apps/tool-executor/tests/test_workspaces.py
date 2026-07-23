@@ -90,6 +90,22 @@ def test_resolver_rejects_absolute_traversal_and_ambiguous_paths(
         registry.resolve_existing("repo", relative_path)
 
 
+def test_file_outside_registered_workspace_is_denied_before_access(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "workspace"
+    root.mkdir()
+    outside = tmp_path / "outside.txt"
+    outside.write_text("private", encoding="utf-8")
+    registry = WorkspaceRegistry([workspace(root)])
+
+    with pytest.raises(WorkspacePathRejected):
+        registry.resolve_existing("repo", str(outside))
+    with pytest.raises(WorkspaceNotFound):
+        registry.resolve_existing("unregistered", "outside.txt")
+    assert outside.read_text(encoding="utf-8") == "private"
+
+
 @pytest.mark.parametrize(
     "relative_path",
     [

@@ -124,3 +124,19 @@ def test_stream_closes_transport_when_consumer_stops() -> None:
 
     asyncio.run(scenario())
     assert source.closed is True
+
+
+def test_llm_timeout_returns_typed_failure_without_content(monkeypatch) -> None:
+    def timeout(*_: object, **__: object) -> object:
+        raise TimeoutError("synthetic timeout")
+
+    monkeypatch.setattr(vllm_conversation, "urlopen", timeout)
+    adapter = VllmConversationAdapter(
+        base_url="http://127.0.0.1:8000/v1",
+        model="local-gemma",
+        api_key=API_KEY,
+        timeout_seconds=1,
+    )
+
+    with pytest.raises(VllmConversationError, match="request failed"):
+        asyncio.run(adapter.respond("timeout", language="en"))

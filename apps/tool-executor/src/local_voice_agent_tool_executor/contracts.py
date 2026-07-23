@@ -62,6 +62,12 @@ SUPPORTED_TOOLS = (
     | UI_MUTATION_TOOLS
     | (DEVELOPMENT_TOOLS & {"run_tests"})
 )
+LEVEL_2_TOOLS = frozenset(
+    {
+        "ui_click_coordinate",
+        "ui_drag_coordinate",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,7 +116,13 @@ class ReadToolContracts:
                 ) from error
             if raw["name"] != name:
                 raise ToolContractError(f"{path.name}: tool name mismatch")
-            expected_risk = 0 if name in SUPPORTED_READ_TOOLS else 1
+            expected_risk = (
+                0
+                if name in SUPPORTED_READ_TOOLS
+                else 2
+                if name in LEVEL_2_TOOLS
+                else 1
+            )
             expected_idempotency = (
                 "read_only" if name in SUPPORTED_READ_TOOLS else "required"
             )

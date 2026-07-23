@@ -11,6 +11,7 @@ import pytest
 from local_voice_agent_tool_executor.errors import (
     MutationPreconditionFailed,
     PatchRejected,
+    RollbackRejected,
     WorkspacePathRejected,
 )
 from local_voice_agent_tool_executor.mutations import FileMutationExecutor
@@ -133,6 +134,57 @@ def test_hash_mismatch_preserves_file_and_creates_no_backup(
         )
     assert target.read_bytes() == b"current"
     assert not (tmp_path / "backups" / execution_id).exists()
+
+
+def test_concurrent_change_invalidates_write_precondition(
+    mutations: FileMutationExecutor,
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "workspace" / "value.txt"
+    target.write_bytes(b"planned")
+    planned_hash = digest(target.read_bytes())
+    target.write_bytes(b"changed concurrently")
+
+    with pytest.raises(MutationPreconditionFailed, match="hash"):
+        mutations.write_file(
+            execution_id=str(uuid4()),
+            workspace_id="repo",
+            relative_path="value.txt",
+            expected_sha256=planned_hash,
+            content="replacement",
+            idempotency_key=str(uuid4()),
+        )
+    assert target.read_bytes() == b"changed concurrently"
+
+
+def test_rollback_failure_preserves_concurrent_content_and_backup(
+    mutations: FileMutationExecutor,
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "workspace" / "value.txt"
+    target.write_bytes(b"before")
+    backup_id = str(uuid4())
+    changed = mutations.write_file(
+        execution_id=backup_id,
+        workspace_id="repo",
+        relative_path="value.txt",
+        expected_sha256=digest(b"before"),
+        content="after",
+        idempotency_key=str(uuid4()),
+    )
+    target.write_bytes(b"new concurrent work")
+
+    with pytest.raises(RollbackRejected, match="current hash"):
+        mutations.rollback_file_change(
+            execution_id=str(uuid4()),
+            workspace_id="repo",
+            relative_path="value.txt",
+            backup_id=backup_id,
+            expected_current_sha256=changed["after_sha256"],
+            idempotency_key=str(uuid4()),
+        )
+    assert target.read_bytes() == b"new concurrent work"
+    assert (tmp_path / "backups" / backup_id / "metadata.json").is_file()
 
 
 def test_apply_patch_verifies_context_and_is_rollbackable(

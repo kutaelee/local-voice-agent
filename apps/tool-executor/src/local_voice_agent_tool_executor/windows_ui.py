@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 import re
 from threading import Lock
+from time import monotonic
 from typing import Any, Mapping
 from uuid import UUID, uuid4
 
@@ -28,6 +29,8 @@ UI_READ_TOOLS = frozenset(
 UI_MUTATION_TOOLS = frozenset(
     {
         "ui_click_element",
+        "ui_click_coordinate",
+        "ui_drag_coordinate",
         "ui_focus_window",
         "ui_press_key",
         "ui_type_text",
@@ -52,6 +55,17 @@ class WindowObservation:
     elements: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True, slots=True)
+class ScreenshotObservation:
+    artifact_id: UUID
+    sha256: str
+    width: int
+    height: int
+    origin_x: int
+    origin_y: int
+    captured_at: float
+
+
 class WindowsUiAutomation:
     def __init__(self, *, artifact_root: Path) -> None:
         if not artifact_root.is_absolute():
@@ -65,6 +79,7 @@ class WindowsUiAutomation:
         self._submit_lock = Lock()
         self._desktop: Any | None = None
         self._windows: dict[str, WindowObservation] = {}
+        self._screenshots: dict[UUID, ScreenshotObservation] = {}
 
     def execute(
         self,
@@ -91,7 +106,9 @@ class WindowsUiAutomation:
         arguments: dict[str, Any],
     ) -> dict[str, object]:
         arguments.pop("idempotency_key", None)
+        arguments.pop("approval_id", None)
         try:
+            _enable_physical_coordinate_space()
             return getattr(self, f"_{tool_name}")(**arguments)
         except (ToolArgumentsInvalid, ToolNotSupported):
             raise
@@ -302,9 +319,14 @@ class WindowsUiAutomation:
         if window_ref is None:
             image = ImageGrab.grab(all_screens=True)
             scope = "virtual_desktop"
+            origin_x, origin_y, expected_width, expected_height = (
+                _virtual_screen_geometry()
+            )
         else:
             image = self._window(window_ref).wrapper.capture_as_image()
             scope = "window"
+            origin_x = origin_y = 0
+            expected_width, expected_height = image.size
         stream = BytesIO()
         image.save(stream, format="PNG")
         content = stream.getvalue()
@@ -314,15 +336,156 @@ class WindowsUiAutomation:
             handle.write(content)
         with Image.open(BytesIO(content)) as parsed:
             width, height = parsed.size
+        if (width, height) != (expected_width, expected_height):
+            raise UiAutomationError("captured screen geometry is inconsistent")
+        digest = hashlib.sha256(content).hexdigest()
+        if scope == "virtual_desktop":
+            self._screenshots[artifact_id] = ScreenshotObservation(
+                artifact_id=artifact_id,
+                sha256=digest,
+                width=width,
+                height=height,
+                origin_x=origin_x,
+                origin_y=origin_y,
+                captured_at=monotonic(),
+            )
+            while len(self._screenshots) > 16:
+                self._screenshots.pop(next(iter(self._screenshots)))
         return {
             "artifact_id": str(artifact_id),
-            "sha256": hashlib.sha256(content).hexdigest(),
+            "sha256": digest,
             "size_bytes": len(content),
             "width": width,
             "height": height,
+            "origin_x": origin_x,
+            "origin_y": origin_y,
             "scope": scope,
             "cursor_included": False,
         }
+
+    def _ui_click_coordinate(
+        self,
+        *,
+        screenshot_evidence_id: str,
+        screenshot_sha256: str,
+        screen_width: int,
+        screen_height: int,
+        x: int,
+        y: int,
+    ) -> dict[str, object]:
+        observation = self._fresh_screenshot(
+            screenshot_evidence_id,
+            screenshot_sha256,
+            screen_width,
+            screen_height,
+        )
+        if x >= screen_width or y >= screen_height:
+            raise ToolArgumentsInvalid("coordinate is outside captured screen")
+        from pywinauto import mouse
+
+        actual = (observation.origin_x + x, observation.origin_y + y)
+        mouse.click(coords=actual)
+        return {
+            "clicked": True,
+            "x": x,
+            "y": y,
+            "screenshot_evidence_id": screenshot_evidence_id,
+        }
+
+    def _ui_drag_coordinate(
+        self,
+        *,
+        screenshot_evidence_id: str,
+        screenshot_sha256: str,
+        screen_width: int,
+        screen_height: int,
+        start_x: int,
+        start_y: int,
+        end_x: int,
+        end_y: int,
+        duration_ms: int = 500,
+    ) -> dict[str, object]:
+        observation = self._fresh_screenshot(
+            screenshot_evidence_id,
+            screenshot_sha256,
+            screen_width,
+            screen_height,
+        )
+        if any(
+            (
+                start_x >= screen_width,
+                end_x >= screen_width,
+                start_y >= screen_height,
+                end_y >= screen_height,
+            )
+        ):
+            raise ToolArgumentsInvalid("drag coordinate is outside captured screen")
+        from pywinauto import mouse
+
+        start = (
+            observation.origin_x + start_x,
+            observation.origin_y + start_y,
+        )
+        end = (
+            observation.origin_x + end_x,
+            observation.origin_y + end_y,
+        )
+        mouse.move(coords=start)
+        mouse.press(coords=start)
+        try:
+            mouse.move(coords=end, duration=duration_ms / 1_000)
+        finally:
+            mouse.release(coords=end)
+        return {
+            "dragged": True,
+            "start_x": start_x,
+            "start_y": start_y,
+            "end_x": end_x,
+            "end_y": end_y,
+            "duration_ms": duration_ms,
+            "screenshot_evidence_id": screenshot_evidence_id,
+        }
+
+    def _fresh_screenshot(
+        self,
+        evidence_id: str,
+        expected_sha256: str,
+        expected_width: int,
+        expected_height: int,
+    ) -> ScreenshotObservation:
+        try:
+            parsed_id = UUID(evidence_id)
+            observation = self._screenshots[parsed_id]
+        except (ValueError, KeyError) as error:
+            raise ToolArgumentsInvalid("screenshot evidence is unavailable") from error
+        if (
+            observation.sha256 != expected_sha256
+            or observation.width != expected_width
+            or observation.height != expected_height
+        ):
+            raise ToolArgumentsInvalid("screenshot evidence binding is stale")
+        if monotonic() - observation.captured_at > 30:
+            raise ToolArgumentsInvalid("screenshot evidence has expired")
+        current = _virtual_screen_geometry()
+        if current != (
+            observation.origin_x,
+            observation.origin_y,
+            observation.width,
+            observation.height,
+        ):
+            raise ToolArgumentsInvalid(
+                "screen geometry changed after screenshot capture"
+            )
+        path = self._artifact_root / f"{observation.artifact_id}.png"
+        try:
+            content = path.read_bytes()
+        except OSError as error:
+            raise ToolArgumentsInvalid(
+                "screenshot evidence is unavailable"
+            ) from error
+        if hashlib.sha256(content).hexdigest() != observation.sha256:
+            raise ToolArgumentsInvalid("screenshot evidence hash changed")
+        return observation
 
     def _window(self, window_ref: str) -> WindowObservation:
         if not window_ref.startswith("window:"):
@@ -416,6 +579,29 @@ def _snapshot_tree(
     if pending:
         truncated = True
     return records, wrappers, truncated
+
+
+def _virtual_screen_geometry() -> tuple[int, int, int, int]:
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    values = tuple(
+        int(user32.GetSystemMetrics(index))
+        for index in (76, 77, 78, 79)
+    )
+    if values[2] < 1 or values[3] < 1:
+        raise UiAutomationError("virtual screen geometry is unavailable")
+    return values
+
+
+def _enable_physical_coordinate_space() -> None:
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    setter = getattr(user32, "SetThreadDpiAwarenessContext", None)
+    if setter is None:
+        raise UiAutomationError("per-monitor DPI awareness is unavailable")
+    setter.argtypes = [wintypes.HANDLE]
+    setter.restype = wintypes.HANDLE
+    per_monitor_aware_v2 = ctypes.c_void_p(-4)
+    if not setter(per_monitor_aware_v2):
+        raise UiAutomationError("per-monitor DPI awareness could not be set")
 
 
 def _window_fingerprint(wrapper: Any, pid: int, title: str) -> str:

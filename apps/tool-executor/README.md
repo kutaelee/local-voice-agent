@@ -70,9 +70,12 @@ precondition. A successful change creates a no-replace backup outside the
 worktree. Rollback is a separate approved Level 1 execution and succeeds only
 when the workspace, path, backup identity, and current post-change hash all
 still match. Browser and Windows UI adapters cover bounded Level 0/1 subsets.
-Delete, Git mutation, process mutation, coordinate UI, external browser
-submission, and shell operations remain unavailable. The executor cannot
-access user files until a workspace is explicitly registered.
+Coordinate click and drag are Level 2 operations bound to a screenshot UUID,
+SHA-256, physical pixel dimensions, a 30-second freshness window, and an
+unchanged per-monitor-DPI-aware virtual desktop. Delete, Git mutation, process
+mutation, external browser submission, and shell operations remain
+unavailable. The executor cannot access user files until a workspace is
+explicitly registered.
 
 The environment is isolated from the PC server and model runtimes:
 

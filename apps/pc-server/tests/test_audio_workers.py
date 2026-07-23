@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 
+from local_voice_agent_server.infrastructure import audio_workers
 from local_voice_agent_server.infrastructure.audio_workers import (
     AudioWorkerError,
     SttWorkerAdapter,
@@ -105,6 +106,49 @@ def test_worker_error_is_sanitized(tmp_path: Path) -> None:
             )
             with pytest.raises(AudioWorkerError, match="REQUEST_INVALID"):
                 await client.request({"operation": "health", "request_id": "x"})
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("adapter_kind", "operation"),
+    (("stt", "transcribe"), ("tts", "synthesize")),
+)
+def test_stt_and_tts_timeout_preserve_no_fabricated_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    adapter_kind: str,
+    operation: str,
+) -> None:
+    async def never_connect(*_: object, **__: object) -> object:
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")
+
+    monkeypatch.setattr(
+        audio_workers.asyncio,
+        "open_unix_connection",
+        never_connect,
+    )
+    client = UnixJsonWorkerClient(
+        socket_path=tmp_path / f"{adapter_kind}.sock",
+        token=TOKEN,
+        timeout_seconds=1,
+    )
+    client._timeout_seconds = 0.01
+
+    async def scenario() -> None:
+        with pytest.raises(AudioWorkerError, match="connection failed"):
+            if operation == "transcribe":
+                await SttWorkerAdapter(client).transcribe(
+                    b"\x00\x00" * 160,
+                    sample_rate_hz=16_000,
+                    channels=1,
+                )
+            else:
+                await TtsWorkerAdapter(client).synthesize(
+                    "timeout",
+                    language="ko",
+                )
 
     asyncio.run(scenario())
 
