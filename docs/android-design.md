@@ -1,8 +1,9 @@
 # Android client design
 
-Status: design complete; build tooling is not installed. Android Studio, SDK,
-ADB, and Gradle provisioning remain approval-gated if they require a
-system-wide or elevated installation.
+Status: Slice 8 scaffold builds successfully for Android 17 / API 37 with the
+isolated command-line SDK. Android Studio is not installed. WebSocket, real
+audio capture/playback, Room, Bluetooth routing, and device QA remain later
+slices.
 
 ## Application structure
 

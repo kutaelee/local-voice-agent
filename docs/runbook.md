@@ -163,6 +163,34 @@ C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv\Scripts\python.exe `
 A restart clears the current in-memory idempotency cache; do not treat it as
 durable until PostgreSQL-backed execution persistence is implemented.
 
+## Android client build and install
+
+The command-line toolchain is isolated from the system PATH:
+
+```powershell
+cd C:\Dev\Repos\local-voice-agent\apps\android-client
+$env:JAVA_HOME = 'C:\Dev\Java\jdk17'
+$env:ANDROID_HOME = 'C:\Dev\SDK\Android'
+$env:ANDROID_SDK_ROOT = 'C:\Dev\SDK\Android'
+$env:GRADLE_USER_HOME = 'E:\Cache\LocalVoiceAgent\gradle'
+.\gradlew.bat --no-daemon --non-interactive `
+  clean testDebugUnitTest lintDebug assembleDebug assembleRelease
+```
+
+Install the verified debug APK only when a device is visible in
+`adb devices`:
+
+```powershell
+C:\Dev\SDK\Android\platform-tools\adb.exe devices
+C:\Dev\SDK\Android\platform-tools\adb.exe install -r `
+  E:\Data\LocalVoiceAgent\artifacts\android\0.1.0-api37\local-voice-agent-0.1.0-debug.apk
+```
+
+The release APK is intentionally unsigned and cannot be installed until the
+user supplies a release-signing policy and private key outside Git. Pairing
+tokens are encrypted by an Android Keystore key and their preferences file is
+excluded from cloud backup and device transfer.
+
 ## Installation gates
 
 1. Confirm manifests reference exact official revisions.

@@ -111,8 +111,16 @@ progress. No product acceptance test has run.
 | Tool execution idempotency | Passed (process scope) | Exact successful duplicate returned cached receipt without re-execution; conflicting reuse was rejected; failed execution was not repeated. Durable restart behavior remains `NOT_RUN` |
 | Read-only Git executor | Passed | Status/diff/staged diff/stat/log/branch/show/blame; literal `--stat` path, `--help` revision injection rejection, output truncation, no index modification, and external diff suppression |
 | Git metadata escape gates | Passed | Non-Git and disabled workspaces, `.git` file/worktree, object alternates, config includes, and Windows junction/WSL symlink metadata paths rejected |
+| Android command-line SDK integrity | Passed | Official 155,655,386-byte command-line tools archive matched SHA-256 `90ae805d20434428bffcb699c290860f19bb5f66a67e6b330067e3de801fb04a`; API 37, Build Tools 36.0.0, Platform Tools 37.0.0 installed without PATH/registry changes |
+| Android API 37 clean build | Passed | Gradle 9.6.1 distribution checksum pinned; AGP 9.3.0; `clean testDebugUnitTest lintDebug assembleDebug assembleRelease` succeeded in 2m32s |
+| Android reducer unit tests | Passed | 4 tests, 0 failures, 0 errors, 0 skipped |
+| Android lint | Passed | 0 findings after secure backup rules, current stable AndroidX dependencies, and adaptive/monochrome icon fixes |
+| Android package metadata | Passed | AAPT2 verified application ID `dev.localvoiceagent.android`, min SDK 26, compile/target SDK 37 |
+| Android debug signature | Passed | APK Signature Scheme v2 verified with the generated Android debug certificate |
+| Android unsigned release state | Passed | `apksigner verify` rejected the release artifact as expected; no release key was created or assumed |
+| Android device install and interaction | NOT_RUN | No ADB device is connected; device permission, audio, rotation, reconnect, and Bluetooth QA remain open |
 
 Exact Q4_0 MTP multimodal compatibility, statistical MTP quality/latency
 benchmark, 31B multimodal and exact-pair MTP, SGLang, audio/video, full benchmark, security,
-Android, rollback, and product acceptance tests remain `NOT_RUN` or in
+Android device/voice, rollback, and product acceptance tests remain `NOT_RUN` or in
 progress.

@@ -75,9 +75,11 @@ jsonschema, all network-free repository checks can be run with:
 python scripts/validate-repository.py
 ```
 
-WSL runtime setup, model loading, server startup, Android builds, and
-benchmarks are enabled only after the corresponding compatibility gate is
-recorded in the manifests. See [docs/runbook.md](docs/runbook.md).
+WSL runtime setup, model loading, server startup, and benchmarks are enabled
+only after the corresponding compatibility gate is recorded in the
+manifests. The Android API 37 command-line build is operational; see
+[manifests/android-sdk.yaml](manifests/android-sdk.yaml) and
+[docs/runbook.md](docs/runbook.md).
 
 ## Data and artifacts
 
@@ -86,8 +88,10 @@ recorded in the manifests. See [docs/runbook.md](docs/runbook.md).
 - Reviewed benchmark reports go under `benchmarks/reports/`.
 - Runtime evidence is written outside Git under
   `E:\Data\LocalVoiceAgent\runtime\evidence`.
-- APKs will be produced under the Android Gradle build directory and copied to
-  a documented release artifact location only after verification.
+- Verified Android APKs are copied to
+  `E:\Data\LocalVoiceAgent\artifacts\android\0.1.0-api37`; hashes and signing
+  state are recorded in
+  [manifests/android-artifacts.yaml](manifests/android-artifacts.yaml).
 
 ## Safety
 

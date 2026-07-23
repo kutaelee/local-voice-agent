@@ -14,9 +14,9 @@ Local Voice Agent Windows installation plan
 
 Already present:
 - Git, Git LFS, GitHub CLI, uv, JDK 17, WSL2 Ubuntu, Docker Desktop
+- Android command-line tools 22.0, API 37, Build Tools 36.0.0, ADB 37.0.0
 
 Missing and not installed by this script:
-- Android SDK command-line tools and ADB
 - Node.js
 - FFmpeg
 - PostgreSQL 18

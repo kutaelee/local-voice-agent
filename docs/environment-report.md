@@ -1,6 +1,7 @@
 # Environment report
 
-Captured read-only on 2026-07-23 (Asia/Seoul). No installation was performed.
+Initial capture was read-only on 2026-07-23 (Asia/Seoul). The post-capture
+Android SDK installation is recorded separately below.
 
 ## Hardware
 
@@ -14,7 +15,7 @@ Captured read-only on 2026-07-23 (Asia/Seoul). No installation was performed.
 | NVIDIA driver | 610.62 |
 | Driver CUDA support | CUDA 13.3 |
 | Active network | Wi-Fi 866.7 Mbps; Ethernet link reported 10 Mbps |
-| Android device | Not observable: ADB is not installed |
+| Android device | No connected device observed; ADB 37.0.0 is now installed |
 
 ## Windows
 
@@ -31,10 +32,30 @@ Captured read-only on 2026-07-23 (Asia/Seoul). No installation was performed.
 | Docker Desktop | 4.83.0; Engine/CLI 29.6.2 |
 | WSL | 2.7.10.0; WSL2 Ubuntu and docker-desktop running |
 
-Not found on Windows PATH or canonical install locations: usable Python,
-Node/npm, Android Studio, Android SDK, ADB, FFmpeg, CMake, Ninja, Visual
+Not found on Windows PATH or canonical install locations at initial capture:
+usable Python, Node/npm, Android Studio, Android SDK, ADB, FFmpeg, CMake, Ninja, Visual
 Studio Build Tools, CUDA Toolkit, Hugging Face CLI, Ollama, llama.cpp, and
 PostgreSQL client/server.
+
+## Post-capture Android build environment
+
+The command-line SDK was installed without administrator rights, registry
+changes, or persistent PATH changes:
+
+| Item | Installed/verified |
+|---|---|
+| SDK root | `C:\Dev\SDK\Android` |
+| Command-line tools | 22.0; official archive SHA-256 passed |
+| Platform | Android 17 / API 37.0, revision 2 |
+| Build Tools | 36.0.0; `aapt2` and `apksigner` invoked |
+| Platform Tools | 37.0.0; ADB invoked |
+| Gradle | 9.6.1, distribution SHA-256 pinned |
+| Android Gradle Plugin | 9.3.0 |
+| Compose BOM | 2026.06.00 |
+| Full Android Studio | Not installed |
+
+The exact sources, checksums, paths, and rollback steps are in
+`manifests/android-sdk.yaml`.
 
 ## WSL Ubuntu
 
@@ -69,9 +90,9 @@ release, initially Python 3.12 unless official wheels require otherwise.
 
 ## Installation gaps requiring a later gate
 
-- Android command-line SDK/ADB and a compatible JDK must be installed without
+- Android command-line SDK/ADB and JDK 17 are installed and verified without
   a system PATH mutation. Full Android Studio remains an explicit-approval
-  item.
+  item and is not required for the command-line build.
 - FFmpeg is needed for broader audio tooling, although faster-whisper itself
   can decode through bundled PyAV.
 - PostgreSQL 18 is absent. Installation/container provisioning is a Level 2

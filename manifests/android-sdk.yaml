@@ -1,0 +1,45 @@
+schema_version: "1.0"
+generated_at: "2026-07-23T23:55:31+09:00"
+installation:
+  sdk_root: 'C:\Dev\SDK\Android'
+  cache_root: 'E:\Cache\LocalVoiceAgent\android-sdk'
+  system_path_changed: false
+  administrator_required: false
+  full_android_studio_installed: false
+packages:
+  - id: cmdline-tools/latest
+    version: "22.0"
+    status: installed_and_invoked
+    source: https://dl.google.com/android/repository/commandlinetools-win-15859902_latest.zip
+    archive_size_bytes: 155655386
+    archive_sha256: 90ae805d20434428bffcb699c290860f19bb5f66a67e6b330067e3de801fb04a
+  - id: platform-tools
+    version: "37.0.0"
+    status: installed_adb_invoked
+  - id: build-tools/36.0.0
+    version: "36.0.0"
+    status: installed_aapt2_and_apksigner_invoked
+  - id: platforms/android-37.0
+    version: "2.0.0"
+    api_level: "37.0"
+    platform_version: "17"
+    status: installed_and_compile_passed
+build_runtime:
+  jdk:
+    version: "17.0.20"
+    path: 'C:\Dev\Java\jdk17'
+  android_gradle_plugin:
+    version: "9.3.0"
+    source: https://developer.android.com/build/releases/agp-9-3-0-release-notes
+  gradle:
+    version: "9.6.1"
+    distribution_sha256: 9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14
+    wrapper_jar_sha256: 497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7
+    source: https://gradle.org/release-checksums/
+  compose_bom:
+    version: "2026.06.00"
+    source: https://developer.android.com/develop/ui/compose/bom
+rollback:
+  - Remove only C:\Dev\SDK\Android after inventory and after no project references it.
+  - Remove only E:\Cache\LocalVoiceAgent\android-sdk and E:\Cache\LocalVoiceAgent\gradle to clear disposable downloads.
+  - Revert the repository Gradle and Android source changes; no system PATH or registry rollback is required.

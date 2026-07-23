@@ -1,14 +1,30 @@
 # Android client
 
-Kotlin + Jetpack Compose client using ViewModel, `StateFlow`, immutable
-`UiState`, and one-way event flow. Room is limited to recent conversation and
-pending-request cache; pairing secrets belong in Android Keystore.
+Native Kotlin and Jetpack Compose client using ViewModel, `StateFlow`,
+immutable `UiState`, and one-way event flow. Pairing tokens are encrypted with
+an Android Keystore-backed AES key before they enter private app preferences.
 
-The app connects only to the PC API gateway. It never contacts the tool
-executor or model runtime directly. Audio uses interruptible half-duplex:
-microphone monitoring continues during playback, barge-in stops TTS and
-discards buffered output, then the client sends the new utterance and
-interruption state.
+The current Slice 8 scaffold contains the eight required navigation
+destinations, connection/assistant states, pairing input, approval controls,
+diagnostics placeholders, and a microphone foreground-service boundary. It
+does not yet claim WebSocket, audio streaming, Bluetooth, Room persistence,
+or device-test completion.
 
-Android Studio, SDK, Gradle, and APK setup remain blocked until the missing
-system tools are reviewed under the workstation approval rules.
+## Isolated build
+
+The workstation SDK is installed under `C:\Dev\SDK\Android`; the repository
+does not depend on a system PATH change.
+
+```powershell
+$env:JAVA_HOME = 'C:\Dev\Java\jdk17'
+$env:ANDROID_HOME = 'C:\Dev\SDK\Android'
+$env:GRADLE_USER_HOME = 'E:\Cache\LocalVoiceAgent\gradle'
+.\gradlew.bat --no-daemon --non-interactive `
+  testDebugUnitTest lintDebug assembleDebug assembleRelease
+```
+
+The tested toolchain is Android API 37, Build Tools 36.0.0, AGP 9.3.0,
+Gradle 9.6.1, JDK 17, and Compose BOM 2026.06.00. Generated APKs remain under
+`app\build\outputs\apk`; verified copies and hashes are listed in
+`manifests/android-artifacts.yaml`. Signing keys, pairing tokens,
+`local.properties`, Gradle caches, and APKs are excluded from Git.

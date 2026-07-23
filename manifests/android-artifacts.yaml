@@ -1,0 +1,29 @@
+schema_version: "1.0"
+generated_at: "2026-07-23T23:55:31+09:00"
+application_id: dev.localvoiceagent.android
+version_code: 1
+version_name: "0.1.0"
+min_sdk: 26
+compile_sdk: 37
+target_sdk: 37
+artifacts:
+  - kind: debug_apk
+    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.1.0-api37\local-voice-agent-0.1.0-debug.apk'
+    size_bytes: 11620223
+    sha256: 3b7930f2e1a053caea2d3ba155c9eb3877bda57171510219e7fe188e22bada85
+    signature: android_debug_v2_verified
+    installable: true
+  - kind: release_unsigned_apk
+    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.1.0-api37\local-voice-agent-0.1.0-release-unsigned.apk'
+    size_bytes: 8268861
+    sha256: c76f0a68643a69b0e28b1dfd0cb023e1e307c806ad42d9bf44b55966862296b4
+    signature: unsigned_verified
+    installable: false
+validation:
+  gradle_command: gradlew.bat --no-daemon --non-interactive clean testDebugUnitTest lintDebug assembleDebug assembleRelease
+  gradle_result: passed
+  unit_tests: 4
+  unit_test_failures: 0
+  lint_findings_after_fix: 0
+  package_metadata: compile_sdk_37_target_sdk_37_verified_with_aapt2
+  device_install_test: not_run_no_adb_device_connected

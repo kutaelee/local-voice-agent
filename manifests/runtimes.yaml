@@ -1,6 +1,21 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T19:34:00+09:00"
+generated_at: "2026-07-23T23:55:31+09:00"
 runtimes:
+  - id: android-client-build-0.1.0
+    role: android_client_build
+    version: "0.1.0"
+    status: api37_debug_and_unsigned_release_apks_built
+    environment: 'C:\Dev\SDK\Android'
+    jdk: "17.0.20"
+    android_gradle_plugin: "9.3.0"
+    gradle: "9.6.1"
+    compile_sdk: 37
+    target_sdk: 37
+    build_tools: "36.0.0"
+    platform_tools: "37.0.0"
+    test_status: 4_passed_lint_zero_findings
+    artifact_manifest: manifests/android-artifacts.yaml
+    rollback: remove only isolated SDK/cache after inventory; revert tracked client changes
   - id: huggingface-hub-1.24.0
     role: model_download_tool
     version: 1.24.0

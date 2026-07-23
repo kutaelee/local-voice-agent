@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Local Voice Agent</string>
+    <string name="voice_service_channel">Voice session</string>
+    <string name="voice_service_active">Voice session is active</string>
+</resources>
