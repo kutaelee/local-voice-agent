@@ -54,6 +54,33 @@ bash scripts/install-wsl.sh --install-vllm-mtp-fix
 Rollback is a runtime configuration switch to the untouched
 `vllm-0.25.1` environment.
 
+Validate that isolated environment without loading a model:
+
+```bash
+/home/kutae/.local/share/local-voice-agent/runtimes/\
+vllm-b2b8f679d058-cu130/.venv/bin/python \
+  scripts/validate-cuda-runtime.py --package vllm
+
+uv pip check --python \
+  /home/kutae/.local/share/local-voice-agent/runtimes/\
+vllm-b2b8f679d058-cu130/.venv/bin/python
+```
+
+After the exact Q4_0 target and assistant hashes pass, the first compatibility
+launch disables CUDA graphs to minimize unmeasured VRAM:
+
+```bash
+VLLM_SMOKE_ENFORCE_EAGER=1 \
+VLLM_SMOKE_SPECULATIVE_TOKENS=1 \
+bash scripts/serve-vllm-smoke.sh 12b on
+```
+
+Do not run MTP API smoke until `/health` returns success. Preserve server
+stdout/stderr under the external runtime log root. On startup failure, stop
+only that runtime process, retain logs/evidence, verify VRAM returned, and
+leave the stable MTP-OFF environment untouched. Eager mode is removed only
+after this exact-pair path passes and measured headroom permits graph capture.
+
 ## Installation gates
 
 1. Confirm manifests reference exact official revisions.
