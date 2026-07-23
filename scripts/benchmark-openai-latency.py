@@ -231,7 +231,8 @@ def main() -> int:
     }
     serialized = json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(serialized + "\n", encoding="utf-8")
+    with args.output.open("x", encoding="utf-8", newline="\n") as handle:
+        handle.write(serialized + "\n")
     print(serialized)
     return 0
 

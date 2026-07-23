@@ -237,6 +237,31 @@ language-only and cannot count as an MTP multimodal pass. Do not patch the
 official model config in place; resolve and record an upstream-compatible
 multimodal path separately.
 
+### Fixed-condition latency runner
+
+The benchmark runner connects only to an already-running loopback
+OpenAI-compatible endpoint. It never starts, stops, unloads, or reconfigures a
+runtime. Set the API key through a process environment variable, then provide
+the exact served model and 40-character revision:
+
+```powershell
+$env:LVA_RUNTIME_API_KEY = '<runtime-api-key-at-least-32-characters>'
+.\scripts\benchmark.ps1 `
+  -Runtime vllm `
+  -Condition 12b-mtp-off `
+  -BaseUrl http://127.0.0.1:8766 `
+  -Model gemma4-12b `
+  -ModelRevision '<exact-40-character-revision>' `
+  -Samples 10 `
+  -MaxTokens 128
+Remove-Item Env:LVA_RUNTIME_API_KEY
+```
+
+Output is created without replacement beneath
+`E:\Data\LocalVoiceAgent\benchmarks\results`. The latency result must be joined
+with separate tool/schema, multimodal, voice, model-switch, MTP-acceptance,
+and crash/OOM evidence before completing the comparison matrix.
+
 ## PC server development
 
 The project environment is outside the repository and the lock remains
