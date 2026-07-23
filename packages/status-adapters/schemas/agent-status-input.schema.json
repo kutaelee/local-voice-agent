@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-voice-agent.invalid/schemas/agent-status-input.schema.json",
+  "title": "Optional coding-agent status input",
+  "type": "object",
+  "required": [
+    "agent",
+    "project",
+    "task",
+    "phase",
+    "progress_summary",
+    "current_action",
+    "changed_files",
+    "tests",
+    "blockers",
+    "updated_at"
+  ],
+  "properties": {
+    "agent": {"type": "string", "minLength": 1, "maxLength": 128},
+    "project": {"type": "string", "minLength": 1, "maxLength": 256},
+    "task": {"type": "string", "maxLength": 4096},
+    "phase": {
+      "type": "string",
+      "enum": ["planning", "coding", "testing", "blocked", "completed"]
+    },
+    "progress_summary": {"type": "string", "maxLength": 16384},
+    "current_action": {"type": "string", "maxLength": 4096},
+    "changed_files": {
+      "type": "array",
+      "maxItems": 1000,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 1024}
+    },
+    "tests": {
+      "type": "object",
+      "required": ["status", "summary"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["not_run", "running", "passed", "failed"]
+        },
+        "summary": {"type": "string", "maxLength": 16384}
+      },
+      "additionalProperties": false
+    },
+    "blockers": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {"type": "string", "minLength": 1, "maxLength": 4096}
+    },
+    "updated_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}

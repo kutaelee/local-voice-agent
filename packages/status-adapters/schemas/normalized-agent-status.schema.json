@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-voice-agent.invalid/schemas/normalized-agent-status.schema.json",
+  "title": "Normalized coding-agent status with field provenance",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "adapter_id",
+    "status",
+    "provenance",
+    "observed_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "adapter_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "status": {
+      "$ref": "agent-status-input.schema.json"
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "agent",
+        "project",
+        "task",
+        "phase",
+        "progress_summary",
+        "current_action",
+        "changed_files",
+        "tests",
+        "blockers",
+        "updated_at"
+      ],
+      "properties": {
+        "agent": {"$ref": "#/$defs/basis"},
+        "project": {"$ref": "#/$defs/basis"},
+        "task": {"$ref": "#/$defs/basis"},
+        "phase": {"$ref": "#/$defs/basis"},
+        "progress_summary": {"$ref": "#/$defs/basis"},
+        "current_action": {"$ref": "#/$defs/basis"},
+        "changed_files": {"$ref": "#/$defs/basis"},
+        "tests": {
+          "type": "object",
+          "required": ["status", "summary"],
+          "properties": {
+            "status": {"$ref": "#/$defs/basis"},
+            "summary": {"$ref": "#/$defs/basis"}
+          },
+          "additionalProperties": false
+        },
+        "blockers": {"$ref": "#/$defs/basis"},
+        "updated_at": {"$ref": "#/$defs/basis"}
+      },
+      "additionalProperties": false
+    },
+    "observed_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "basis": {
+      "type": "object",
+      "required": ["classification", "source"],
+      "properties": {
+        "classification": {
+          "type": "string",
+          "enum": ["observed", "inferred", "unknown"]
+        },
+        "source": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "evidence_id": {"type": "string", "format": "uuid"},
+        "explanation": {"type": "string", "minLength": 1, "maxLength": 4096}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "classification": {"enum": ["inferred", "unknown"]}
+            },
+            "required": ["classification"]
+          },
+          "then": {"required": ["explanation"]}
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
