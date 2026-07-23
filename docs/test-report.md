@@ -28,7 +28,7 @@ Status: Slice 0 only. No product acceptance test has run.
 | Identical-hash mirror resume | Passed | vLLM wheel reused 1/4 ranges after GitHub-to-PyPI URL change |
 | vLLM wheel SHA-256 | Passed | `16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e` |
 | vLLM isolated dependency install | In progress | uv-managed Python 3.12, CUDA 13 backend |
-| Download state isolation | Passed | Completed range state moved from model directories to `E:\Cache\LocalVoiceAgent\download-state` |
+| Download state isolation | Passed | Explicit cache-side state path; 29,372-byte live transfer and 1/1 resume passed |
 
 Model artifact download and SHA-256 validation are in progress. All functional,
 security, Android, model-loading, MTP, benchmark, and rollback tests are
