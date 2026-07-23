@@ -157,6 +157,12 @@ KV cache rather than claiming more shared GPU memory.
 | Streaming | 67.33 ms TTFT, 1,504.65 ms total, 51 chunks |
 | Completed API requests | 4 / 4; zero error/abort |
 
+The exact 31B MTP pair remains a separate feasibility gate. Its registered
+probe uses 36 GiB bounded CPU offload by default because the exact target
+weights exceed device VRAM, and it refuses to run alongside any detected
+ComfyUI process. No load, response, latency, or acceptance result is claimed
+until that probe completes.
+
 ## Preliminary SGLang 12B MTP functional smoke
 
 This is a functional compatibility result, not the fixed-condition MTP

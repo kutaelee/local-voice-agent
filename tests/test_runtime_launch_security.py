@@ -77,3 +77,23 @@ def test_shared_sglang_benchmark_yields_to_comfyui() -> None:
     assert "LVA_RUNTIME_API_KEY = $apiKey" in shared
     assert "Bearer " not in shared
     assert "/free" not in shared
+
+
+def test_31b_mtp_probe_is_bounded_and_yields_to_comfyui() -> None:
+    start = script("start-vllm-31b-mtp-probe.sh")
+    shared = script("run-shared-vllm-31b-mtp-probe.ps1")
+
+    assert "cpu_offload_gb" in start
+    assert "28 to 48 GiB" in start
+    assert "MemAvailable" in start
+    assert "VLLM_SMOKE_CPU_OFFLOAD_GB" in start
+    assert "VLLM_SMOKE_MAX_MODEL_LEN=\"256\"" in start
+    assert "VLLM_SMOKE_KV_CACHE_MEMORY_BYTES=\"268435456\"" in start
+    assert "serve-vllm-smoke.sh\" 31b on" in start
+    assert "--api-key" not in start
+    assert "Get-ComfyUiProcessCount" in shared
+    assert "Stop-OwnedProbe" in shared
+    assert "-ExpectedModelSize 31b" in shared
+    assert "'process was started.'" in shared
+    assert "LVA_VLLM_API_KEY = $apiKey" in shared
+    assert "Bearer " not in shared

@@ -261,6 +261,24 @@ VLLM_SMOKE_LANGUAGE_MODEL_ONLY=1 \
 bash scripts/serve-vllm-smoke.sh 31b off
 ```
 
+The exact 31B target/assistant pair is substantially larger than the 32 GB
+device. Its validation-only wrapper therefore uses bounded official vLLM CPU
+offload, a 256-token text-only context, one sequence, a 256 MiB explicit KV
+cache, and one MTP token:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\run-shared-vllm-31b-mtp-probe.ps1
+```
+
+The default 36 GiB CPU-offload budget additionally requires at least 48 GiB
+available inside WSL and 28,500 MiB free VRAM. The wrapper starts only when no
+ComfyUI process exists and stops only the registered 31B vLLM process if
+ComfyUI reappears. A passing probe must produce text, tool, strict-schema, and
+streaming evidence before the production 31B MTP gate can be changed. A load
+failure or impractical latency remains a measured unsupported result, not a
+reason to enable the profile.
+
 Do not run MTP API smoke until `/health` returns success. Preserve server
 stdout/stderr under the external runtime log root. On startup failure, stop
 only that runtime process, retain logs/evidence, verify VRAM returned, and
