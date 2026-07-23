@@ -21,6 +21,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | 12B interrupted transfer resume | Passed | Restart resumed at 24/153 completed 64 MiB chunks |
 | Range worker comparison | Preliminary | 8 workers: 1,536 MiB/289 s = 5.31 MiB/s; 16 workers: 1,216 MiB/211 s = 5.76 MiB/s |
 | Selective download reserve calculation | Passed | 12B MTP target plan selected 23,919,549,408 weight bytes plus 1 GiB metadata headroom and preserved the E: 20% volume reserve |
+| Read-only model download status | Passed | Active 12B MTP transfer and finalized 12B W4A16 target both reported exact revision, byte progress, finalization, and process state |
 | 12B parallel range transfer | Passed | 153/153 chunks; 1,227.345 s wall time including restart = 7.98 MiB/s |
 | 12B target SHA-256 | Passed | `60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3` |
 | 12B MTP assistant SHA-256 | Passed | `67f1420cf24aa5065089aaed175223f7c245ccfda16111b6c56765afd7280db6` |

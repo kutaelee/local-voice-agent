@@ -21,6 +21,9 @@ Selective model transfer:
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\download-models.ps1 `
   -Execute -Only mtp_target_12b
+
+powershell -ExecutionPolicy Bypass -File scripts\download-status.ps1 `
+  -Role mtp_target_12b
 ```
 
 Offline target/assistant inspection:
