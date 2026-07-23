@@ -37,6 +37,12 @@ class PcGatewayClient(
         .pingInterval(20, TimeUnit.SECONDS)
         .connectTimeout(10, TimeUnit.SECONDS)
         .build(),
+    private val socketFactory: (
+        (Request, WebSocketListener) -> WebSocket
+    )? = null,
+    private val reconnectDelayProvider: (Int) -> Long = { attempt ->
+        (1_000L shl attempt.coerceAtMost(5)).coerceAtMost(30_000L)
+    },
 ) {
     private val mutableEvents = MutableSharedFlow<GatewayEvent>(
         extraBufferCapacity = 64,
@@ -100,7 +106,6 @@ class PcGatewayClient(
         val activeToken = pairingToken ?: return
         val activeSession = sessionId ?: return
         val activeGeneration = generation
-        serverSequence = -1
         mutableEvents.tryEmit(
             GatewayEvent.ConnectionChanged(
                 if (reconnecting) {
@@ -111,19 +116,25 @@ class PcGatewayClient(
             ),
         )
         val request = Request.Builder()
-            .url(activeEndpoint.sessionEventsUrl(activeSession.toString()))
+            .url(
+                activeEndpoint.sessionEventsUrl(
+                    activeSession.toString(),
+                    afterSequence = if (reconnecting) serverSequence else null,
+                ),
+            )
             .header("Authorization", "Bearer $activeToken")
             .build()
-        socket = httpClient.newWebSocket(
-            request,
-            Listener(activeSession, activeGeneration),
-        )
+        val listener = Listener(activeSession, activeGeneration)
+        socket = socketFactory?.invoke(request, listener)
+            ?: httpClient.newWebSocket(request, listener)
     }
 
     private fun scheduleReconnect() {
         if (userClosed || reconnectJob?.isActive == true) return
-        val delayMillis = (1_000L shl reconnectAttempt.coerceAtMost(5))
-            .coerceAtMost(30_000L)
+        val delayMillis = reconnectDelayProvider(reconnectAttempt)
+        require(delayMillis in 0..30_000) {
+            "Reconnect delay is outside the safety range"
+        }
         reconnectAttempt += 1
         reconnectJob = scope.launch {
             mutableEvents.emit(
@@ -172,9 +183,37 @@ class PcGatewayClient(
             mutableEvents.tryEmit(GatewayEvent.Message(envelope))
         }
 
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            if (expectedGeneration != generation) return
+            webSocket.close(code, reason)
+        }
+
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             if (expectedGeneration != generation) return
-            if (!userClosed) scheduleReconnect()
+            if (userClosed) return
+            val terminalFailure = when (code) {
+                4400 -> "PROTOCOL_INVALID"
+                4401 -> "PAIRING_REJECTED"
+                4409 -> "SESSION_CONFLICT"
+                4410 -> "SESSION_RESUME_EXPIRED"
+                else -> null
+            }
+            if (terminalFailure == null) {
+                scheduleReconnect()
+                return
+            }
+            userClosed = true
+            mutableEvents.tryEmit(
+                GatewayEvent.Failure(
+                    code = terminalFailure,
+                    retrying = false,
+                ),
+            )
+            mutableEvents.tryEmit(
+                GatewayEvent.ConnectionChanged(
+                    GatewayConnectionState.DISCONNECTED,
+                ),
+            )
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {

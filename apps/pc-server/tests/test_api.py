@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
+from threading import Event
+import time
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -264,6 +266,21 @@ def test_websocket_rejects_missing_pairing_token() -> None:
     assert raised.value.code == 4401
 
 
+def test_websocket_rejects_invalid_pairing_token() -> None:
+    session_id = uuid4()
+    with pytest.raises(WebSocketDisconnect) as raised:
+        with client().websocket_connect(
+            f"/v1/sessions/{session_id}/events",
+            headers={
+                "Authorization": (
+                    "Bearer wrong-token-with-at-least-32-characters"
+                )
+            },
+        ):
+            pass
+    assert raised.value.code == 4401
+
+
 def test_websocket_accepts_bearer_token_and_sends_state() -> None:
     session_id = uuid4()
     with client().websocket_connect(
@@ -274,6 +291,148 @@ def test_websocket_accepts_bearer_token_and_sends_state() -> None:
     assert message["type"] == "assistant.state"
     assert message["session_id"] == str(session_id)
     assert message["payload"]["state"] == "connecting"
+
+
+def test_websocket_reconnect_replays_gap_and_resumes_sequence() -> None:
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        reconnect_grace_seconds=1,
+    )
+    session_id = uuid4()
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    with TestClient(app) as api:
+        with api.websocket_connect(
+            f"/v1/sessions/{session_id}/events",
+            headers=headers,
+        ) as websocket:
+            connected = websocket.receive_json()
+            assert connected["sequence"] == 0
+            invalid = event(session_id=str(session_id), sequence=0)
+            invalid["unexpected"] = True
+            websocket.send_json(invalid)
+            error = websocket.receive_json()
+            assert error["sequence"] == 1
+            assert error["payload"]["error_code"] == "SCHEMA_INVALID"
+
+        with api.websocket_connect(
+            (
+                f"/v1/sessions/{session_id}/events"
+                "?after_sequence=0"
+            ),
+            headers=headers,
+        ) as websocket:
+            replayed = websocket.receive_json()
+            resumed = websocket.receive_json()
+
+    assert replayed == error
+    assert resumed["sequence"] == 2
+    assert resumed["payload"]["state"] == "reconnecting"
+
+
+def test_websocket_reconnect_does_not_replay_text_deltas() -> None:
+    class StreamingHandler:
+        async def handle(self, **_: object) -> list[OutboundEvent]:
+            return [
+                OutboundEvent("assistant.text.delta", {"text": "partial"}),
+                OutboundEvent(
+                    "assistant.text.final",
+                    {"text": "complete", "interrupted": False},
+                ),
+            ]
+
+        async def disconnect(self, **_: object) -> None:
+            return None
+
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        event_handler=StreamingHandler(),
+        reconnect_grace_seconds=1,
+    )
+    session_id = uuid4()
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    with TestClient(app) as api:
+        with api.websocket_connect(
+            f"/v1/sessions/{session_id}/events",
+            headers=headers,
+        ) as websocket:
+            assert websocket.receive_json()["sequence"] == 0
+            websocket.send_json(event(session_id=str(session_id)))
+            assert websocket.receive_json()["type"] == "assistant.text.delta"
+            final = websocket.receive_json()
+            assert final["type"] == "assistant.text.final"
+            assert final["sequence"] == 2
+
+        with api.websocket_connect(
+            (
+                f"/v1/sessions/{session_id}/events"
+                "?after_sequence=0"
+            ),
+            headers=headers,
+        ) as websocket:
+            replayed = websocket.receive_json()
+            resumed = websocket.receive_json()
+
+    assert replayed == final
+    assert resumed["sequence"] == 3
+
+
+def test_websocket_disconnect_expires_suspended_session_after_grace() -> None:
+    suspended = Event()
+    expired = Event()
+
+    class TrackingHandler:
+        async def handle(self, **_: object) -> list[OutboundEvent]:
+            return []
+
+        async def disconnect(
+            self,
+            *,
+            preserve_pending_approval: bool = False,
+            **_: object,
+        ) -> None:
+            (suspended if preserve_pending_approval else expired).set()
+
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        event_handler=TrackingHandler(),
+        reconnect_grace_seconds=0.01,
+    )
+    with TestClient(app) as api:
+        with api.websocket_connect(
+            f"/v1/sessions/{uuid4()}/events",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        ) as websocket:
+            websocket.receive_json()
+        assert suspended.wait(1)
+        assert expired.wait(1)
+
+
+def test_websocket_rejects_resume_after_session_expiry() -> None:
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        reconnect_grace_seconds=0.01,
+    )
+    session_id = uuid4()
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    with TestClient(app) as api:
+        with api.websocket_connect(
+            f"/v1/sessions/{session_id}/events",
+            headers=headers,
+        ) as websocket:
+            connected = websocket.receive_json()
+            assert connected["sequence"] == 0
+
+        time.sleep(0.03)
+        with pytest.raises(WebSocketDisconnect) as raised:
+            with api.websocket_connect(
+                (
+                    f"/v1/sessions/{session_id}/events"
+                    "?after_sequence=0"
+                ),
+                headers=headers,
+            ):
+                pass
+    assert raised.value.code == 4410
 
 
 def test_websocket_rejects_unknown_fields() -> None:

@@ -460,6 +460,11 @@ def test_pending_tool_approval_resumes_same_voice_turn() -> None:
         )
         assert pending[-1].payload["state"] == "waiting_approval"
         assert barrier.active_users == 1
+        await handler.disconnect(
+            session_id=session_id,
+            preserve_pending_approval=True,
+        )
+        assert barrier.active_users == 1
 
         resumed = await handler.handle(
             session_id=session_id,

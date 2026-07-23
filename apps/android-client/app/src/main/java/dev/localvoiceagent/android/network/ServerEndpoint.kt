@@ -5,8 +5,16 @@ import java.net.URI
 class ServerEndpoint private constructor(
     val baseUrl: String,
 ) {
-    fun sessionEventsUrl(sessionId: String): String =
-        "$baseUrl/v1/sessions/$sessionId/events"
+    fun sessionEventsUrl(
+        sessionId: String,
+        afterSequence: Int? = null,
+    ): String {
+        require(afterSequence == null || afterSequence >= -1) {
+            "Resume sequence is invalid"
+        }
+        val query = afterSequence?.let { "?after_sequence=$it" } ?: ""
+        return "$baseUrl/v1/sessions/$sessionId/events$query"
+    }
 
     companion object {
         fun parse(value: String): ServerEndpoint {

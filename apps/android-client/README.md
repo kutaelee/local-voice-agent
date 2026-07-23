@@ -22,7 +22,9 @@ audio or transcript text. Version 0.6.0 requests Bluetooth-connect permission
 with microphone capture and selects an available modern communication device
 for the foreground voice session. Version 0.6.1 separates normal playback
 drain from interruption: barge-in immediately flushes the active track and
-invalidates all queued chunks from the prior response generation. Launch,
+invalidates all queued chunks from the prior response generation. Version
+0.6.2 resumes a disconnected session from the last accepted server sequence
+and stops automatic retries when the bounded replay window has expired. Launch,
 status/navigation
 insets, the More destination list, portrait/landscape recreation, and
 force-stop/relaunch passed without an AndroidRuntime error. Physical-device

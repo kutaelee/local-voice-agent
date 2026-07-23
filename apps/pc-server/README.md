@@ -45,8 +45,12 @@ live 12B↔31B switching remains gated on an idle shared GPU. The FastAPI
 composition root exposes a read-only health route and a
 bearer-token-authenticated WebSocket gateway. It rejects
 missing/short tokens, closed-schema violations, session mismatches, and
-replayed sequence numbers. Its incremental outbound emitter can send state and
-transcript events before a handler returns. The plain-conversation vLLM
+replayed sequence numbers. A reconnect uses the same session UUID and an
+`after_sequence` query value. The server retains at most 256 events and 4 MiB
+for 120 seconds, rejects concurrent session sockets and expired replay
+windows, and suspends pending approvals only during that bounded grace
+period. Its incremental outbound emitter can send state and transcript events
+before a handler returns. The plain-conversation vLLM
 adapter consumes bounded SSE deltas and synthesizes complete sentence units as
 they arrive, so first-sentence audio need not wait for the full model answer.
 Tool-enabled turns deliberately retain the complete structured-response path

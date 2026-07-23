@@ -70,8 +70,10 @@ network permission path and PC transport policy.
 
 The client tracks the last accepted server sequence per session. On reconnect
 it resumes from that sequence; only catalog events marked replayable may be
-resent. Audio chunks and text deltas are discarded. Expired approvals render
-expired and cannot be resubmitted.
+resent. Audio chunks and text deltas are discarded. A server rejection for an
+expired replay window stops the automatic retry loop and requires a new
+session instead of silently replaying a non-idempotent action. Expired
+approvals render expired and cannot be resubmitted.
 
 ## Required device matrix
 

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+from collections import OrderedDict, deque
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 import hmac
+import json
 import os
 from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal
@@ -116,6 +118,53 @@ class ModelSwitchRequest(BaseModel):
     target_model: Literal["gemma4-12b", "gemma4-31b"]
 
 
+@dataclass(slots=True)
+class _SessionReplayState:
+    last_server_sequence: int = -1
+    last_client_sequence: int = -1
+    connected: bool = False
+    events: deque[dict[str, object]] = field(default_factory=deque)
+    event_bytes: int = 0
+    replay_floor_sequence: int = -1
+
+    def append(self, event: dict[str, object]) -> None:
+        encoded_bytes = len(
+            json.dumps(
+                event,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+        sequence = int(event["sequence"])
+        if encoded_bytes > 4 * 1024 * 1024:
+            self.events.clear()
+            self.event_bytes = 0
+            self.replay_floor_sequence = sequence
+            return
+        self.events.append(event)
+        self.event_bytes += encoded_bytes
+        while len(self.events) > 256 or self.event_bytes > 4 * 1024 * 1024:
+            removed = self.events.popleft()
+            self.event_bytes -= len(
+                json.dumps(
+                    removed,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            )
+            self.replay_floor_sequence = int(removed["sequence"])
+
+
+NON_REPLAYABLE_EVENT_TYPES = frozenset(
+    {
+        "assistant.text.delta",
+        "audio.output.chunk",
+        "audio.output.end",
+        "transcript.user.partial",
+    }
+)
+
+
 def _authorized(websocket: WebSocket, expected_token: str) -> bool:
     authorization = websocket.headers.get("authorization", "")
     expected = f"Bearer {expected_token}"
@@ -127,30 +176,6 @@ def _authorized_request(request: Request, expected_token: str) -> bool:
     return hmac.compare_digest(authorization, f"Bearer {expected_token}")
 
 
-async def _send_error(
-    websocket: WebSocket,
-    *,
-    session_id: UUID,
-    request_id: UUID,
-    sequence: int,
-    error_code: str,
-    message: str,
-) -> None:
-    envelope = EventEnvelope.create(
-        type="error",
-        session_id=session_id,
-        request_id=request_id,
-        sequence=sequence,
-        payload={
-            "error_code": error_code,
-            "message": message,
-            "component": "api_gateway",
-            "retryable": False,
-        },
-    )
-    await websocket.send_json(envelope.to_dict())
-
-
 def create_app(
     settings: ServerSettings,
     *,
@@ -158,18 +183,29 @@ def create_app(
     agent_status_provider: Callable[[], list[dict[str, object]]] | None = None,
     state_store: PostgresStateStore | None = None,
     model_switch_coordinator: ModelSwitchCoordinator | None = None,
+    reconnect_grace_seconds: float = 120,
 ) -> FastAPI:
+    if not 0.01 <= reconnect_grace_seconds <= 600:
+        raise ValueError("reconnect grace period is invalid")
     handler = event_handler or UnavailableSessionEventHandler()
     switch_subscribers: set[
         Callable[[UUID, ModelSwitchEvent], Awaitable[None]]
     ] = set()
     switch_subscribers_lock = asyncio.Lock()
+    session_states: OrderedDict[UUID, _SessionReplayState] = OrderedDict()
+    session_states_lock = asyncio.Lock()
+    disconnect_cleanup_tasks: dict[UUID, asyncio.Task[None]] = {}
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         try:
             yield
         finally:
+            cleanup_tasks = tuple(disconnect_cleanup_tasks.values())
+            for task in cleanup_tasks:
+                task.cancel()
+            if cleanup_tasks:
+                await asyncio.gather(*cleanup_tasks, return_exceptions=True)
             if state_store is not None:
                 await state_store.close()
 
@@ -301,6 +337,18 @@ def create_app(
             await websocket.close(code=4401, reason="invalid pairing token")
             return
 
+        encoded_resume = websocket.query_params.get("after_sequence")
+        resume_after: int | None = None
+        if encoded_resume is not None:
+            try:
+                resume_after = int(encoded_resume)
+            except ValueError:
+                await websocket.close(code=4400, reason="invalid resume sequence")
+                return
+            if resume_after < -1:
+                await websocket.close(code=4400, reason="invalid resume sequence")
+                return
+
         if state_store is not None:
             try:
                 await state_store.ensure_session(session_id)
@@ -308,35 +356,120 @@ def create_app(
                 await websocket.close(code=1013, reason="durable session unavailable")
                 return
 
+        rejection: tuple[int, str] | None = None
+        replay: list[dict[str, object]] = []
+        async with session_states_lock:
+            replay_state = session_states.get(session_id)
+            if replay_state is None:
+                if resume_after is not None and resume_after >= 0:
+                    rejection = (4410, "replay window expired")
+                elif len(session_states) >= 1_024:
+                    removable = next(
+                        (
+                            key
+                            for key, state in session_states.items()
+                            if not state.connected
+                            and key not in disconnect_cleanup_tasks
+                        ),
+                        None,
+                    )
+                    if removable is None:
+                        rejection = (1013, "session capacity reached")
+                    else:
+                        session_states.pop(removable, None)
+                if rejection is None:
+                    replay_state = _SessionReplayState(
+                        last_server_sequence=(
+                            resume_after
+                            if resume_after is not None
+                            else -1
+                        )
+                    )
+                    session_states[session_id] = replay_state
+            elif replay_state.connected:
+                rejection = (4409, "session already connected")
+            elif resume_after is None:
+                rejection = (4409, "resume sequence is required")
+            elif resume_after > replay_state.last_server_sequence:
+                rejection = (4400, "resume sequence is ahead")
+            elif resume_after < replay_state.replay_floor_sequence:
+                rejection = (4410, "replay window expired")
+
+            if rejection is None:
+                assert replay_state is not None
+                replay_state.connected = True
+                session_states.move_to_end(session_id)
+                prior_cleanup = disconnect_cleanup_tasks.pop(
+                    session_id,
+                    None,
+                )
+                if prior_cleanup is not None:
+                    prior_cleanup.cancel()
+                if resume_after is not None:
+                    replay = [
+                        event
+                        for event in replay_state.events
+                        if int(event["sequence"]) > resume_after
+                    ]
+
+        if rejection is not None:
+            await websocket.close(code=rejection[0], reason=rejection[1])
+            return
+
+        assert replay_state is not None
         await websocket.accept()
-        server_sequence = 0
-        last_client_sequence = -1
         send_lock = asyncio.Lock()
         background_tasks: set[asyncio.Task[None]] = set()
-        connected = EventEnvelope.create(
-            type="assistant.state",
-            session_id=session_id,
+        for replayed in replay:
+            await websocket.send_json(replayed)
+
+        async def send_event(
+            *,
+            event_type: str,
+            request_id: UUID,
+            payload: dict[str, object],
+        ) -> None:
+            async with send_lock:
+                async with session_states_lock:
+                    replay_state.last_server_sequence += 1
+                    envelope = EventEnvelope.create(
+                        type=event_type,
+                        session_id=session_id,
+                        request_id=request_id,
+                        sequence=replay_state.last_server_sequence,
+                        payload=payload,
+                    )
+                    serialized = envelope.to_dict()
+                    if event_type not in NON_REPLAYABLE_EVENT_TYPES:
+                        replay_state.append(serialized)
+                await websocket.send_json(serialized)
+
+        await send_event(
+            event_type="assistant.state",
             request_id=uuid4(),
-            sequence=server_sequence,
-            payload={"state": "connecting", "detail": "authenticated"},
+            payload={
+                "state": (
+                    "reconnecting"
+                    if resume_after is not None
+                    else "connecting"
+                ),
+                "detail": (
+                    "session replay complete"
+                    if resume_after is not None
+                    else "authenticated"
+                ),
+            },
         )
-        await websocket.send_json(connected.to_dict())
 
         async def emit_model_switch(
             request_id: UUID,
             event: ModelSwitchEvent,
         ) -> None:
-            nonlocal server_sequence
-            async with send_lock:
-                server_sequence += 1
-                envelope = EventEnvelope.create(
-                    type=event.type,
-                    session_id=session_id,
-                    request_id=request_id,
-                    sequence=server_sequence,
-                    payload=event.payload,
-                )
-                await websocket.send_json(envelope.to_dict())
+            await send_event(
+                event_type=event.type,
+                request_id=request_id,
+                payload=event.payload,
+            )
 
         if model_switch_coordinator is not None:
             async with switch_subscribers_lock:
@@ -348,17 +481,16 @@ def create_app(
             error_code: str,
             message: str,
         ) -> None:
-            nonlocal server_sequence
-            async with send_lock:
-                server_sequence += 1
-                await _send_error(
-                    websocket,
-                    session_id=session_id,
-                    request_id=request_id,
-                    sequence=server_sequence,
-                    error_code=error_code,
-                    message=message,
-                )
+            await send_event(
+                event_type="error",
+                request_id=request_id,
+                payload={
+                    "error_code": error_code,
+                    "message": message,
+                    "component": "api_gateway",
+                    "retryable": False,
+                },
+            )
 
         async def dispatch(
             *,
@@ -366,20 +498,12 @@ def create_app(
             event_type: str,
             payload: ClientPayload,
         ) -> None:
-            nonlocal server_sequence
-
             async def emit(item: Any) -> None:
-                nonlocal server_sequence
-                async with send_lock:
-                    server_sequence += 1
-                    envelope = EventEnvelope.create(
-                        type=item.type,
-                        session_id=session_id,
-                        request_id=request_id,
-                        sequence=server_sequence,
-                        payload=item.payload,
-                    )
-                    await websocket.send_json(envelope.to_dict())
+                await send_event(
+                    event_type=item.type,
+                    request_id=request_id,
+                    payload=item.payload,
+                )
 
             try:
                 outbound = await handler.handle(
@@ -434,7 +558,7 @@ def create_app(
                     )
                     continue
 
-                if incoming.sequence <= last_client_sequence:
+                if incoming.sequence <= replay_state.last_client_sequence:
                     await send_error(
                         request_id=incoming.request_id,
                         error_code="SEQUENCE_REPLAY",
@@ -442,7 +566,7 @@ def create_app(
                     )
                     continue
 
-                last_client_sequence = incoming.sequence
+                replay_state.last_client_sequence = incoming.sequence
                 if (
                     isinstance(payload, AudioInputEndPayload)
                     and payload.reason in {"vad_end", "client_stop"}
@@ -465,11 +589,40 @@ def create_app(
         except WebSocketDisconnect:
             for task in background_tasks:
                 task.cancel()
-            await handler.disconnect(session_id=session_id)
+            await handler.disconnect(
+                session_id=session_id,
+                preserve_pending_approval=True,
+            )
             if background_tasks:
                 await asyncio.gather(*background_tasks, return_exceptions=True)
             return
         finally:
+            async with session_states_lock:
+                replay_state.connected = False
+
+            async def expire_session() -> None:
+                cleanup_task = asyncio.current_task()
+                try:
+                    await asyncio.sleep(reconnect_grace_seconds)
+                    async with session_states_lock:
+                        current = session_states.get(session_id)
+                        if current is None or current.connected:
+                            return
+                    await handler.disconnect(session_id=session_id)
+                    async with session_states_lock:
+                        current = session_states.get(session_id)
+                        if current is replay_state and not current.connected:
+                            session_states.pop(session_id, None)
+                finally:
+                    if disconnect_cleanup_tasks.get(session_id) is cleanup_task:
+                        disconnect_cleanup_tasks.pop(session_id, None)
+
+            existing_cleanup = disconnect_cleanup_tasks.pop(session_id, None)
+            if existing_cleanup is not None:
+                existing_cleanup.cancel()
+            disconnect_cleanup_tasks[session_id] = asyncio.create_task(
+                expire_session()
+            )
             if model_switch_coordinator is not None:
                 async with switch_subscribers_lock:
                     switch_subscribers.discard(emit_model_switch)

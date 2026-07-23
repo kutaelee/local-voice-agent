@@ -40,7 +40,12 @@ class SessionEventHandler(Protocol):
         emit: OutboundEmitter | None = None,
     ) -> list[OutboundEvent]: ...
 
-    async def disconnect(self, *, session_id: UUID) -> None: ...
+    async def disconnect(
+        self,
+        *,
+        session_id: UUID,
+        preserve_pending_approval: bool = False,
+    ) -> None: ...
 
 
 class UnavailableSessionEventHandler:
@@ -66,8 +71,13 @@ class UnavailableSessionEventHandler:
             )
         ]
 
-    async def disconnect(self, *, session_id: UUID) -> None:
-        del session_id
+    async def disconnect(
+        self,
+        *,
+        session_id: UUID,
+        preserve_pending_approval: bool = False,
+    ) -> None:
+        del session_id, preserve_pending_approval
 
 
 class VoiceSessionEventHandler:
@@ -226,7 +236,12 @@ class VoiceSessionEventHandler:
             )
         ]
 
-    async def disconnect(self, *, session_id: UUID) -> None:
+    async def disconnect(
+        self,
+        *,
+        session_id: UUID,
+        preserve_pending_approval: bool = False,
+    ) -> None:
         turn = self._active.pop(session_id, None)
         if turn is not None:
             stream_id = turn.stream_id
@@ -249,12 +264,13 @@ class VoiceSessionEventHandler:
             finally:
                 self._processing.pop(session_id, None)
                 await self._release_usage(session_id)
-        pending = self._pending_approval.pop(session_id, None)
-        if pending is not None:
-            try:
-                await pending[1].cancel_pending_approval()
-            finally:
-                await self._release_usage(session_id)
+        if not preserve_pending_approval:
+            pending = self._pending_approval.pop(session_id, None)
+            if pending is not None:
+                try:
+                    await pending[1].cancel_pending_approval()
+                finally:
+                    await self._release_usage(session_id)
         self._cancel_results = {
             key: value
             for key, value in self._cancel_results.items()

@@ -548,7 +548,7 @@ Install the verified debug APK only when a device is visible in
 ```powershell
 C:\Dev\SDK\Android\platform-tools\adb.exe devices
 C:\Dev\SDK\Android\platform-tools\adb.exe install -r `
-  E:\Data\LocalVoiceAgent\artifacts\android\0.6.1-api37\local-voice-agent-0.6.1-debug.apk
+  E:\Data\LocalVoiceAgent\artifacts\android\0.6.2-api37\local-voice-agent-0.6.2-debug.apk
 ```
 
 The release APK is intentionally unsigned and cannot be installed until the
