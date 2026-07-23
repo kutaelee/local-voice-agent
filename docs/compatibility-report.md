@@ -127,6 +127,10 @@ model repositories, and upstream release notes are used for selections.
 4. MTP is disabled by default for tool execution until JSON-schema validity,
    tool selection, and argument accuracy are statistically no worse than MTP
    off.
+   The controlled vLLM exact-target 12B ON/OFF runs now pass the same
+   functional gate and show a 1.438x output-rate ratio with one MTP token.
+   The path remains text-only because the exact target lacks the upstream
+   multimodal configuration field, and the 31B pair remains unvalidated.
 5. Stable releases are preferred. A nightly is allowed only if a reproduced
    defect blocks a required capability and the exact build/commit and stable
    rollback are recorded.

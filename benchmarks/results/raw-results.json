@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "status": "running",
-  "generated_at": "2026-07-24T08:23:29+09:00",
+  "generated_at": "2026-07-24T08:41:00+09:00",
   "hardware_snapshot": {
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_mib": 32607,
@@ -104,6 +104,51 @@
       "evidence_sha256": "d02b4667e6a36c1b39e251e565ce0154db2b8b897ad87e45974be62d74f9a3be",
       "runtime_log": "E:\\Data\\LocalVoiceAgent\\runtime\\logs\\sglang-12b-mtp-target-off.log",
       "runtime_log_sha256": "6cedab6c7e002e3639ae39be6f3467037659a5ad8c399c5455e8ec9656eda3cb"
+    },
+    {
+      "runtime": "vllm",
+      "runtime_version": "0.23.1rc1.dev1352+gb2b8f679d",
+      "model": "gemma4-12b-mtp-target-off",
+      "model_revision": "b6ed86275a6a5735884e208bfed95b445a684ca2",
+      "condition": "12b-exact-mtp-off",
+      "mtp_enabled": false,
+      "mtp_config": "disabled",
+      "successful_samples": 10,
+      "ttft_ms_p50": 54.916,
+      "ttft_ms_p95": 59.106,
+      "tpot_ms_p50": 16.998,
+      "tpot_ms_p95": 17.357,
+      "output_tokens_per_second_mean": 59.278,
+      "observed_total_vram_mib": 28276,
+      "functional_gate": "passed",
+      "oom_or_crash": 0,
+      "evidence": "E:\\Data\\LocalVoiceAgent\\benchmarks\\results\\vllm-12b-exact-mtp-off-20260723T233218260Z.json",
+      "evidence_sha256": "78ddc368bc1770917dc6ac42fd44709e563ed9df806b73f26a4bbd7d28c757dc",
+      "functional_evidence": "E:\\Data\\LocalVoiceAgent\\runtime\\evidence\\vllm-12b-exact-mtp-off-functional-20260723T233218260Z.json",
+      "functional_evidence_sha256": "9870135a650c9091102d226078d2261ea0279e765ad4f3e7e86bb2394fc60538"
+    },
+    {
+      "runtime": "vllm",
+      "runtime_version": "0.23.1rc1.dev1352+gb2b8f679d",
+      "model": "gemma4-12b-mtp",
+      "model_revision": "b6ed86275a6a5735884e208bfed95b445a684ca2",
+      "condition": "12b-exact-mtp-on-s1",
+      "mtp_enabled": true,
+      "mtp_config": "tokens=1",
+      "successful_samples": 10,
+      "ttft_ms_p50": 61.227,
+      "ttft_ms_p95": 74.725,
+      "tpot_ms_p50": 11.938,
+      "tpot_ms_p95": 12.583,
+      "output_tokens_per_second_mean": 85.260,
+      "observed_total_vram_mib": 28310,
+      "mtp_acceptance_rate_final_cumulative": 0.772,
+      "functional_gate": "passed",
+      "oom_or_crash": 0,
+      "evidence": "E:\\Data\\LocalVoiceAgent\\benchmarks\\results\\vllm-12b-exact-mtp-on-s1-20260723T233655325Z.json",
+      "evidence_sha256": "5c8210ad669bf87ebb56435cdd333f05516c60a5c213f94e11364e74193a1e2a",
+      "functional_evidence": "E:\\Data\\LocalVoiceAgent\\runtime\\evidence\\vllm-12b-exact-mtp-on-s1-functional-20260723T233655325Z.json",
+      "functional_evidence_sha256": "ebb9113e9a18f8ac9a4a2406806db0e3900406f8b0b80080120d0403d814b743"
     }
   ]
 }

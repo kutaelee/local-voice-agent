@@ -1,7 +1,8 @@
 # Performance report
 
 Status: partial fixed-condition benchmark. Matching vLLM and SGLang 12B
-MTP-OFF baselines completed; MTP-ON and 31B comparison rows remain open.
+MTP-OFF baselines and controlled exact-target MTP ON/OFF pairs completed;
+31B comparison rows remain open.
 Shared-GPU SGLang MTP retries on 2026-07-24 were safely yielded when ComfyUI
 reclaimed the device.
 
@@ -104,6 +105,51 @@ Both exact-target conditions are much slower than the W4A16 base row because
 the exact checkpoint requires CPU offload. The ON/OFF pair does isolate the
 assistant effect for latency, but exact-off tool/schema and multimodal parity
 are still unmeasured. MTP therefore remains disabled by default.
+
+## Fixed-condition vLLM 12B exact-target MTP OFF/ON
+
+The isolated fix build at commit
+`b2b8f679d0589f0c956f3e734cc70dab07b27b8a` ran the same exact target,
+2,048-token context, prompt catalog, temperature, concurrency, and 128-token
+cap with and without its matching assistant. Both conditions first passed
+Korean text, `inspect_gpu({})`, strict structured output, and streaming.
+
+| Metric | MTP OFF | MTP ON, one token |
+|---|---:|---:|
+| TTFT p50 / p95 | 54.916 / 59.106 ms | 61.227 / 74.725 ms |
+| TPOT p50 / p95 | 16.998 / 17.357 ms | 11.938 / 12.583 ms |
+| Mean output rate | 59.278 tokens/s | 85.260 tokens/s |
+| Mean total request | 1,963.186 ms | 1,381.526 ms |
+| Endpoint GPU snapshot | 28,276 MiB | 28,310 MiB |
+| Successful samples | 10 / 10 | 10 / 10 |
+
+One-step MTP raised mean output rate by a measured 1.438x, reduced TPOT p50
+by 29.8%, and reduced mean total request time by 29.6%. TTFT p50 increased by
+6.311 ms or 11.5%. The final cumulative runtime metric reported 355 accepted
+of 460 drafted tokens, a 77.2% acceptance rate.
+
+Evidence:
+
+- OFF benchmark:
+  `E:\Data\LocalVoiceAgent\benchmarks\results\vllm-12b-exact-mtp-off-20260723T233218260Z.json`,
+  SHA-256
+  `78ddc368bc1770917dc6ac42fd44709e563ed9df806b73f26a4bbd7d28c757dc`
+- ON benchmark:
+  `E:\Data\LocalVoiceAgent\benchmarks\results\vllm-12b-exact-mtp-on-s1-20260723T233655325Z.json`,
+  SHA-256
+  `5c8210ad669bf87ebb56435cdd333f05516c60a5c213f94e11364e74193a1e2a`
+- OFF functional:
+  `E:\Data\LocalVoiceAgent\runtime\evidence\vllm-12b-exact-mtp-off-functional-20260723T233218260Z.json`,
+  SHA-256
+  `9870135a650c9091102d226078d2261ea0279e765ad4f3e7e86bb2394fc60538`
+- ON functional:
+  `E:\Data\LocalVoiceAgent\runtime\evidence\vllm-12b-exact-mtp-on-s1-functional-20260723T233655325Z.json`,
+  SHA-256
+  `ebb9113e9a18f8ac9a4a2406806db0e3900406f8b0b80080120d0403d814b743`
+
+The exact target still lacks the upstream multimodal configuration field
+needed by this runtime path, so both controlled runs were text-only. MTP
+remains disabled in production routing despite the measured latency gain.
 
 ## Preliminary vLLM 12B smoke
 

@@ -11,8 +11,8 @@ live runtime or physical-device test.
 | 1 | Gemma 4 12B runs | VERIFIED | vLLM and SGLang text, tool/schema, streaming, and image smokes passed. |
 | 2 | Gemma 4 31B runs | VERIFIED | vLLM constrained text, tool/schema, and streaming smoke passed. |
 | 3 | Matching MTP assistants run | PARTIAL | Exact 12B assistant runs in vLLM and SGLang; exact 31B pair is downloaded and integrity-checked but has not produced a live MTP response. |
-| 4 | MTP ON/OFF measurements exist | PARTIAL | Controlled SGLang exact-target 12B ON/OFF exists and measured a 1.604× output-rate ratio; vLLM and 31B ON/OFF rows remain open. |
-| 5 | vLLM/SGLang comparison exists | PARTIAL | Matching 12B W4A16 MTP-OFF comparison and SGLang exact-target ON/OFF exist; vLLM MTP-ON and 31B comparison is incomplete. |
+| 4 | MTP ON/OFF measurements exist | PARTIAL | Controlled SGLang and vLLM exact-target 12B ON/OFF pairs exist; 31B ON/OFF rows remain open. |
+| 5 | vLLM/SGLang comparison exists | PARTIAL | Matching 12B W4A16 MTP-OFF and controlled exact-target ON/OFF comparisons exist; 31B comparison remains incomplete. |
 | 6 | 12B/31B switching works | PARTIAL | State-machine, API, drain, cleanup, and recovery tests pass; live GPU process switch remains open. |
 | 7 | Android voice conversation works | PARTIAL | Production WebSocket PCM→STT→12B→TTS smoke and emulator UI/install pass; physical Android microphone/LAN playback remains open. |
 | 8 | User speech interrupts TTS | PARTIAL | Server and Android cancellation paths pass unit/integration tests; physical-device barge-in timing remains open. |

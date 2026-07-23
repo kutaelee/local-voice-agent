@@ -89,7 +89,7 @@ runtimes:
     role: mtp_fix_candidate
     version: 0.23.1rc1.dev1352+gb2b8f679d
     commit: b2b8f679d0589f0c956f3e734cc70dab07b27b8a
-    status: exact_12b_text_mtp_api_smoke_passed
+    status: exact_12b_text_mtp_functional_and_controlled_on_off_latency_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/vllm-b2b8f679d058-cu130
     python: "3.12.13"
     cuda: "13.0"
@@ -107,6 +107,34 @@ runtimes:
     installed_source_guard: eagle_only_embedding_width_check_passed
     gemma4_mtp_status: text_only_passed_multimodal_config_blocked
     exact_pair_smoke_evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\vllm-12b-mtp-textonly-smoke.json'
+    exact_target_mtp_off:
+      target_load_seconds: 126.95
+      ttft_ms_p50: 54.916
+      ttft_ms_p95: 59.106
+      tpot_ms_p50: 16.998
+      tpot_ms_p95: 17.357
+      output_tokens_per_second_mean: 59.278
+      successful_samples: 10
+      functional_evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\vllm-12b-exact-mtp-off-functional-20260723T233218260Z.json'
+      functional_evidence_sha256: 9870135a650c9091102d226078d2261ea0279e765ad4f3e7e86bb2394fc60538
+      latency_evidence: 'E:\Data\LocalVoiceAgent\benchmarks\results\vllm-12b-exact-mtp-off-20260723T233218260Z.json'
+      latency_evidence_sha256: 78ddc368bc1770917dc6ac42fd44709e563ed9df806b73f26a4bbd7d28c757dc
+    exact_target_mtp_on:
+      target_and_assistant_load_seconds: 135.20
+      ttft_ms_p50: 61.227
+      ttft_ms_p95: 74.725
+      tpot_ms_p50: 11.938
+      tpot_ms_p95: 12.583
+      output_tokens_per_second_mean: 85.260
+      successful_samples: 10
+      final_cumulative_acceptance_rate: 0.772
+      functional_evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\vllm-12b-exact-mtp-on-s1-functional-20260723T233655325Z.json'
+      functional_evidence_sha256: ebb9113e9a18f8ac9a4a2406806db0e3900406f8b0b80080120d0403d814b743
+      latency_evidence: 'E:\Data\LocalVoiceAgent\benchmarks\results\vllm-12b-exact-mtp-on-s1-20260723T233655325Z.json'
+      latency_evidence_sha256: 5c8210ad669bf87ebb56435cdd333f05516c60a5c213f94e11364e74193a1e2a
+    controlled_mtp_output_rate_ratio: 1.438
+    default_enabled: false
+    default_disabled_reason: exact_target_multimodal_config_blocked_and_31b_pending
     reason: restrict_embedding_width_share_guard_to_eagle_so_gemma4_mtp_shares_target_embeddings
     known_issues: unreleased_commit_and_q4_target_missing_vision_num_soft_tokens_require_full_regression
     rollback: switch back to untouched vllm-0.25.1 environment
