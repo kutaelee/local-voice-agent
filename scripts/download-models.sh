@@ -8,6 +8,7 @@ python_bin="${download_env}/bin/python"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 model_root="/mnt/e/AI/Models/Standalone/LocalVoiceAgent"
 cache_root="/mnt/e/Cache/LocalVoiceAgent/huggingface"
+state_root="/mnt/e/Cache/LocalVoiceAgent/download-state"
 download_workers="${MODEL_DOWNLOAD_WORKERS:-16}"
 
 models=(
@@ -61,6 +62,7 @@ fi
 }
 
 mkdir -p "${cache_root}"
+mkdir -p "${state_root}"
 export HF_HOME="${cache_root}"
 
 for entry in "${models[@]}"; do
@@ -76,6 +78,7 @@ for entry in "${models[@]}"; do
 
   actual_file="${target}/${filename}"
   partial_file="${actual_file}.partial"
+  state_file="${state_root}/${model//\//--}-${revision}-${filename}.ranges.json"
   weight_url="https://huggingface.co/${model}/resolve/${revision}/${filename}?download=true"
 
   if [[ -f "${actual_file}" ]]; then
@@ -91,6 +94,7 @@ for entry in "${models[@]}"; do
       "${partial_file}" \
       "${expected_bytes}" \
       "${expected_sha}" \
+      --state-file "${state_file}" \
       --workers "${download_workers}"
 
     actual_bytes="$(stat -c '%s' "${partial_file}")"

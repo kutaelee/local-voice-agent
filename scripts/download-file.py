@@ -26,11 +26,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("size_bytes", type=int)
     parser.add_argument("sha256")
     parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument("--state-file", type=Path)
     return parser.parse_args()
 
 
-def state_path(output: Path) -> Path:
-    return output.with_name(f"{output.name}.ranges.json")
+def state_path(args: argparse.Namespace) -> Path:
+    if args.state_file is not None:
+        return args.state_file
+    return args.output.with_name(f"{args.output.name}.ranges.json")
 
 
 def write_state(path: Path, state: dict[str, object]) -> None:
@@ -43,7 +46,7 @@ def write_state(path: Path, state: dict[str, object]) -> None:
 
 
 def load_or_create_state(args: argparse.Namespace, chunks: int) -> dict[str, object]:
-    path = state_path(args.output)
+    path = state_path(args)
     expected = {
         "schema_version": "1.0",
         "url": args.url,
@@ -143,6 +146,7 @@ def main() -> int:
         raise ValueError("size_bytes must be positive")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    state_path(args).parent.mkdir(parents=True, exist_ok=True)
     chunks = (args.size_bytes + CHUNK_SIZE - 1) // CHUNK_SIZE
     state = load_or_create_state(args, chunks)
     completed = {int(value) for value in state["completed"]}
@@ -188,7 +192,7 @@ def main() -> int:
                 session_transferred += chunk_bytes
                 state["completed"] = sorted(completed)
                 state["updated_at"] = time.time()
-                write_state(state_path(args.output), state)
+                write_state(state_path(args), state)
                 elapsed = max(time.monotonic() - started, 0.001)
                 print(
                     f"progress: {len(completed)}/{chunks} chunks, "
@@ -204,7 +208,7 @@ def main() -> int:
         )
     state["validated_at"] = time.time()
     state["validation_status"] = "sha256_passed"
-    write_state(state_path(args.output), state)
+    write_state(state_path(args), state)
     print(f"validated: {actual_sha}", flush=True)
     return 0
 
