@@ -94,7 +94,7 @@ runtimes:
     starlette: "1.3.1"
     uvicorn: "0.51.0"
     test_client: httpx2-2.7.0
-    test_status: 95_passed_including_live_worker_protocol_composition
+    test_status: 102_passed_including_agent_status_adapters
     live_voice_smoke:
       status: passed
       input_pcm_bytes: 149760
@@ -105,7 +105,7 @@ runtimes:
   - id: tool-executor-0.1.0
     role: tool_executor
     version: 0.1.0
-    status: authenticated_loopback_level_0_executor_and_client_adapter_tests_passed
+    status: authenticated_level_0_and_approved_level_1_with_rollback_passed
     windows_environment: 'C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv'
     wsl_environment: /home/kutae/.local/share/local-voice-agent/runtimes/tool-executor/.venv
     python: "3.12.13"
@@ -119,8 +119,8 @@ runtimes:
     pydantic: "2.13.4"
     pyyaml: "6.0.3"
     uvicorn: "0.51.0"
-    windows_test_status: 57_passed_and_loopback_process_smoke_passed
-    wsl_test_status: 57_passed_including_symlink_and_host_workspace_filtering
+    windows_test_status: 65_passed_one_symlink_test_skipped_and_live_rollback_passed
+    wsl_test_status: 66_passed_including_symlink_mutation_and_rollback
     enabled_tools:
       - calculate_hash
       - list_files
@@ -135,6 +135,9 @@ runtimes:
       - git_log
       - git_show
       - git_status
+      - apply_patch
+      - rollback_file_change
+      - write_file
     connection_status: live_read_file_smoke_passed_session_gateway_pending
     ipc:
       host: 127.0.0.1
@@ -144,22 +147,40 @@ runtimes:
       idempotency_scope: process_memory
     audit_path: 'E:\Data\LocalVoiceAgent\runtime\audit\tool-executor.jsonl'
     evidence_path: 'E:\Data\LocalVoiceAgent\runtime\evidence\tool-executor'
+    backup_path: 'E:\Data\LocalVoiceAgent\runtime\backups\tool-executor'
     live_smoke_evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\tool-executor\507e23ab-fd3a-482e-810e-c76990929ebc.json'
     live_smoke_evidence_sha256: c419d9c78ae9e6b04ef39dc080444d0e851f0e2748bb49063191211fba7fe74b
     live_smoke_executor_latency_ms: 10.371
+    live_mutation_smoke:
+      status: approved_create_and_rollback_passed
+      create_execution_id: ea24cd44-d0f2-46ee-b003-1a1defdc3dbd
+      rollback_execution_id: f3c021e1-5f31-4457-a148-b91e602fb1bf
+      create_latency_ms: 12.214
+      rollback_latency_ms: 12.758
+      final_file_exists: false
     rollback: stop future executor process and switch away before archiving only its isolated environments
   - id: sglang-0.5.15.post1
     role: comparison_candidate
     version: 0.5.15.post1
-    status: planned
+    status: installed_cuda_smoke_passed_model_load_deferred_for_external_gpu_contention
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/sglang-0.5.15.post1
-    python: "3.12"
+    python: "3.12.13"
     cuda: "13.0"
-    pytorch: runtime-resolved-2.11-class
+    pytorch: "2.11.0+cu130"
+    installed_at: "2026-07-24T00:59:00+09:00"
+    lock_file: manifests/locks/sglang-0.5.15.post1.txt
+    lock_sha256: 994af4c063a0abab4b0d7cc93ed6e93bb5dbab71be11cd3e1e136d03e952024d
     source: https://github.com/sgl-project/sglang/releases/tag/v0.5.15.post1
     wheel_source: https://pypi.org/project/sglang/0.5.15.post1/
     wheel_size_bytes: 12848778
     wheel_sha256: d1cf208d6ed6bd1d66e6c284635cb671519855dcdfe119e3c4011b6797c90679
+    kernel: sglang-kernel-0.4.4+cu130
+    kernel_source: https://github.com/sgl-project/whl/releases/tag/v0.4.4
+    kernel_wheel_size_bytes: 615071971
+    kernel_wheel_sha256: eb19842cd9809cce7e71d291aa1808f3a7e8c7ad46070a505d970e1ca8105240
+    package_check: 194_packages_compatible
+    gpu_smoke: rtx_5090_compute_capability_12_0_cuda_matmul_passed
+    model_load_gate: deferred_when_external_workload_left_only_2954_mib_free
     rollback: retain previous versioned environment and switch config pointer
   - id: faster-whisper-1.2.1
     role: stt_candidate

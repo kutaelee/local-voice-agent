@@ -75,7 +75,7 @@ def test_executor_revalidates_contract_and_rejects_unsupported_tool(
             },
         )
     with pytest.raises(ToolNotSupported):
-        executor.execute("write_file", {})
+        executor.execute("delete_file", {})
 
 
 def test_read_file_is_utf8_bounded_without_splitting_codepoint(

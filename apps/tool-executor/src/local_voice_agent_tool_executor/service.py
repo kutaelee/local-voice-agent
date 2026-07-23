@@ -40,6 +40,9 @@ class ExecutionCommand:
     risk_level: int
     requested_at: datetime
     expires_at: datetime
+    approval_id: str | None = None
+    approval_arguments_sha256: str | None = None
+    approval_expires_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,9 +72,6 @@ class BoundExecutionService:
     ) -> dict[str, Any]:
         observed_at = now or utc_now()
         self._validate_identifiers(command)
-        if command.risk_level != 0:
-            raise ExecutionBindingError("executor accepts only Level 0")
-
         arguments = dict(command.arguments)
         actual_arguments_sha256 = self._executor.validate_arguments(
             command.tool_name,
@@ -80,6 +80,8 @@ class BoundExecutionService:
         actual_definition_sha256 = self._executor.definition_sha256(
             command.tool_name
         )
+        if self._executor.risk_level(command.tool_name) != command.risk_level:
+            raise ExecutionBindingError("tool risk level mismatch")
         if not hmac.compare_digest(
             actual_arguments_sha256,
             command.normalized_arguments_sha256,
@@ -90,6 +92,17 @@ class BoundExecutionService:
             command.tool_definition_sha256,
         ):
             raise ExecutionBindingError("tool definition digest mismatch")
+        self._validate_approval(
+            command,
+            arguments_sha256=actual_arguments_sha256,
+            observed_at=observed_at,
+        )
+        if self._executor.idempotency(command.tool_name) == "required":
+            argument_key = arguments.get("idempotency_key")
+            if argument_key != command.idempotency_key:
+                raise ExecutionBindingError(
+                    "tool argument idempotency key mismatch"
+                )
 
         fingerprint = sha256_json(
             {
@@ -103,6 +116,15 @@ class BoundExecutionService:
                 "risk_level": command.risk_level,
                 "requested_at": command.requested_at.isoformat(),
                 "expires_at": command.expires_at.isoformat(),
+                "approval_id": command.approval_id,
+                "approval_arguments_sha256": (
+                    command.approval_arguments_sha256
+                ),
+                "approval_expires_at": (
+                    command.approval_expires_at.isoformat()
+                    if command.approval_expires_at is not None
+                    else None
+                ),
             }
         )
         with self._lock:
@@ -157,6 +179,7 @@ class BoundExecutionService:
             execution_result = self._executor.execute(
                 command.tool_name,
                 arguments,
+                execution_id=command.execution_id,
             )
             result_sha256 = sha256_json(execution_result)
             latency_ms = (perf_counter() - started_counter) * 1000
@@ -169,6 +192,7 @@ class BoundExecutionService:
                 "tool_call_id": command.tool_call_id,
                 "tool_name": command.tool_name,
                 "risk_level": command.risk_level,
+                "approval_id": command.approval_id,
                 "normalized_arguments_sha256": arguments_sha256,
                 "tool_definition_sha256": definition_sha256,
                 "idempotency_key_sha256": idempotency_sha256,
@@ -303,6 +327,58 @@ class BoundExecutionService:
                 raise ExecutionBindingError(f"{name} must be a UUID") from error
             if str(parsed) != value.lower():
                 raise ExecutionBindingError(f"{name} must be canonical UUID text")
+        if command.approval_id is not None:
+            try:
+                parsed_approval = UUID(command.approval_id)
+            except (ValueError, TypeError, AttributeError) as error:
+                raise ExecutionBindingError(
+                    "approval_id must be a UUID"
+                ) from error
+            if str(parsed_approval) != command.approval_id.lower():
+                raise ExecutionBindingError(
+                    "approval_id must be canonical UUID text"
+                )
+
+    @staticmethod
+    def _validate_approval(
+        command: ExecutionCommand,
+        *,
+        arguments_sha256: str,
+        observed_at: datetime,
+    ) -> None:
+        approval_values = (
+            command.approval_id,
+            command.approval_arguments_sha256,
+            command.approval_expires_at,
+        )
+        if command.risk_level == 0:
+            if any(value is not None for value in approval_values):
+                raise ExecutionBindingError(
+                    "Level 0 execution must not contain approval binding"
+                )
+            return
+        if command.risk_level != 1 or any(
+            value is None for value in approval_values
+        ):
+            raise ExecutionBindingError(
+                "Level 1 execution requires exact approval binding"
+            )
+        assert command.approval_arguments_sha256 is not None
+        assert command.approval_expires_at is not None
+        if not hmac.compare_digest(
+            command.approval_arguments_sha256,
+            arguments_sha256,
+        ):
+            raise ExecutionBindingError("approval argument digest mismatch")
+        if (
+            command.approval_expires_at.tzinfo is None
+            or command.approval_expires_at.utcoffset() is None
+        ):
+            raise ExecutionBindingError(
+                "approval_expires_at must be timezone-aware"
+            )
+        if observed_at >= command.approval_expires_at:
+            raise ExecutionExpired("approval expired")
 
     @staticmethod
     def _validate_time(
@@ -348,7 +424,7 @@ def _audit_event(
         "runtime": "tool-executor-0.1.0",
         "latency_ms": None if latency_ms is None else round(latency_ms, 3),
         "risk_level": command.risk_level,
-        "approval_id": None,
+        "approval_id": command.approval_id,
         "result": result,
         "error_code": error_code,
         "evidence_path": evidence_path,

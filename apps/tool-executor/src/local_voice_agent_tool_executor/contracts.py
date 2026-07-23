@@ -36,12 +36,22 @@ GIT_READ_TOOLS = frozenset(
         "git_status",
     }
 )
+FILESYSTEM_MUTATION_TOOLS = frozenset(
+    {
+        "apply_patch",
+        "rollback_file_change",
+        "write_file",
+    }
+)
 SUPPORTED_READ_TOOLS = FILESYSTEM_READ_TOOLS | GIT_READ_TOOLS
+SUPPORTED_TOOLS = SUPPORTED_READ_TOOLS | FILESYSTEM_MUTATION_TOOLS
 
 
 @dataclass(frozen=True, slots=True)
 class ReadToolContract:
     name: str
+    risk_level: int
+    idempotency: str
     timeout_seconds: int
     definition_sha256: str
     validator: Draft202012Validator
@@ -49,8 +59,8 @@ class ReadToolContract:
 
 class ReadToolContracts:
     def __init__(self, contracts: Mapping[str, ReadToolContract]) -> None:
-        if frozenset(contracts) != SUPPORTED_READ_TOOLS:
-            raise ToolContractError("supported read-tool contract set is incomplete")
+        if frozenset(contracts) != SUPPORTED_TOOLS:
+            raise ToolContractError("supported tool contract set is incomplete")
         self._contracts = MappingProxyType(dict(contracts))
 
     @classmethod
@@ -71,7 +81,7 @@ class ReadToolContracts:
         )
         contracts: dict[str, ReadToolContract] = {}
 
-        for name in sorted(SUPPORTED_READ_TOOLS):
+        for name in sorted(SUPPORTED_TOOLS):
             path = definitions_dir / f"{name}.json"
             raw = _read_object(path)
             try:
@@ -83,12 +93,19 @@ class ReadToolContracts:
                 ) from error
             if raw["name"] != name:
                 raise ToolContractError(f"{path.name}: tool name mismatch")
-            if raw["risk_level"] != 0 or raw["idempotency"] != "read_only":
-                raise ToolContractError(
-                    f"{name}: executor accepts only Level 0 read-only contracts"
-                )
+            expected_risk = 0 if name in SUPPORTED_READ_TOOLS else 1
+            expected_idempotency = (
+                "read_only" if name in SUPPORTED_READ_TOOLS else "required"
+            )
+            if (
+                raw["risk_level"] != expected_risk
+                or raw["idempotency"] != expected_idempotency
+            ):
+                raise ToolContractError(f"{name}: unsafe risk/idempotency contract")
             contracts[name] = ReadToolContract(
                 name=name,
+                risk_level=expected_risk,
+                idempotency=expected_idempotency,
                 timeout_seconds=raw["timeout_seconds"],
                 definition_sha256=sha256_json(raw),
                 validator=Draft202012Validator(
@@ -126,6 +143,18 @@ class ReadToolContracts:
     def definition_sha256(self, name: str) -> str:
         try:
             return self._contracts[name].definition_sha256
+        except KeyError as error:
+            raise ToolNotSupported(name) from error
+
+    def risk_level(self, name: str) -> int:
+        try:
+            return self._contracts[name].risk_level
+        except KeyError as error:
+            raise ToolNotSupported(name) from error
+
+    def idempotency(self, name: str) -> str:
+        try:
+            return self._contracts[name].idempotency
         except KeyError as error:
             raise ToolNotSupported(name) from error
 

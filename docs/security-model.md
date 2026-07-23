@@ -39,8 +39,8 @@ must be under `/home/<user>/src`, never `/mnt/c` or `/mnt/e`. Registered
 command profiles store executable IDs and argv arrays, not shell strings or
 environment values.
 
-The implemented read-only executor repeats contract validation at its own
-process boundary. It rejects absolute and drive-relative paths, `..`, empty
+The implemented executor repeats contract validation at its own process
+boundary. It rejects absolute and drive-relative paths, `..`, empty
 or dot segments, Windows alternate streams, reserved device names, trailing
 spaces/dots, symlinks, junctions, and other reparse points. Before reading a
 file it compares the pre-open path, opened handle, and post-open path identity
@@ -51,18 +51,28 @@ environment, timeouts, and temporary-file output bounds. Optional locks,
 prompts, pagers, hooks, fsmonitor, external diff, and textconv are disabled.
 The executor rejects `.git` links/reparse points, linked worktrees, alternate
 object stores, and config includes before invoking Git. Windows-native
-junction tests and WSL symlink tests pass. This does not authorize writes:
-the checked-in workspace allowlist grants read-only access only to this public
-repository, and mutation/approval/rollback adapters do not exist yet.
+junction tests and WSL symlink tests pass.
 
-The implemented IPC boundary accepts only closed-schema Level 0 requests on a
-launcher-enforced loopback address. A bearer token of at least 32 characters
-is required before request parsing. Request bodies, response bodies, expiry,
-UUID canonical form, normalized-argument hashes, and tool-definition hashes
-are bounded or verified. Idempotency keys are bound to the complete execution
-fingerprint; an exact duplicate cannot repeat a completed in-process
-execution, while conflicting reuse is rejected. The current cache is
-process-local, so restart-safe deduplication remains gated on durable storage.
+The checked-in allowlist grants read-write access only to this public
+repository. Level 1 file changes still fail closed without a canonical
+approval UUID, exact normalized-argument digest, unexpired approval, matching
+idempotency key, and SHA-256 precondition. Writes and single-file patches use
+bounded UTF-8 input and atomic replacement. Pre-state backups and metadata
+are stored outside the worktree under the runtime backup root. Rollback is a
+separate approved operation and requires the exact backup ID, workspace,
+relative path, and current post-change hash; a concurrent change invalidates
+it. Delete, Git mutation, process, browser, UI, and shell adapters remain
+unimplemented.
+
+The implemented IPC boundary accepts closed-schema Level 0 and approved Level
+1 requests on a launcher-enforced loopback address. A bearer token of at
+least 32 characters is required before request parsing. Request bodies,
+response bodies, expiry, UUID canonical form, normalized-argument hashes, and
+tool-definition hashes are bounded or verified. Idempotency keys are bound to
+the complete execution fingerprint; an exact duplicate cannot repeat a
+completed in-process execution, while conflicting reuse is rejected. The
+current cache is process-local, so restart-safe deduplication remains gated
+on durable storage.
 
 Audit JSONL and evidence files are append/no-replace and stored below
 `E:\Data\LocalVoiceAgent\runtime`. Evidence contains hashes, IDs, timings,

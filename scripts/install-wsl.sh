@@ -122,16 +122,29 @@ case "${mode}" in
   --install-sglang)
     environment="${runtime_root}/sglang-0.5.15.post1"
     wheel="${cache_root}/sglang-0.5.15.post1-cp312-cp312-manylinux_2_34_x86_64.whl"
+    kernel_wheel="${cache_root}/sglang_kernel-0.4.4+cu130-cp310-abi3-manylinux2014_x86_64.whl"
     download_verified \
       "https://files.pythonhosted.org/packages/c1/24/701bf55add96c074047d76f56fe1778f2d2a2280de1455b0ee84dde52e29/sglang-0.5.15.post1-cp312-cp312-manylinux_2_34_x86_64.whl" \
       "${wheel}" \
       "d1cf208d6ed6bd1d66e6c284635cb671519855dcdfe119e3c4011b6797c90679" \
       "12848778"
+    download_verified \
+      "https://github.com/sgl-project/whl/releases/download/v0.4.4/sglang_kernel-0.4.4%2Bcu130-cp310-abi3-manylinux2014_x86_64.whl" \
+      "${kernel_wheel}" \
+      "eb19842cd9809cce7e71d291aa1808f3a7e8c7ad46070a505d970e1ca8105240" \
+      "615071971"
     create_environment "${environment}"
     "${uv_bin}" pip install \
       --python "${environment}/.venv/bin/python" \
       --prerelease=allow \
+      --torch-backend=cu130 \
       "${wheel}"
+    "${uv_bin}" pip install \
+      --python "${environment}/.venv/bin/python" \
+      --reinstall \
+      --no-deps \
+      "${kernel_wheel}"
+    "${uv_bin}" pip check --python "${environment}/.venv/bin/python"
     "${environment}/.venv/bin/python" -c \
       'import torch, sglang; print(f"sglang={sglang.__version__} torch={torch.__version__} cuda={torch.version.cuda} gpu={torch.cuda.get_device_name(0)}")'
     ;;

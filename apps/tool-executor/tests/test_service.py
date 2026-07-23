@@ -111,6 +111,128 @@ def command(
     )
 
 
+def mutation_executor(tmp_path: Path) -> ReadOnlyToolExecutor:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    return ReadOnlyToolExecutor(
+        workspaces=WorkspaceRegistry(
+            [
+                Workspace(
+                    workspace_id="repo",
+                    platform=(
+                        WorkspacePlatform.WINDOWS_NATIVE
+                        if os.name == "nt"
+                        else WorkspacePlatform.WSL_LINUX
+                    ),
+                    root=workspace,
+                    access=WorkspaceAccess.READ_WRITE,
+                )
+            ]
+        ),
+        definitions_dir=REPO_ROOT / "packages/tool-registry/definitions",
+        definition_schema_path=(
+            REPO_ROOT / "packages/tool-registry/schemas/tool-definition.schema.json"
+        ),
+        backup_root=tmp_path / "runtime/backups",
+    )
+
+
+def mutation_command(
+    executor: ReadOnlyToolExecutor,
+    *,
+    now: datetime,
+    approval: bool = True,
+) -> ExecutionCommand:
+    idempotency_key = str(uuid4())
+    arguments = {
+        "workspace_id": "repo",
+        "relative_path": "created.txt",
+        "expected_sha256": None,
+        "content": "approved\n",
+        "idempotency_key": idempotency_key,
+    }
+    arguments_sha256 = executor.validate_arguments("write_file", arguments)
+    return ExecutionCommand(
+        execution_id=str(uuid4()),
+        session_id=str(uuid4()),
+        request_id=str(uuid4()),
+        tool_call_id=str(uuid4()),
+        idempotency_key=idempotency_key,
+        tool_name="write_file",
+        arguments=arguments,
+        normalized_arguments_sha256=arguments_sha256,
+        tool_definition_sha256=executor.definition_sha256("write_file"),
+        risk_level=1,
+        requested_at=now,
+        expires_at=now + timedelta(minutes=2),
+        approval_id=str(uuid4()) if approval else None,
+        approval_arguments_sha256=arguments_sha256 if approval else None,
+        approval_expires_at=(
+            now + timedelta(minutes=1) if approval else None
+        ),
+    )
+
+
+def test_level_1_requires_exact_unexpired_approval_binding(
+    store: AuditEvidenceStore,
+    tmp_path: Path,
+) -> None:
+    executor = mutation_executor(tmp_path)
+    service = BoundExecutionService(executor=executor, audit_store=store)
+    now = datetime.now(timezone.utc)
+
+    missing = mutation_command(executor, now=now, approval=False)
+    with pytest.raises(ExecutionBindingError, match="approval"):
+        service.execute(missing, now=now)
+    assert not (tmp_path / "workspace/created.txt").exists()
+
+    mismatched = replace(
+        mutation_command(executor, now=now),
+        approval_arguments_sha256="0" * 64,
+    )
+    with pytest.raises(ExecutionBindingError, match="approval"):
+        service.execute(mismatched, now=now)
+    assert not (tmp_path / "workspace/created.txt").exists()
+
+    expired = replace(
+        mutation_command(executor, now=now),
+        approval_expires_at=now,
+    )
+    with pytest.raises(ExecutionExpired, match="approval"):
+        service.execute(expired, now=now)
+    assert not (tmp_path / "workspace/created.txt").exists()
+
+    approved = mutation_command(executor, now=now)
+    response = service.execute(approved, now=now)
+    assert response["status"] == "succeeded"
+    assert (tmp_path / "workspace/created.txt").read_text("utf-8") == (
+        "approved\n"
+    )
+    evidence = json.loads(
+        (
+            tmp_path
+            / "runtime/evidence"
+            / f"{approved.execution_id}.json"
+        ).read_text("utf-8")
+    )
+    assert evidence["approval_id"] == approved.approval_id
+
+
+def test_required_tool_argument_idempotency_must_match_command(
+    store: AuditEvidenceStore,
+    tmp_path: Path,
+) -> None:
+    executor = mutation_executor(tmp_path)
+    service = BoundExecutionService(executor=executor, audit_store=store)
+    now = datetime.now(timezone.utc)
+    request = mutation_command(executor, now=now)
+    mismatched = replace(request, idempotency_key=str(uuid4()))
+
+    with pytest.raises(ExecutionBindingError, match="idempotency"):
+        service.execute(mismatched, now=now)
+    assert not (tmp_path / "workspace/created.txt").exists()
+
+
 def test_success_writes_schema_valid_metadata_without_result_content(
     executor: ReadOnlyToolExecutor,
     store: AuditEvidenceStore,

@@ -27,26 +27,37 @@ rollback, model runtime state, and agent task state.
 - Android client: only communicates with the API gateway.
 
 The current Tool Executor slice independently reloads the checked-in
-contracts and supports thirteen Level 0 filesystem and Git observations. It
-resolves an explicit workspace before every operation, rejects ambiguous or
-escaping paths and link/reparse segments, verifies the opened file identity
-against pre/post path state, and bounds traversal, subprocess time, and
-output. Git uses fixed argv with external execution features disabled and
-rejects metadata escape mechanisms. Write, delete, Git mutation, process,
-browser, UI, and shell adapters remain unavailable.
+contracts and supports thirteen Level 0 filesystem and Git observations plus
+approval-bound Level 1 file write, patch, and rollback. It resolves an
+explicit workspace before every operation, rejects ambiguous or escaping
+paths and link/reparse segments, verifies file identity against pre/post path
+state, and bounds traversal, subprocess time, and output. File changes bind
+an exact approval, idempotency key, SHA-256 precondition, external backup, and
+verified post-state; rollback has its own approval and concurrent-change
+guard. Git uses fixed argv with external execution features disabled and
+rejects metadata escape mechanisms. Delete, Git mutation, process, browser,
+UI, and shell adapters remain unavailable.
 
 The current transport boundary is an authenticated HTTP API bound by the
 launcher to `127.0.0.1:8790`. The PC server has a hexagonal
 `ToolExecutionPort` and loopback HTTP adapter that carries the exact execution
-ID, idempotency key, argument digest, tool-definition digest, risk level, and
-expiry. Session orchestration does not invoke the adapter yet. The executor
-revalidates those bindings, serializes duplicate keys in process, and returns
-the prior terminal response without repeating a successful call. Durable
+ID, idempotency key, argument digest, tool-definition digest, risk level,
+approval binding, and expiry. Planner-to-executor read and approved
+create/rollback paths have passed process smokes; the conversational model
+tool loop is not connected yet. The executor revalidates those bindings,
+serializes duplicate keys in process, and returns the prior terminal response
+without repeating a successful call. Durable
 idempotency across process restarts remains a PostgreSQL milestone.
 
 Each attempted execution emits structured JSONL audit events and an atomic,
 metadata-only evidence record outside Git. Tool arguments, returned file
 content, bearer tokens, and raw secrets are not copied into those records.
+Pre-mutation bytes live only in the external runtime backup tree.
+
+Agent status observation uses an optional strict status-file contract plus
+process, terminal, and Git adapters. Facts are tagged observed, inferred, or
+unknown; command lines are used only for workspace association and never
+returned to clients.
 
 ## State machines
 

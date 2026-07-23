@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime
 import hmac
 import os
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from .protocol.envelope import EventEnvelope
@@ -26,6 +27,7 @@ from .infrastructure.audio_workers import (
     UnixJsonWorkerClient,
 )
 from .infrastructure.vllm_conversation import VllmConversationAdapter
+from .infrastructure.status_adapters import AgentStatusManager
 from .protocol.client_events import (
     ClientPayload,
     validate_client_payload,
@@ -115,6 +117,7 @@ def create_app(
     settings: ServerSettings,
     *,
     event_handler: SessionEventHandler | None = None,
+    agent_status_provider: Callable[[], list[dict[str, object]]] | None = None,
 ) -> FastAPI:
     handler = event_handler or UnavailableSessionEventHandler()
     app = FastAPI(
@@ -127,6 +130,31 @@ def create_app(
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok", "component": "pc-server"}
+
+    @app.get("/v1/status/agents")
+    async def agent_status(request: Request) -> dict[str, object]:
+        authorization = request.headers.get("authorization", "")
+        if not hmac.compare_digest(
+            authorization,
+            f"Bearer {settings.pairing_token}",
+        ):
+            raise HTTPException(status_code=401, detail="invalid pairing token")
+        if agent_status_provider is None:
+            raise HTTPException(
+                status_code=503,
+                detail="agent status adapter is unavailable",
+            )
+        try:
+            agents = await asyncio.to_thread(agent_status_provider)
+        except Exception as error:
+            raise HTTPException(
+                status_code=503,
+                detail="agent status observation failed",
+            ) from error
+        return {
+            "schema_version": "1.0",
+            "agents": agents,
+        }
 
     @app.websocket("/v1/sessions/{session_id}/events")
     async def session_events(websocket: WebSocket, session_id: UUID) -> None:
@@ -231,7 +259,26 @@ def create_app_from_environment() -> FastAPI:
     return create_app(
         ServerSettings.from_environment(),
         event_handler=_event_handler_from_environment(),
+        agent_status_provider=_agent_status_provider_from_environment(),
     )
+
+
+def _agent_status_provider_from_environment(
+) -> Callable[[], list[dict[str, object]]]:
+    workspace = Path(
+        os.environ.get(
+            "LVA_WORKSPACE_ROOT",
+            "/mnt/c/Dev/Repos/local-voice-agent",
+        )
+    )
+    if not workspace.is_absolute() or not workspace.is_dir():
+        raise RuntimeError("LVA_WORKSPACE_ROOT must be an existing absolute path")
+    manager = AgentStatusManager()
+
+    def observe() -> list[dict[str, object]]:
+        return [item.to_dict() for item in manager.observe(workspace)]
+
+    return observe
 
 
 def _event_handler_from_environment() -> SessionEventHandler:

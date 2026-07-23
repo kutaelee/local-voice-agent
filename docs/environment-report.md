@@ -1,7 +1,8 @@
 # Environment report
 
-Initial capture was read-only on 2026-07-23 (Asia/Seoul). The post-capture
-Android SDK installation is recorded separately below.
+Initial capture was read-only on 2026-07-23 (Asia/Seoul). Post-capture SDK
+and isolated runtime installations are recorded separately below and in
+`manifests/runtimes.yaml`.
 
 ## Hardware
 
@@ -71,7 +72,7 @@ The exact sources, checksums, paths, and rollback steps are in
 | Ninja | 1.13.2 |
 | GPU passthrough | RTX 5090 visible; 32,607 MiB VRAM |
 | CUDA Toolkit (`nvcc`) | Not installed |
-| AI Python packages | torch, Triton, FlashAttention, FlashInfer, vLLM, SGLang, Transformers, faster-whisper, Silero VAD not installed |
+| AI Python packages at initial capture | torch, Triton, FlashAttention, FlashInfer, vLLM, SGLang, Transformers, faster-whisper, Silero VAD not installed |
 
 The system Python 3.14 interpreter will not be used for GPU runtimes. Each
 runtime will use a uv-managed Python version compatible with its locked
@@ -97,4 +98,8 @@ release, initially Python 3.12 unless official wheels require otherwise.
   can decode through bundled PyAV.
 - PostgreSQL 18 is absent. Installation/container provisioning is a Level 2
   action and is not part of Slice 0.
-- vLLM/SGLang/STT/TTS environments and models are absent.
+- Versioned vLLM, SGLang, faster-whisper, and Chatterbox environments were
+  subsequently installed under the WSL user runtime root. Their exact
+  packages, checksums, model paths, and measured smokes are recorded in
+  `manifests/runtimes.yaml` and `docs/test-report.md`. Silero VAD remains
+  planned.

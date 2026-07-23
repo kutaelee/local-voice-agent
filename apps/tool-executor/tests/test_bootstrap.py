@@ -47,7 +47,7 @@ def test_checked_in_workspace_config_is_host_scoped() -> None:
             "local_voice_agent",
         )
         assert all(
-            workspace.access is WorkspaceAccess.READ_ONLY
+            workspace.access is WorkspaceAccess.READ_WRITE
             for workspace in loaded
         )
     else:

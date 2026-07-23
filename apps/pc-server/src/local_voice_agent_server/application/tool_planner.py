@@ -55,10 +55,20 @@ class ToolPlanner:
         arguments_copy = dict(arguments)
 
         if definition.enabled:
-            arguments_sha256 = self._registry.validate_model_arguments(
+            self._registry.validate_model_arguments(
                 tool_name,
                 arguments_copy,
             )
+            properties = definition.parameters.get("properties", {})
+            if "idempotency_key" in properties:
+                arguments_copy["idempotency_key"] = idempotency_key
+            if "approval_id" in properties:
+                arguments_sha256 = sha256_json(arguments_copy)
+            else:
+                arguments_sha256 = self._registry.validate_arguments(
+                    tool_name,
+                    arguments_copy,
+                )
         else:
             arguments_sha256 = sha256_json(arguments_copy)
 

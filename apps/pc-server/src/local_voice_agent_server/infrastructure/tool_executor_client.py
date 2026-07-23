@@ -13,6 +13,7 @@ from uuid import UUID
 
 from ..application.ports import ToolExecutionPortError, ToolExecutionReceipt
 from ..application.tool_planner import ToolPlan
+from ..domain.approval import ApprovalState
 from ..domain.policy import PolicyAction, RiskLevel
 from ..domain.tool_execution import ToolExecutionState
 
@@ -70,14 +71,31 @@ class HttpToolExecutionAdapter:
         requested_at: datetime | None = None,
     ) -> ToolExecutionReceipt:
         execution = plan.execution
-        if (
-            execution is None
-            or execution.state is not ToolExecutionState.RUNNING
-            or plan.policy.action is not PolicyAction.ALLOW
-            or plan.policy.risk_level is not RiskLevel.OBSERVE
-        ):
+        if execution is None or execution.state is not ToolExecutionState.RUNNING:
             raise ToolExecutorClientError(
-                "only policy-allowed running Level 0 plans may execute"
+                "only running plans may execute"
+            )
+        approval = plan.approval
+        if plan.policy.risk_level is RiskLevel.OBSERVE:
+            if plan.policy.action is not PolicyAction.ALLOW or approval is not None:
+                raise ToolExecutorClientError(
+                    "Level 0 execution has invalid policy binding"
+                )
+        elif plan.policy.risk_level is RiskLevel.REVERSIBLE_LOCAL:
+            if (
+                plan.policy.action is not PolicyAction.REQUIRE_APPROVAL
+                or approval is None
+                or approval.state is not ApprovalState.APPROVED
+                or approval.normalized_arguments_sha256
+                != execution.normalized_arguments_sha256
+                or approval.tool_call_id != execution.tool_call_id
+            ):
+                raise ToolExecutorClientError(
+                    "Level 1 execution lacks exact approved binding"
+                )
+        else:
+            raise ToolExecutorClientError(
+                "Tool Executor client rejects Level 2 and Level 3"
             )
         observed_at = requested_at or datetime.now(timezone.utc)
         if observed_at.tzinfo is None or observed_at.utcoffset() is None:
@@ -101,6 +119,19 @@ class HttpToolExecutionAdapter:
             "risk_level": int(plan.policy.risk_level),
             "requested_at": observed_at.isoformat(),
             "expires_at": (observed_at + EXECUTION_TTL).isoformat(),
+            "approval_id": (
+                approval.approval_id if approval is not None else None
+            ),
+            "approval_arguments_sha256": (
+                approval.normalized_arguments_sha256
+                if approval is not None
+                else None
+            ),
+            "approval_expires_at": (
+                approval.expires_at.isoformat()
+                if approval is not None
+                else None
+            ),
         }
         body = json.dumps(
             payload,

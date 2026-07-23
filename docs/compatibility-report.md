@@ -22,14 +22,17 @@ model repositories, and upstream release notes are used for selections.
   released embedding-share guard has a measured Gemma 4 Unified MTP
   regression; upstream commit `b2b8f679d058…` fixes that exact guard.
 - SGLang stable 0.5.15.post1 supports Gemma 4; the dedicated Gemma 4 MTP head
-  landed in 0.5.12. It remains a benchmark candidate until function calling,
-  multimodal paths, and MTP are tested on this workstation.
+  landed in 0.5.12. Its isolated CUDA 13 environment, official
+  `sglang-kernel` 0.4.4 CUDA 13 wheel, package check, RTX 5090 device query,
+  and CUDA matrix multiplication pass locally. Model loading remains deferred
+  while an unrelated Windows process occupies most VRAM.
 - vLLM's official 0.25.1 x86_64 release wheel is pinned by its GitHub release
   SHA-256. The byte-identical PyPI artifact is used as a faster mirror and
   installed with uv's explicit CUDA 13.0 backend selection.
-- SGLang's official 0.5.15.post1 CPython 3.12 x86_64 PyPI wheel is pinned by
-  its PyPI SHA-256. Its official installation guide states CUDA 13 is the
-  default runtime line.
+- SGLang's official 0.5.15.post1 CPython 3.12 x86_64 PyPI wheel and official
+  `sglang-kernel` 0.4.4 CUDA 13 wheel are pinned by size and SHA-256. Its
+  official installation guide requires the CUDA 13 PyTorch stack before the
+  separate CUDA 13 kernel wheel.
 - NVIDIA reports RTX 5090 compute capability 12.0. The installed driver
   advertises CUDA 13.3. Current vLLM and SGLang release lines use CUDA 13 /
   PyTorch 2.11-class stacks.
@@ -41,12 +44,11 @@ model repositories, and upstream release notes are used for selections.
   revision and the official Systran `small` revision are pinned as GPU and
   CPU candidates; neither is selected before Korean audio measurement.
 - Chatterbox Multilingual V3 officially lists Korean and uses the MIT
-  license. Its 0.1.7 package pins torch/torchaudio 2.6 on Python below 3.14,
-  which is not mixed into the tested CUDA 13 inference environments. The
-  exact V3 checkpoint is pinned, but runtime installation waits for an
-  isolated Blackwell compatibility test. Kokoro's official language list
-  does not include Korean, so it is not selected as the primary Korean
-  fallback.
+  license. An isolated Python 3.14 environment avoids its Python-below-3.14
+  torch pin and uses the tested CUDA 13 PyTorch stack without mixing it into
+  inference runtimes. The exact V3 checkpoint passed local Korean synthesis
+  and the worker path. Kokoro's official language list does not include
+  Korean, so it is not selected as the primary Korean fallback.
 - PostgreSQL 18.4 is current. SQLAlchemy 2.1 remains beta; stable 2.0.51 is
   selected initially.
 - Hugging Face Hub 1.24.0 is the current stable download client and supports
@@ -70,7 +72,7 @@ model repositories, and upstream release notes are used for selections.
 | Gemma assistant | `google/gemma-4-31B-it-qat-q4_0-unquantized-assistant` @ `96d4c8c…` | Google HF | SHA-256 passed; exact target absent | N/A | Yes | Dedicated assistant | Follows target path | Output-equivalence test required | Q4_0 QAT assistant | Yes, exact-pair gated |
 | vLLM | 0.25.1 stable | vLLM docs/releases | CUDA passed locally | Passed MTP OFF | Text/tool/schema/stream passed | Dispatch passes; embedding share regression blocks stable MTP | 12B image passed; 31B image and audio/video pending | Gemma4 parser + structured outputs passed | compressed-tensors passed | Stable baseline |
 | vLLM MTP fix | commit `b2b8f679d058…`, cu130 wheel | vLLM commit/PR/nightly index | RTX 5090 text MTP passed | Exact-pair text API passed | Conditional | Exact pair loaded; 48 drafted / 43 accepted | Q4 target config blocks multimodal init | Tool + structured-output smoke passed | Exact wheel/package check passed | Disabled pending quality and multimodal gates |
-| SGLang | 0.5.15.post1 stable | SGLang releases/docs | CUDA 13 / Blackwell features; local test required | Official | Official | Added in 0.5.12 | Official VLM path | Local parser validation required | Multiple; exact QAT path test required | Comparison |
+| SGLang | 0.5.15.post1 stable + kernel 0.4.4 cu130 | SGLang releases/docs | Local CUDA 13/SM 12.0 matmul passed; model deferred for external VRAM contention | Official; load pending | Official; load pending | Added in 0.5.12; exact pair pending | Official VLM path; local pending | Parser configured; local pending | Multiple; W4A16 load pending | Installed comparison candidate |
 | Transformers | >=5.10.1, lock after runtime resolution | Google Gemma function-calling guide | Wheels/test required | Official | Official | Official MTP guide | Official | `apply_chat_template(tools=…)` | Model dependent | Validation oracle |
 | PyTorch | Runtime-pinned 2.11-class CUDA wheel | vLLM/SGLang release notes | SM 12.0 build must be verified | Yes | Yes | N/A | Yes | N/A | FP8/NVFP4 ecosystem | Per-runtime lock |
 | Windows fallback | llama.cpp + official Q4_0 GGUF | Google QAT routing table | CUDA support must be tested | Candidate | Candidate | Not assumed | Reduced | App-level schema validation | Official GGUF | Fallback candidate |
@@ -137,11 +139,16 @@ model repositories, and upstream release notes are used for selections.
    requests remain separate gates. The default model sampling configuration
    is disabled in repeatable smoke/benchmark launches with
    `--generation-config vllm`; requests specify sampling explicitly.
-10. Chatterbox 0.1.7's Python <3.14 dependency pins torch and torchaudio 2.6,
-    while this RTX 5090 inference stack is validated on torch 2.11 + CUDA
-    13.0. The TTS environment remains separate and uninstalled until an
-    official-compatible Python/Torch combination passes import, CUDA, Korean
-    synthesis, first-audio, and long-form tests. Voice cloning stays disabled.
+10. Chatterbox 0.1.7's Python <3.14 dependency pins torch and torchaudio 2.6.
+    The isolated Python 3.14.6 TTS environment instead resolves torch and
+    torchaudio 2.11 + CUDA 13.0 and has passed import, CUDA, Korean synthesis,
+    and persistent-worker smoke tests. Long-form quality remains a benchmark
+    gate. Voice cloning stays disabled.
+11. SGLang 0.5.15.post1 and kernel 0.4.4 cu130 are installed in a versioned
+    WSL environment. Its 194-package check and RTX 5090 CUDA smoke pass.
+    Launching Gemma was deliberately deferred when an unrelated Windows
+    process left only 2,954 MiB VRAM free; no process was killed and no model
+    failure is inferred from this resource gate.
 
 ## Official references
 

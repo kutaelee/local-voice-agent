@@ -22,6 +22,14 @@
 Every Level 1+ plan displays targets, normalized arguments, expected changes,
 rollback method, and ordered steps. Level 2 approval cannot be cached.
 
+The current executor implements `write_file`, `apply_patch`, and
+`rollback_file_change` at Level 1. Each invocation binds an unexpired approval
+to the complete normalized-argument SHA-256 and binds the tool-managed
+idempotency key to the execution request. Mutation also requires an exact
+pre-state hash (or explicit non-existence), while rollback requires the exact
+backup ID and current post-state hash. No approval can be reused after an
+argument or state change.
+
 ## Restricted shell
 
 The restricted shell is absent from the model-visible registry by default. If

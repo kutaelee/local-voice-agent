@@ -31,7 +31,7 @@ def registry() -> ToolRegistry:
 
 
 def test_all_tracked_definitions_load(registry: ToolRegistry) -> None:
-    assert len(registry) == 74
+    assert len(registry) == 75
 
 
 def test_definition_exposes_stable_risk_and_digest(registry: ToolRegistry) -> None:
@@ -108,7 +108,7 @@ def test_disabled_tool_is_omitted_from_model_schema(
         item["function"]["name"] for item in registry.as_function_tools()
     }
     assert "restricted_shell" not in names
-    assert len(names) == 73
+    assert len(names) == 74
 
 
 def test_server_managed_fields_are_not_exposed_to_model(

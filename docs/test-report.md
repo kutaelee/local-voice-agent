@@ -12,7 +12,7 @@ progress. No product acceptance test has run.
 | Canonical storage capacity | Passed | `docs/storage-report.md` |
 | Existing Gemma 4 duplicate check | Passed | No Gemma 4 checkpoint found |
 | Official model IDs/revisions metadata query | Passed | `manifests/models.yaml` |
-| vLLM/SGLang official support research | Passed with runtime test pending | `docs/compatibility-report.md` |
+| vLLM/SGLang official support research | Passed; SGLang CUDA runtime passed, model comparison pending | `docs/compatibility-report.md` |
 | Model-download environment bootstrap, first attempt | Failed as expected | Non-login WSL did not expose `~/.local/bin/uv`; no package installed |
 | Model-download environment bootstrap, retry | Passed | Python 3.12.13, Hugging Face Hub 1.24.0 |
 | PowerShell script parse | Passed | All tracked `.ps1` scripts parsed with `ScriptBlock::Create` |
@@ -80,6 +80,7 @@ progress. No product acceptance test has run.
 | Browser tool contracts | Passed (static) | Fresh page fingerprints bind interactions; click/type/select cannot submit; external form submission is isolated at Level 2 with reviewed payload fingerprint |
 | Windows UI tool contracts | Passed (static) | Accessibility elements require fresh state; text/key tools cannot submit; coordinate click/drag require Level 2 approval bound to screenshot hash and dimensions |
 | Coding-agent status contracts | Passed | Closed optional status input and per-field provenance schemas validated; inferred fields without explanations and invented progress percentages are rejected |
+| Coding-agent status adapters | Passed | Five adapter unit cases plus two authenticated API cases cover strict optional status JSON, workspace association, Git observation, invalid status rejection, and sanitized provider failure; live Windows/WSL observation detected Codex, Codex Desktop, and the workspace terminal without exposing command lines |
 | Approval and policy contracts | Passed | Canonical argument digest/precondition binding validated; Level 2 direct allow and Level 3 approval decisions are rejected by schema |
 | Workspace configuration guard | Passed | Closed schema validated; drive root, user profile root, backup-only D:, protected E: backup root, wildcard, and WSL mounted-drive cases rejected |
 | Application and pairing security defaults | Passed | Public bind, raw-audio retention, cleartext pairing, and plaintext token storage cases rejected |
@@ -93,8 +94,8 @@ progress. No product acceptance test has run.
 | Benchmark result/report envelopes | Passed (static) | Raw result remains explicitly `not_run` with zero runs; model/runtime comparison matrices exist and every unmeasured cell is `NOT_RUN` |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 | PC-server isolated dependency lock/install | Passed | Python 3.12.13 environment outside repo; FastAPI 0.139.2, JSON Schema 4.26.0, Pydantic 2.13.4, Starlette 1.3.1, Uvicorn 0.51.0; lock SHA-256 `5a223baf0ace969d7d8d35010f0a7800e99dcc27d4256bb861e533c360a74b0b` |
-| PC-server domain/API/registry/planner/router/adapter/audio unit tests | Passed | Latest run: 95 tests; prior coverage plus closed client payloads, Unix worker adapters, ordered bounded PCM input, cancellation, and the STT/conversation/TTS voice-turn event sequence |
-| Runtime tool registry | Passed | Draft 2020-12 definition and argument validation; stable definition hashes; unknown tools fail closed; disabled `restricted_shell` omitted from 73 model-visible tools; server-issued approval/idempotency fields hidden from model schemas |
+| PC-server domain/API/registry/planner/router/adapter/audio unit tests | Passed | Latest run: 103 tests; prior coverage plus status adapters, approval-bound Level 1 executor requests, closed client payloads, Unix worker adapters, ordered bounded PCM input, cancellation, and the STT/conversation/TTS voice-turn event sequence |
+| Runtime tool registry | Passed | Draft 2020-12 definition and argument validation; 75 stable definition hashes; unknown tools fail closed; disabled `restricted_shell` omitted from 74 model-visible tools; server-issued approval/idempotency fields hidden from model schemas |
 | Tool planner risk routing | Passed | Level 0 queued; Level 1 waits unless a valid session grant exists; Level 2 always waits for exact approval; Level 3 and disabled tools create no execution aggregate |
 | Approval-to-queue binding | Passed | Approved exact binding queued; denied approval and mismatched approval ID were rejected; execution CAS version remained enforced |
 | Model runtime lifecycle | Passed | Load, health check, ready, drain, unload, failure, evidence requirement, cleanup-before-retry, and optimistic version transitions tested |
@@ -103,10 +104,11 @@ progress. No product acceptance test has run.
 | PC-server Uvicorn process smoke | Passed | Loopback `127.0.0.1:8787`, `/health` HTTP 200, owned PID 51847 cleanly stopped, port confirmed closed |
 | vLLM smoke explicit-cache argument guards | Passed after wrapper correction | Bash syntax passed; invalid KV-cache bytes exited 8 and invalid max sequences exited 9. The first combined assertion was invalid because PowerShell expanded Bash `$?` before execution; no server was launched |
 | Tool Executor first Windows-native run | Failed, corrected | 22/26 passed; one assertion assumed LF after a Windows text write, and three fixtures attempted privileged symlink creation. No production file was accessed |
-| Tool Executor Windows-native suite | Passed | Latest run: 57 tests in 4.55 s using isolated Python 3.12.13; prior filesystem/Git coverage plus configuration loading, authenticated bounded API, exact digest/expiry binding, duplicate/conflict behavior, and sanitized no-replace evidence |
-| Tool Executor WSL suite | Passed | Latest run: same 57 tests in 3.66 s using a separate WSL Python 3.12.13 environment; internal and escaping symlinks rejected and host-specific workspace filtering verified |
+| Tool Executor Windows-native suite | Passed | Latest run: 65 passed and one symlink case skipped because unprivileged Windows cannot create it; prior filesystem/Git coverage plus approval-bound write/patch/rollback, atomic replacement, concurrent-hash rejection, API binding, and no-replace evidence |
+| Tool Executor WSL suite | Passed | Latest run: all 66 tests passed using a separate WSL Python 3.12.13 environment, including internal and escaping symlink mutation rejection, create/replace/patch, concurrent-change rollback rejection, and restoration |
 | Tool Executor Windows process smoke | Passed | `127.0.0.1:8790` health returned `ok`; an unauthenticated execution returned HTTP 401; registered process stopped and no listener remained |
-| Live planner-to-executor read smoke | Passed | PC planner and state-machine use case invoked the Windows loopback executor, read this repository's `README.md` through the registered read-only workspace, verified receipt hash, reached `SUCCEEDED`, and stopped cleanly. Executor latency was 10.371 ms for this single non-benchmark sample; evidence `507e23ab-fd3a-482e-810e-c76990929ebc.json` contains metadata only |
+| Live planner-to-executor read smoke | Passed | PC planner and state-machine use case invoked the Windows loopback executor, read this repository's `README.md` through the registered workspace, verified receipt hash, reached `SUCCEEDED`, and stopped cleanly. Executor latency was 10.371 ms for this single non-benchmark sample; evidence `507e23ab-fd3a-482e-810e-c76990929ebc.json` contains metadata only |
+| Live approved file mutation and rollback | Passed | A unique non-existing smoke file was created under the registered workspace with an exact approval and SHA precondition, then removed by a separately approved exact-backup rollback. Create execution `ea24cd44-d0f2-46ee-b003-1a1defdc3dbd` took 12.214 ms; rollback `f3c021e1-5f31-4457-a148-b91e602fb1bf` took 12.758 ms; final file is absent. The first combined PowerShell wrapper timed out before any mutation/audit event; separate owned-process start/smoke/stop succeeded |
 | Tool execution audit/evidence privacy | Passed | Successful secret-bearing read returned content to the caller but persisted only result/argument/definition hashes and IDs; failure evidence stored sanitized error codes; existing evidence IDs cannot be replaced |
 | Tool execution idempotency | Passed (process scope) | Exact successful duplicate returned cached receipt without re-execution; conflicting reuse was rejected; failed execution was not repeated. Durable restart behavior remains `NOT_RUN` |
 | Read-only Git executor | Passed | Status/diff/staged diff/stat/log/branch/show/blame; literal `--stat` path, `--help` revision injection rejection, output truncation, no index modification, and external diff suppression |
@@ -125,10 +127,11 @@ progress. No product acceptance test has run.
 | Chatterbox Multilingual V3 local Korean synthesis | Passed (smoke) | Official revision `5bb1f6e…` weights and built-in conditions loaded offline using exact official source commit `5de7a54…`; 3.12-second 24 kHz output synthesized in 2.331 s after an 18.080 s load, RTF 0.747, peak allocated VRAM 3,338,263,040 bytes; one run is not a benchmark |
 | Persistent audio-worker composition | Passed (smoke) | Authenticated mode-0600 Unix-socket STT/TTS workers completed TTS-to-STT process integration; the sample recognized `통합` as `톤업`, so this is a process smoke rather than an accuracy pass |
 | Live 12B loopback API | Passed | Stable vLLM 0.25.1 returned health 200 and a Korean chat completion from `127.0.0.1:8766`; model load from the canonical NTFS path took 132.38 s and total cold initialization was about 200 s |
+| SGLang isolated CUDA runtime | Passed; model load deferred | SGLang 0.5.15.post1, PyTorch 2.11.0+cu130, and official `sglang-kernel` 0.4.4+cu130 passed a 194-package compatibility check, detected RTX 5090 compute capability 12.0, and completed CUDA matrix multiplication. Gemma loading was not attempted when an unrelated Windows process left only 2,954 MiB free |
 | Production WebSocket voice path | Passed (smoke) | A 149,760-byte 24 kHz Korean PCM sample traversed authenticated WebSocket → faster-whisper → Gemma 4 12B → Chatterbox V3 and returned 215,040 PCM bytes in 7 chunks; evidence `voice-websocket-e2e.json` |
 | Android device install and interaction | NOT_RUN | No ADB device is connected; device permission, audio, rotation, reconnect, and Bluetooth QA remain open |
 
 Exact Q4_0 MTP multimodal compatibility, statistical MTP quality/latency
-benchmark, 31B multimodal and exact-pair MTP, SGLang, audio/video, full benchmark, security,
-Android device/voice, rollback, and product acceptance tests remain `NOT_RUN` or in
-progress.
+benchmark, 31B multimodal and exact-pair MTP, SGLang model comparison,
+audio/video coverage, full benchmark, security matrix, Android device/voice,
+and product acceptance tests remain `NOT_RUN` or in progress.

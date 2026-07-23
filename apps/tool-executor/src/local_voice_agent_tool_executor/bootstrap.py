@@ -32,6 +32,9 @@ def create_app_from_environment() -> FastAPI:
     evidence_dir = Path(
         _required_environment("LVA_TOOL_EXECUTOR_EVIDENCE_DIR")
     )
+    backup_dir = Path(
+        _required_environment("LVA_TOOL_EXECUTOR_BACKUP_DIR")
+    )
     if not repo_root.is_absolute() or not repo_root.is_dir():
         raise RuntimeError("LVA_REPO_ROOT must be an existing absolute directory")
 
@@ -53,6 +56,7 @@ def create_app_from_environment() -> FastAPI:
             repo_root / "packages/tool-registry/schemas/tool-definition.schema.json"
         ),
         git_executable=git_executable,
+        backup_root=backup_dir,
     )
     service = BoundExecutionService(
         executor=executor,

@@ -15,6 +15,7 @@ from local_voice_agent_server.infrastructure.tool_executor_client import (
     ToolExecutorClientSettings,
 )
 from local_voice_agent_server.infrastructure.tool_registry import ToolRegistry
+from local_voice_agent_server.domain.approval import ApprovalState
 from local_voice_agent_server.domain.tool_execution import ToolExecutionState
 
 
@@ -59,6 +60,31 @@ def running_plan():
         reason="test_dispatch",
     )
     return replace(plan, execution=running)
+
+
+def approved_running_mutation_plan():
+    plan = make_plan("write_file")
+    approval = plan.approval.decide(
+        approved=True,
+        normalized_arguments_sha256=(
+            plan.approval.normalized_arguments_sha256
+        ),
+        precondition_version=plan.approval.precondition_version,
+        expected_version=plan.approval.version,
+        now=plan.approval.created_at,
+    )
+    assert approval.state is ApprovalState.APPROVED
+    queued = plan.execution.transition(
+        ToolExecutionState.QUEUED,
+        expected_version=plan.execution.version,
+        reason="test_approved",
+    )
+    running = queued.transition(
+        ToolExecutionState.RUNNING,
+        expected_version=queued.version,
+        reason="test_dispatch",
+    )
+    return replace(plan, execution=running, approval=approval)
 
 
 def success_response(execution_id: str) -> bytes:
@@ -149,6 +175,38 @@ def test_adapter_rejects_non_level_zero_plan_before_transport() -> None:
     with pytest.raises(ToolExecutorClientError):
         adapter.execute(make_plan("write_file"))
     assert called is False
+
+
+def test_adapter_sends_exact_level_one_approval_binding() -> None:
+    plan = approved_running_mutation_plan()
+    captured: dict = {}
+
+    def transport(_url, body, _headers, _timeout, _max_response):
+        captured.update(json.loads(body))
+        return success_response(plan.execution.execution_id)
+
+    adapter = HttpToolExecutionAdapter(
+        ToolExecutorClientSettings(
+            base_url="http://127.0.0.1:8790",
+            ipc_token=TOKEN,
+        ),
+        transport=transport,
+    )
+    adapter.execute(plan, requested_at=plan.approval.created_at)
+
+    assert captured["risk_level"] == 1
+    assert captured["approval_id"] == plan.approval.approval_id
+    assert (
+        captured["approval_arguments_sha256"]
+        == plan.execution.normalized_arguments_sha256
+    )
+    assert captured["approval_expires_at"] == (
+        plan.approval.expires_at.isoformat()
+    )
+    assert (
+        captured["arguments"]["idempotency_key"]
+        == plan.execution.idempotency_key
+    )
 
 
 def test_adapter_rejects_response_for_other_execution() -> None:

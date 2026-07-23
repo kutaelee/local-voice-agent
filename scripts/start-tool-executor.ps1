@@ -18,6 +18,7 @@ $runtimeRoot = 'E:\Data\LocalVoiceAgent\runtime'
 $statusPath = Join-Path $runtimeRoot 'status\tool-executor.json'
 $auditPath = Join-Path $runtimeRoot 'audit\tool-executor.jsonl'
 $evidencePath = Join-Path $runtimeRoot 'evidence\tool-executor'
+$backupPath = Join-Path $runtimeRoot 'backups\tool-executor'
 $logDirectory = Join-Path $runtimeRoot 'logs'
 
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
@@ -58,6 +59,7 @@ finally {
     (Split-Path -Parent $statusPath),
     (Split-Path -Parent $auditPath),
     $evidencePath,
+    $backupPath,
     $logDirectory
 ) | ForEach-Object {
     New-Item -ItemType Directory -Path $_ -Force | Out-Null
@@ -70,6 +72,7 @@ $stderrPath = Join-Path $logDirectory "tool-executor-$stamp.stderr.log"
 $env:LVA_REPO_ROOT = $repoRoot
 $env:LVA_TOOL_EXECUTOR_AUDIT_LOG = $auditPath
 $env:LVA_TOOL_EXECUTOR_EVIDENCE_DIR = $evidencePath
+$env:LVA_TOOL_EXECUTOR_BACKUP_DIR = $backupPath
 
 $arguments = @(
     '-m',

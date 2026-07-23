@@ -44,6 +44,35 @@ def test_health_is_read_only_and_does_not_disclose_secrets() -> None:
     assert TOKEN not in response.text
 
 
+def test_agent_status_requires_pairing_token() -> None:
+    response = client().get("/v1/status/agents")
+    assert response.status_code == 401
+    assert TOKEN not in response.text
+
+
+def test_agent_status_returns_only_provider_contract() -> None:
+    expected = {
+        "schema_version": "1.0",
+        "adapter_id": "process:codex:123",
+        "status": {"agent": "codex"},
+        "provenance": {},
+        "observed_at": "2026-07-23T15:00:00+00:00",
+    }
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        agent_status_provider=lambda: [expected],
+    )
+    response = TestClient(app).get(
+        "/v1/status/agents",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "schema_version": "1.0",
+        "agents": [expected],
+    }
+
+
 def test_short_pairing_token_is_rejected() -> None:
     with pytest.raises(ValueError):
         ServerSettings(pairing_token="short")

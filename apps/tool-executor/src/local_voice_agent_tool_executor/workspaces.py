@@ -163,6 +163,48 @@ class WorkspaceRegistry:
             path=resolved,
         )
 
+    def resolve_file_target(
+        self,
+        workspace_id: str,
+        relative_path: str,
+    ) -> ResolvedWorkspacePath:
+        workspace = self.get(workspace_id)
+        if workspace.access is not WorkspaceAccess.READ_WRITE:
+            raise WorkspacePathRejected("workspace is not writable")
+        normalized = self.normalize_relative(
+            workspace_id,
+            relative_path,
+            allow_root=False,
+        )
+        parts = tuple(normalized.split("/"))
+        parent_relative = "/".join(parts[:-1]) or "."
+        parent = self.resolve_existing(
+            workspace_id,
+            parent_relative,
+            expected_kind="directory",
+        )
+        candidate = parent.path / parts[-1]
+        try:
+            candidate_stat = candidate.lstat()
+        except FileNotFoundError:
+            candidate_stat = None
+        except OSError as error:
+            raise WorkspacePathRejected(relative_path) from error
+        if candidate_stat is not None:
+            if _is_link_or_reparse(candidate, candidate_stat):
+                raise WorkspacePathRejected("links and reparse points are forbidden")
+            if not stat.S_ISREG(candidate_stat.st_mode):
+                raise WorkspaceTypeMismatch("expected a regular file target")
+            resolved = candidate.resolve(strict=True)
+            if not resolved.is_relative_to(workspace.root):
+                raise WorkspacePathRejected("resolved path escapes workspace")
+            candidate = resolved
+        return ResolvedWorkspacePath(
+            workspace=workspace,
+            relative_path=normalized,
+            path=candidate,
+        )
+
 
 def _parse_relative_path(
     value: str,

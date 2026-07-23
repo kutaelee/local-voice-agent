@@ -1,14 +1,19 @@
-"""Fail-closed dispatcher for the supported Level 0 filesystem tools."""
+"""Fail-closed dispatcher for the supported filesystem and Git tools."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Mapping
 
-from .contracts import FILESYSTEM_READ_TOOLS, ReadToolContracts
-from .errors import GitWorkspaceRejected
+from .contracts import (
+    FILESYSTEM_MUTATION_TOOLS,
+    FILESYSTEM_READ_TOOLS,
+    ReadToolContracts,
+)
+from .errors import GitWorkspaceRejected, MutationPreconditionFailed
 from .filesystem import ReadOnlyFilesystem
 from .git import ReadOnlyGit
+from .mutations import FileMutationExecutor
 from .workspaces import WorkspaceRegistry
 
 
@@ -20,6 +25,7 @@ class ReadOnlyToolExecutor:
         definitions_dir: Path,
         definition_schema_path: Path,
         git_executable: Path | None = None,
+        backup_root: Path | None = None,
     ) -> None:
         self._contracts = ReadToolContracts.load(
             definitions_dir=definitions_dir,
@@ -35,24 +41,43 @@ class ReadOnlyToolExecutor:
             if git_executable is not None
             else None
         )
+        self._mutations = (
+            FileMutationExecutor(
+                workspaces=workspaces,
+                backup_root=backup_root,
+            )
+            if backup_root is not None
+            else None
+        )
 
     def execute(
         self,
         tool_name: str,
         arguments: Mapping[str, Any],
+        *,
+        execution_id: str | None = None,
     ) -> dict[str, Any]:
         normalized = dict(arguments)
         self._contracts.validate(tool_name, normalized)
         if tool_name in FILESYSTEM_READ_TOOLS:
             handler = getattr(self._filesystem, tool_name)
+            result = handler(**normalized)
+        elif tool_name in FILESYSTEM_MUTATION_TOOLS:
+            if self._mutations is None or execution_id is None:
+                raise MutationPreconditionFailed(
+                    "mutation adapter is not configured"
+                )
+            handler = getattr(self._mutations, tool_name)
+            result = handler(execution_id=execution_id, **normalized)
         else:
             if self._git is None:
                 raise GitWorkspaceRejected("Git adapter is not configured")
             handler = getattr(self._git, tool_name)
+            result = handler(**normalized)
         return {
             "tool_name": tool_name,
             "status": "succeeded",
-            "result": handler(**normalized),
+            "result": result,
         }
 
     def validate_arguments(
@@ -64,3 +89,9 @@ class ReadOnlyToolExecutor:
 
     def definition_sha256(self, tool_name: str) -> str:
         return self._contracts.definition_sha256(tool_name)
+
+    def risk_level(self, tool_name: str) -> int:
+        return self._contracts.risk_level(tool_name)
+
+    def idempotency(self, tool_name: str) -> str:
+        return self._contracts.idempotency(tool_name)

@@ -47,6 +47,18 @@ class TextDecodingError(ToolExecutorError):
     code = "TEXT_DECODING_ERROR"
 
 
+class MutationPreconditionFailed(ToolExecutorError):
+    code = "MUTATION_PRECONDITION_FAILED"
+
+
+class PatchRejected(ToolExecutorError):
+    code = "PATCH_REJECTED"
+
+
+class RollbackRejected(ToolExecutorError):
+    code = "ROLLBACK_REJECTED"
+
+
 class GitWorkspaceRejected(ToolExecutorError):
     code = "GIT_WORKSPACE_REJECTED"
 

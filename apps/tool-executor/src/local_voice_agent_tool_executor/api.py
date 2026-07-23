@@ -34,13 +34,24 @@ class ExecutionRequest(BaseModel):
     arguments: dict[str, Any]
     normalized_arguments_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     tool_definition_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
-    risk_level: Literal[0]
+    risk_level: Literal[0, 1]
     requested_at: datetime
     expires_at: datetime
+    approval_id: UUID | None = None
+    approval_arguments_sha256: str | None = Field(
+        default=None,
+        pattern=r"^[a-f0-9]{64}$",
+    )
+    approval_expires_at: datetime | None = None
 
-    @field_validator("requested_at", "expires_at")
+    @field_validator("requested_at", "expires_at", "approval_expires_at")
     @classmethod
-    def timestamps_must_include_timezone(cls, value: datetime) -> datetime:
+    def timestamps_must_include_timezone(
+        cls,
+        value: datetime | None,
+    ) -> datetime | None:
+        if value is None:
+            return value
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("timestamp must include a UTC offset")
         return value
@@ -59,6 +70,13 @@ class ExecutionRequest(BaseModel):
             risk_level=self.risk_level,
             requested_at=self.requested_at,
             expires_at=self.expires_at,
+            approval_id=(
+                str(self.approval_id)
+                if self.approval_id is not None
+                else None
+            ),
+            approval_arguments_sha256=self.approval_arguments_sha256,
+            approval_expires_at=self.approval_expires_at,
         )
 
 

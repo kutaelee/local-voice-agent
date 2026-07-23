@@ -16,16 +16,21 @@ A locked PC-server environment now runs state, approval, policy, protocol,
 model-runtime/router, authenticated FastAPI/WebSocket, persistent STT/TTS
 workers, and the Tool Executor client adapter. A live Korean PCM test has
 passed WebSocket input, faster-whisper STT, Gemma 4 12B, Chatterbox V3 TTS,
-and chunked PCM output. A separate read-only Tool Executor implements
-thirteen bounded Level 0 filesystem/Git observation tools, an authenticated
-loopback API, execution-binding/idempotency checks, and metadata-only
-audit/evidence records. Windows-native and WSL suites pass, and the Windows
-process passed loopback start, authentication rejection, health, and clean
-stop smoke checks. The Android 0.3.0 client records and streams PCM, plays
+and chunked PCM output. A separate Tool Executor implements thirteen bounded
+Level 0 filesystem/Git observation tools plus approval-bound Level 1
+`write_file`, `apply_patch`, and hash-preconditioned rollback. Its
+authenticated loopback API enforces execution binding and idempotency and
+writes metadata-only audit/evidence records plus external rollback backups.
+Windows-native and WSL suites pass, and live process smokes passed both
+planner-driven reads and approved create/rollback. Coding-agent status
+adapters observe supported processes, optional strict status files, and
+workspace Git state without assuming private APIs. The Android 0.3.0 client
+records and streams PCM, plays
 ordered PCM output, supports client-side interruption, and keeps pairing
 tokens in Android Keystore-backed storage. No full product acceptance is
-claimed until SGLang, mutation/rollback, computer-use, device audio, and the
-required failure matrix pass.
+claimed until the installed SGLang runtime completes model comparison,
+computer-use, server-side barge-in, device audio, and the required failure
+matrix pass.
 
 ## Architecture
 
@@ -59,7 +64,7 @@ peaks fail closed until measured.
 
 Installation scripts default to planning or validation and do not silently
 install system components. The PC-server domain/API slice and the standalone
-read-only Tool Executor have isolated lockfiles.
+Tool Executor have isolated lockfiles.
 
 ```powershell
 pwsh -File scripts\health-check.ps1
@@ -71,7 +76,10 @@ After setting an untracked `LVA_TOOL_EXECUTOR_TOKEN` with at least 32 random
 characters, the isolated executor can be started and stopped with
 `scripts\start-tool-executor.ps1` and `scripts\stop-tool-executor.ps1`.
 Both scripts keep the service on `127.0.0.1:8790`; the checked-in workspace
-allowlist grants read-only filesystem/Git observation only to this repository.
+allowlist grants filesystem/Git observation and explicitly approved,
+preconditioned Level 1 file changes only to this repository. Backups remain
+outside the worktree under
+`E:\Data\LocalVoiceAgent\runtime\backups\tool-executor`.
 
 From an isolated project/runtime environment containing PyYAML and
 jsonschema, all network-free repository checks can be run with:

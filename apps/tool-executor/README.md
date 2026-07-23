@@ -17,8 +17,8 @@ There is no model-visible unrestricted shell. Elevation is unsupported.
 
 ## Current implementation
 
-The first executable slice is deliberately limited to thirteen Level 0
-filesystem and Git observation tools:
+The executable slice includes thirteen Level 0 filesystem and Git observation
+tools:
 
 - `list_files`
 - `search_files`
@@ -34,6 +34,12 @@ filesystem and Git observation tools:
 - `git_show`
 - `git_blame`
 
+It also implements three Level 1, approval-bound file operations:
+
+- `write_file`
+- `apply_patch`
+- `rollback_file_change`
+
 The executor reloads and validates the repository tool contracts rather than
 trusting validation performed by the PC server. Workspace lookup is
 fail-closed. Absolute paths, traversal, Windows alternate data streams,
@@ -47,10 +53,14 @@ commit ID using `--end-of-options`. `.git` must be an internal directory; its
 metadata is scanned for links/reparse points, and linked worktrees, object
 alternates, and config include sections are rejected.
 
-No write, delete, Git mutation, process, browser, UI, or shell operation is
-connected in this slice. The configured workspace allowlist is empty by
-default, so the executor cannot access user files until a workspace is
-explicitly registered.
+Each file mutation requires an exact argument digest, unexpired approval,
+matching idempotency key, read-write workspace registration, and SHA-256
+precondition. A successful change creates a no-replace backup outside the
+worktree. Rollback is a separate approved Level 1 execution and succeeds only
+when the workspace, path, backup identity, and current post-change hash all
+still match. Delete, Git mutation, process, browser, UI, and shell operations
+are not connected in this slice. The executor cannot access user files until
+a workspace is explicitly registered.
 
 The environment is isolated from the PC server and model runtimes:
 
