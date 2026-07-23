@@ -15,3 +15,7 @@ Level 0 is allowed only inside configured scope. Level 1 requires a valid
 session grant or approval. Level 2 always requires an exact unexpired
 approval. Level 3 is denied unless a separate manual policy is explicitly
 configured.
+
+`schemas/policy-decision.schema.json` prevents Level 2 from returning `ALLOW`
+and Level 3 from returning anything except `DENY`. Decisions bind both the
+checked-in tool-definition digest and normalized-argument digest.

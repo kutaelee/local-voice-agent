@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-voice-agent.invalid/schemas/policy-decision.schema.json",
+  "title": "Pure policy decision",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "decision",
+    "risk_level",
+    "tool_name",
+    "tool_definition_sha256",
+    "normalized_arguments_sha256",
+    "reason_codes",
+    "evaluated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "decision": {
+      "type": "string",
+      "enum": ["ALLOW", "REQUIRE_APPROVAL", "DENY"]
+    },
+    "risk_level": {"type": "integer", "minimum": 0, "maximum": 3},
+    "tool_name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "tool_definition_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "normalized_arguments_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "reason_codes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "WITHIN_SCOPE",
+          "SESSION_GRANT_VALID",
+          "EXACT_APPROVAL_REQUIRED",
+          "LEVEL_3_DEFAULT_DENY",
+          "WORKSPACE_NOT_ALLOWED",
+          "PATH_OUTSIDE_WORKSPACE",
+          "SCHEMA_INVALID",
+          "APPROVAL_MISSING",
+          "APPROVAL_EXPIRED",
+          "APPROVAL_BINDING_MISMATCH",
+          "PRECONDITION_CHANGED",
+          "RESOURCE_LIMIT",
+          "TOOL_DISABLED",
+          "ELEVATION_FORBIDDEN"
+        ]
+      }
+    },
+    "evaluated_at": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"risk_level": {"const": 2}},
+        "required": ["risk_level"]
+      },
+      "then": {
+        "properties": {
+          "decision": {"enum": ["REQUIRE_APPROVAL", "DENY"]}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"risk_level": {"const": 3}},
+        "required": ["risk_level"]
+      },
+      "then": {
+        "properties": {"decision": {"const": "DENY"}},
+        "required": ["decision"]
+      }
+    }
+  ],
+  "additionalProperties": false
+}

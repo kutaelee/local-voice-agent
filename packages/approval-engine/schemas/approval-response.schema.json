@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-voice-agent.invalid/schemas/approval-response.schema.json",
+  "title": "Approval response",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "approval_id",
+    "decision",
+    "normalized_arguments_sha256",
+    "precondition_version",
+    "responded_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "approval_id": {"type": "string", "format": "uuid"},
+    "decision": {"type": "string", "enum": ["APPROVED", "REJECTED"]},
+    "normalized_arguments_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "precondition_version": {"type": "integer", "minimum": 0},
+    "responded_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}
