@@ -33,12 +33,15 @@ transport- and persistence-neutral:
   defers 31B for voice/GPU priority, enforces measured modality/context
   capability, and cleans a failed 31B runtime before fallback to 12B.
 
-No tool is executed by this slice. PostgreSQL adapters and application use
-cases remain follow-up work. Model switch actions are plans only; no runtime
-process is started or stopped by the router. The FastAPI composition root exposes a
-read-only health route and a bearer-token-authenticated WebSocket gateway. It
-rejects missing/short tokens, closed-schema violations, session mismatches,
-and replayed sequence numbers.
+The current composition executes approved plans only through the separately
+authenticated Tool Executor and persists the lifecycle in PostgreSQL.
+Model-switch actions remain plans only; no runtime process is started or
+stopped by the router. The FastAPI composition root exposes a read-only health
+route and a bearer-token-authenticated WebSocket gateway. It rejects
+missing/short tokens, closed-schema violations, session mismatches, and
+replayed sequence numbers. Its incremental outbound emitter can send state and
+transcript events before a handler returns, then synthesize stable model text
+one sentence at a time so first-sentence audio precedes later synthesis.
 
 The environment and lock are isolated from model runtimes:
 
@@ -46,6 +49,6 @@ The environment and lock are isolated from model runtimes:
 cd apps/pc-server
 export UV_PROJECT_ENVIRONMENT=\
 /home/kutae/.local/share/local-voice-agent/runtimes/pc-server/.venv
-uv sync --locked --extra test
-uv run --locked --extra test pytest
+uv sync --locked --extra test --extra persistence
+uv run --locked --extra test --extra persistence pytest
 ```

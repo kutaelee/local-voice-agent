@@ -20,7 +20,9 @@ and chunked PCM output. Silero VAD 6.2.1 now runs in an isolated CPU ONNX
 worker; its authenticated streaming smoke detected speech and a 500 ms
 endpoint, and Android stops capture when the server reports that endpoint.
 The WebSocket response path accepts and deduplicates cancellation while
-STT/LLM/TTS processing is still active. Gemma's model-visible tool loop now
+STT/LLM/TTS processing is still active, emits events before the turn handler
+returns, and sends one sentence's TTS audio before synthesizing the next.
+Gemma's model-visible tool loop now
 limits itself to 47 implemented tools, validates every call through
 the planner/policy engine, pauses Level 1 work for an exact approval, resumes
 the same turn, and returns verified results to the model. A separate Tool

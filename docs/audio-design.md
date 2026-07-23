@@ -52,10 +52,13 @@ Blackwell-compatible environment. The built-in condition data may be used for
 testing; no personal or third-party voice is cloned without explicit
 authorization and provided reference audio.
 
-LLM text is segmented at safe sentence/meaning boundaries. TTS begins after
-the first stable segment, not after the full answer. Segments carry ordering
-and response IDs so interruption can discard every remaining buffer without
-mixing a previous response into the next one.
+Stable model text is segmented at sentence/meaning boundaries. The WebSocket
+emitter sends the first sentence's audio before synthesizing later sentences,
+uses one ordered output-stream ID across segments, and closes a partially
+emitted stream with `cancelled` or `error`. The current model adapters still
+return a stable final answer before this segmentation; incremental LLM
+sentence detection remains a measured latency improvement rather than a
+completed claim.
 
 ## Barge-in sequence
 

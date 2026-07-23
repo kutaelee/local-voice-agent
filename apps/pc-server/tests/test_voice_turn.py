@@ -1,6 +1,8 @@
 import asyncio
 from uuid import uuid4
 
+import pytest
+
 from local_voice_agent_server.application.voice_turn import (
     SynthesizedAudio,
     Transcript,
@@ -78,6 +80,136 @@ def test_voice_turn_emits_ordered_transcript_text_and_audio() -> None:
     assert first_audio.payload["channels"] == 1
     assert types[-1] == "audio.output.end"
     assert completed[1].payload["text"] == "컴퓨터 상태 알려줘."
+
+
+def test_voice_turn_emits_first_sentence_audio_before_synthesizing_next() -> None:
+    timeline: list[str] = []
+
+    class SentenceConversation:
+        async def respond(self, text: str, *, language: str) -> str:
+            assert text
+            assert language == "ko"
+            return "첫 문장입니다. 두 번째 문장입니다."
+
+    class SentenceTts:
+        async def synthesize(
+            self,
+            text: str,
+            *,
+            language: str,
+        ) -> SynthesizedAudio:
+            assert language == "ko"
+            timeline.append(f"tts:{text}")
+            return SynthesizedAudio(
+                text.encode("utf-8") * 8,
+                sample_rate_hz=24_000,
+            )
+
+    async def scenario() -> None:
+        service = VoiceTurnService(
+            stt=FakeStt(),
+            conversation=SentenceConversation(),
+            tts=SentenceTts(),
+            output_chunk_bytes=32,
+        )
+        stream_id = uuid4()
+        service.start(
+            stream_id=stream_id,
+            encoding="pcm_s16le",
+            sample_rate_hz=16_000,
+            channels=1,
+        )
+        service.append(
+            stream_id=stream_id,
+            chunk_index=0,
+            encoding="pcm_s16le",
+            data=b"\x00\x00" * 160,
+            duration_ms=10,
+        )
+        emitted = []
+
+        async def emit(event) -> None:
+            emitted.append(event)
+            timeline.append(f"event:{event.type}")
+
+        returned = await service.finish(stream_id=stream_id, emit=emit)
+        assert returned == []
+        assert [item for item in timeline if item.startswith("tts:")] == [
+            "tts:첫 문장입니다.",
+            "tts:두 번째 문장입니다.",
+        ]
+        assert timeline.index("event:audio.output.chunk") < timeline.index(
+            "tts:두 번째 문장입니다."
+        )
+        chunks = [
+            event
+            for event in emitted
+            if event.type == "audio.output.chunk"
+        ]
+        assert [event.payload["chunk_index"] for event in chunks] == list(
+            range(len(chunks))
+        )
+        assert len(
+            {event.payload["audio_stream_id"] for event in chunks}
+        ) == 1
+        assert emitted[-1].type == "audio.output.end"
+        assert emitted[-1].payload["reason"] == "completed"
+
+    asyncio.run(scenario())
+
+
+def test_streamed_tts_failure_terminates_the_open_audio_stream() -> None:
+    class SentenceConversation:
+        async def respond(self, text: str, *, language: str) -> str:
+            del text, language
+            return "첫 문장입니다. 두 번째 문장입니다."
+
+    class FailingSecondTts:
+        calls = 0
+
+        async def synthesize(
+            self,
+            text: str,
+            *,
+            language: str,
+        ) -> SynthesizedAudio:
+            del text, language
+            self.calls += 1
+            if self.calls == 2:
+                raise RuntimeError("synthetic TTS failure")
+            return SynthesizedAudio(b"\x00\x01" * 32, 24_000)
+
+    async def scenario() -> None:
+        service = VoiceTurnService(
+            stt=FakeStt(),
+            conversation=SentenceConversation(),
+            tts=FailingSecondTts(),
+        )
+        stream_id = uuid4()
+        service.start(
+            stream_id=stream_id,
+            encoding="pcm_s16le",
+            sample_rate_hz=16_000,
+            channels=1,
+        )
+        service.append(
+            stream_id=stream_id,
+            chunk_index=0,
+            encoding="pcm_s16le",
+            data=b"\x00\x00" * 160,
+            duration_ms=10,
+        )
+        emitted = []
+
+        async def emit(event) -> None:
+            emitted.append(event)
+
+        with pytest.raises(RuntimeError, match="synthetic TTS failure"):
+            await service.finish(stream_id=stream_id, emit=emit)
+        assert emitted[-1].type == "audio.output.end"
+        assert emitted[-1].payload["reason"] == "error"
+
+    asyncio.run(scenario())
 
 
 def test_voice_turn_emits_vad_end_and_closes_worker_state() -> None:

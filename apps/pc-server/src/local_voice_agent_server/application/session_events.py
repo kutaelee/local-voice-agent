@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import Callable, Protocol
+from typing import Awaitable, Callable, Protocol
 from uuid import UUID
 
 from ..domain.audio_stream import AudioStreamError
@@ -25,6 +25,9 @@ class OutboundEvent:
     payload: dict[str, object]
 
 
+OutboundEmitter = Callable[[OutboundEvent], Awaitable[None]]
+
+
 class SessionEventHandler(Protocol):
     async def handle(
         self,
@@ -33,6 +36,7 @@ class SessionEventHandler(Protocol):
         request_id: UUID,
         event_type: str,
         payload: ClientPayload,
+        emit: OutboundEmitter | None = None,
     ) -> list[OutboundEvent]: ...
 
     async def disconnect(self, *, session_id: UUID) -> None: ...
@@ -46,8 +50,9 @@ class UnavailableSessionEventHandler:
         request_id: UUID,
         event_type: str,
         payload: ClientPayload,
+        emit: OutboundEmitter | None = None,
     ) -> list[OutboundEvent]:
-        del session_id, request_id, event_type, payload
+        del session_id, request_id, event_type, payload, emit
         return [
             OutboundEvent(
                 "error",
@@ -75,7 +80,7 @@ class VoiceSessionEventHandler:
         self._active: dict[UUID, VoiceTurnService] = {}
         self._processing: dict[
             UUID,
-            tuple[UUID, VoiceTurnService, asyncio.Task[list[OutboundEvent]]],
+            tuple[UUID, VoiceTurnService, asyncio.Task[object]],
         ] = {}
         self._pending_approval: dict[
             UUID,
@@ -93,6 +98,7 @@ class VoiceSessionEventHandler:
         request_id: UUID,
         event_type: str,
         payload: ClientPayload,
+        emit: OutboundEmitter | None = None,
     ) -> list[OutboundEvent]:
         del event_type
         try:
@@ -146,7 +152,8 @@ class VoiceSessionEventHandler:
                     )
                     try:
                         events = await turn.finish(
-                            stream_id=payload.audio_stream_id
+                            stream_id=payload.audio_stream_id,
+                            emit=_voice_emitter(emit),
                         )
                         if turn.pending_approval_id is not None:
                             self._pending_approval[session_id] = (
@@ -163,6 +170,7 @@ class VoiceSessionEventHandler:
                     session_id=session_id,
                     request_id=request_id,
                     payload=payload,
+                    emit=emit,
                 )
             if isinstance(payload, OperationCancelPayload):
                 return await self._cancel_response(
@@ -291,6 +299,7 @@ class VoiceSessionEventHandler:
         session_id: UUID,
         request_id: UUID,
         payload: ApprovalResponsePayload,
+        emit: OutboundEmitter | None,
     ) -> list[OutboundEvent]:
         pending = self._pending_approval.get(session_id)
         if pending is None:
@@ -313,6 +322,7 @@ class VoiceSessionEventHandler:
                 approved=payload.decision == "approve",
                 arguments_digest=payload.arguments_digest,
                 reason=payload.reason,
+                emit=_voice_emitter(emit),
             )
             if turn.pending_approval_id is not None:
                 self._pending_approval[session_id] = (
@@ -328,3 +338,15 @@ class VoiceSessionEventHandler:
 
 def _outbound(events: list[VoiceEvent]) -> list[OutboundEvent]:
     return [OutboundEvent(event.type, event.payload) for event in events]
+
+
+def _voice_emitter(
+    emit: OutboundEmitter | None,
+) -> Callable[[VoiceEvent], Awaitable[None]] | None:
+    if emit is None:
+        return None
+
+    async def adapted(event: VoiceEvent) -> None:
+        await emit(OutboundEvent(event.type, event.payload))
+
+    return adapted

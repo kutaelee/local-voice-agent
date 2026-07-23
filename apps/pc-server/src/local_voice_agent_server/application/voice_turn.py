@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 from dataclasses import dataclass
 import inspect
-from typing import Protocol
+import re
+from typing import Awaitable, Callable, Protocol
 from uuid import UUID, uuid4
 
 from ..domain.audio_stream import AudioStream
@@ -29,6 +31,9 @@ class SynthesizedAudio:
 class VoiceEvent:
     type: str
     payload: dict[str, object]
+
+
+VoiceEventEmitter = Callable[[VoiceEvent], Awaitable[None]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -225,7 +230,12 @@ class VoiceTurnService:
             except ValueError:
                 pass
 
-    async def finish(self, *, stream_id: UUID) -> list[VoiceEvent]:
+    async def finish(
+        self,
+        *,
+        stream_id: UUID,
+        emit: VoiceEventEmitter | None = None,
+    ) -> list[VoiceEvent]:
         audio = self._stream.finish(stream_id=stream_id)
         await self.close_vad(stream_id=stream_id)
         sample_rate_hz = self._stream.sample_rate_hz
@@ -233,12 +243,15 @@ class VoiceTurnService:
         if sample_rate_hz is None or channels is None:
             raise RuntimeError("audio stream metadata is unavailable")
 
-        events = [
+        events: list[VoiceEvent] = []
+        await self._deliver(
+            events,
             VoiceEvent(
                 type="assistant.state",
                 payload={"state": "recognizing"},
-            )
-        ]
+            ),
+            emit=emit,
+        )
         transcript = await self._stt.transcribe(
             audio,
             sample_rate_hz=sample_rate_hz,
@@ -253,11 +266,15 @@ class VoiceTurnService:
         }
         if transcript.confidence is not None:
             transcript_payload["confidence"] = transcript.confidence
-        events.extend(
-            [
-                VoiceEvent("transcript.user.final", transcript_payload),
-                VoiceEvent("assistant.state", {"state": "thinking"}),
-            ]
+        await self._deliver(
+            events,
+            VoiceEvent("transcript.user.final", transcript_payload),
+            emit=emit,
+        )
+        await self._deliver(
+            events,
+            VoiceEvent("assistant.state", {"state": "thinking"}),
+            emit=emit,
         )
 
         response_value = await self._conversation.respond(
@@ -265,7 +282,8 @@ class VoiceTurnService:
             language=transcript.language,
         )
         if isinstance(response_value, ConversationReply):
-            events.extend(response_value.events)
+            for event in response_value.events:
+                await self._deliver(events, event, emit=emit)
             if response_value.text is None:
                 if response_value.pending_approval_id is None:
                     raise ValueError(
@@ -285,6 +303,7 @@ class VoiceTurnService:
             events,
             response=response,
             language=transcript.language,
+            emit=emit,
         )
 
     async def continue_after_approval(
@@ -294,6 +313,7 @@ class VoiceTurnService:
         approved: bool,
         arguments_digest: str,
         reason: str | None,
+        emit: VoiceEventEmitter | None = None,
     ) -> list[VoiceEvent]:
         if (
             self._pending_language is None
@@ -309,7 +329,9 @@ class VoiceTurnService:
             arguments_digest=arguments_digest,
             reason=reason,
         )
-        events = list(reply.events)
+        events: list[VoiceEvent] = []
+        for event in reply.events:
+            await self._deliver(events, event, emit=emit)
         if reply.text is None:
             if reply.pending_approval_id is None:
                 raise ValueError(
@@ -324,6 +346,7 @@ class VoiceTurnService:
             events,
             response=reply.text,
             language=language,
+            emit=emit,
         )
 
     async def _complete_response(
@@ -332,52 +355,138 @@ class VoiceTurnService:
         *,
         response: str,
         language: str,
+        emit: VoiceEventEmitter | None = None,
     ) -> list[VoiceEvent]:
-        events.extend(
-            [
-                VoiceEvent(
-                    "assistant.text.final",
-                    {"text": response, "interrupted": False},
-                ),
-                VoiceEvent("assistant.state", {"state": "synthesizing"}),
-            ]
+        await self._deliver(
+            events,
+            VoiceEvent(
+                "assistant.text.final",
+                {"text": response, "interrupted": False},
+            ),
+            emit=emit,
+        )
+        await self._deliver(
+            events,
+            VoiceEvent("assistant.state", {"state": "synthesizing"}),
+            emit=emit,
         )
 
-        output = await self._tts.synthesize(
-            response,
-            language=language,
-        )
         output_stream_id = uuid4()
-        events.append(VoiceEvent("assistant.state", {"state": "speaking"}))
-        bytes_per_second = output.sample_rate_hz * output.channels * 2
-        for chunk_index, offset in enumerate(
-            range(0, len(output.pcm_s16le), self._output_chunk_bytes)
-        ):
-            chunk = output.pcm_s16le[
-                offset : offset + self._output_chunk_bytes
-            ]
-            duration_ms = max(1, round(len(chunk) * 1_000 / bytes_per_second))
-            events.append(
-                VoiceEvent(
-                    "audio.output.chunk",
-                    {
-                        "audio_stream_id": str(output_stream_id),
-                        "chunk_index": chunk_index,
-                        "encoding": "pcm_s16le",
-                        "sample_rate_hz": output.sample_rate_hz,
-                        "channels": output.channels,
-                        "duration_ms": duration_ms,
-                        "data_base64": base64.b64encode(chunk).decode("ascii"),
-                    },
+        output_format: tuple[int, int] | None = None
+        chunk_index = 0
+        audio_started = False
+        try:
+            for speech_unit in _speech_units(response):
+                output = await self._tts.synthesize(
+                    speech_unit,
+                    language=language,
                 )
-            )
-        events.append(
+                current_format = (output.sample_rate_hz, output.channels)
+                if output_format is None:
+                    output_format = current_format
+                elif output_format != current_format:
+                    raise ValueError("TTS output format changed within one response")
+                if not audio_started:
+                    await self._deliver(
+                        events,
+                        VoiceEvent(
+                            "assistant.state",
+                            {"state": "speaking"},
+                        ),
+                        emit=emit,
+                    )
+                    audio_started = True
+                bytes_per_second = output.sample_rate_hz * output.channels * 2
+                for offset in range(
+                    0,
+                    len(output.pcm_s16le),
+                    self._output_chunk_bytes,
+                ):
+                    chunk = output.pcm_s16le[
+                        offset : offset + self._output_chunk_bytes
+                    ]
+                    duration_ms = max(
+                        1,
+                        round(len(chunk) * 1_000 / bytes_per_second),
+                    )
+                    await self._deliver(
+                        events,
+                        VoiceEvent(
+                            "audio.output.chunk",
+                            {
+                                "audio_stream_id": str(output_stream_id),
+                                "chunk_index": chunk_index,
+                                "encoding": "pcm_s16le",
+                                "sample_rate_hz": output.sample_rate_hz,
+                                "channels": output.channels,
+                                "duration_ms": duration_ms,
+                                "data_base64": base64.b64encode(chunk).decode(
+                                    "ascii"
+                                ),
+                            },
+                        ),
+                        emit=emit,
+                    )
+                    chunk_index += 1
+        except asyncio.CancelledError:
+            if audio_started and emit is not None:
+                await emit(
+                    VoiceEvent(
+                        "audio.output.end",
+                        {
+                            "audio_stream_id": str(output_stream_id),
+                            "reason": "cancelled",
+                        },
+                    )
+                )
+            raise
+        except Exception:
+            if audio_started and emit is not None:
+                try:
+                    await emit(
+                        VoiceEvent(
+                            "audio.output.end",
+                            {
+                                "audio_stream_id": str(output_stream_id),
+                                "reason": "error",
+                            },
+                        )
+                    )
+                except Exception:
+                    pass
+            raise
+        await self._deliver(
+            events,
             VoiceEvent(
                 "audio.output.end",
                 {
                     "audio_stream_id": str(output_stream_id),
                     "reason": "completed",
                 },
-            )
+            ),
+            emit=emit,
         )
         return events
+
+    @staticmethod
+    async def _deliver(
+        events: list[VoiceEvent],
+        event: VoiceEvent,
+        *,
+        emit: VoiceEventEmitter | None,
+    ) -> None:
+        if emit is None:
+            events.append(event)
+        else:
+            await emit(event)
+
+
+def _speech_units(text: str) -> tuple[str, ...]:
+    units = tuple(
+        part.strip()
+        for part in re.split(r"(?<=[.!?。！？])\s+|\n{2,}", text.strip())
+        if part.strip()
+    )
+    if not units:
+        raise ValueError("conversation model returned no speech units")
+    return units

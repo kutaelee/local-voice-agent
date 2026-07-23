@@ -252,3 +252,46 @@ def test_websocket_accepts_cancel_while_voice_response_is_processing() -> None:
         result = websocket.receive_json()
     assert result["type"] == "operation.cancel.result"
     assert result["payload"]["status"] == "cancellation_requested"
+
+
+def test_websocket_forwards_emitted_event_before_returned_events() -> None:
+    class StreamingHandler:
+        async def handle(
+            self,
+            *,
+            emit,
+            **_: object,
+        ) -> list[OutboundEvent]:
+            await emit(
+                OutboundEvent(
+                    "assistant.text.delta",
+                    {"text": "첫 청크"},
+                )
+            )
+            return [
+                OutboundEvent(
+                    "assistant.text.final",
+                    {"text": "첫 청크 완료", "interrupted": False},
+                )
+            ]
+
+        async def disconnect(self, **_: object) -> None:
+            return None
+
+    session_id = uuid4()
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        event_handler=StreamingHandler(),
+    )
+    with TestClient(app).websocket_connect(
+        f"/v1/sessions/{session_id}/events",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+    ) as websocket:
+        websocket.receive_json()
+        websocket.send_json(event(session_id=str(session_id)))
+        streamed = websocket.receive_json()
+        terminal = websocket.receive_json()
+
+    assert streamed["type"] == "assistant.text.delta"
+    assert terminal["type"] == "assistant.text.final"
+    assert streamed["sequence"] < terminal["sequence"]

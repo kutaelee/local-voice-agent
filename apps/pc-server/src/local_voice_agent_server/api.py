@@ -233,24 +233,30 @@ def create_app(
             payload: ClientPayload,
         ) -> None:
             nonlocal server_sequence
+
+            async def emit(item: Any) -> None:
+                nonlocal server_sequence
+                async with send_lock:
+                    server_sequence += 1
+                    envelope = EventEnvelope.create(
+                        type=item.type,
+                        session_id=session_id,
+                        request_id=request_id,
+                        sequence=server_sequence,
+                        payload=item.payload,
+                    )
+                    await websocket.send_json(envelope.to_dict())
+
             try:
                 outbound = await handler.handle(
                     session_id=session_id,
                     request_id=request_id,
                     event_type=event_type,
                     payload=payload,
+                    emit=emit,
                 )
-                async with send_lock:
-                    for item in outbound:
-                        server_sequence += 1
-                        envelope = EventEnvelope.create(
-                            type=item.type,
-                            session_id=session_id,
-                            request_id=request_id,
-                            sequence=server_sequence,
-                            payload=item.payload,
-                        )
-                        await websocket.send_json(envelope.to_dict())
+                for item in outbound:
+                    await emit(item)
             except asyncio.CancelledError:
                 return
             except Exception:
