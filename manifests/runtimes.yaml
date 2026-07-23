@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T06:52:00+09:00"
+generated_at: "2026-07-24T07:17:15+09:00"
 runtimes:
   - id: tls-tools-49.0.0
     role: private_debug_ca_generator
@@ -71,6 +71,14 @@ runtimes:
       weight_load_seconds: 132.38
       total_seconds_approximate: 200
       canonical_model_path_transport: wsl_9p_ntfs
+    gemma4_12b_latency_evidence: 'E:\Data\LocalVoiceAgent\benchmarks\results\vllm-12b-mtp-off-20260723T221500000Z.json'
+    gemma4_12b_latency_evidence_sha256: fdd417bc62bdb573badff432e5541971d2326e94e3f7d53663c3c2b61401ced2
+    gemma4_12b_latency_10_sample_concurrency_1:
+      ttft_ms_p50: 48.034
+      ttft_ms_p95: 547.537
+      tpot_ms_p50: 7.980
+      tpot_ms_p95: 8.190
+      output_tokens_per_second_mean: 126.223
     gemma4_31b_smoke_evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\vllm-31b-textonly-smoke.json'
     gemma4_31b_smoke_evidence_sha256: 987b979d458ac62b01e82c1f5e38187083e10b0bc3e7bad64c5b08268401126d
     gemma4_mtp_status: blocked_by_embedding_share_regression_fixed_after_release

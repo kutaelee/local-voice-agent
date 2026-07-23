@@ -1,9 +1,10 @@
 # Runtime comparison
 
-Status: `NOT_RUN`
+Status: `PARTIAL`
 
-vLLM and SGLang have not yet completed the same fixed-condition benchmark.
-No runtime is selected from tokens-per-second alone.
+The vLLM stable 12B MTP-OFF baseline completed. SGLang and MTP-ON do not yet
+have the same completed fixed-condition run, so no runtime is selected from
+tokens-per-second alone.
 
 ## Decision order
 
@@ -19,7 +20,7 @@ No runtime is selected from tokens-per-second alone.
 
 | Runtime condition | Model load | TTFT p50/p95 | TPOT p50/p95 | tok/s | Peak VRAM | Tool completion | Multimodal | Switch recovery | Crash/OOM |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| vLLM stable, MTP OFF | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN |
+| vLLM stable, MTP OFF | 132.38 s prior cold load | 48.034 / 547.537 ms | 7.980 / 8.190 ms | 126.223 mean | >=25,337 MiB endpoint snapshot | Passed separate smoke | Passed red-image smoke | Unit/API only | 0/10 |
 | vLLM exact-fix, MTP ON | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN |
 | SGLang stable, MTP OFF | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN |
 | SGLang stable, MTP ON | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN |

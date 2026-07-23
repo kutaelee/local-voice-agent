@@ -1,8 +1,45 @@
 {
   "schema_version": "1.0",
-  "status": "not_run",
-  "generated_at": null,
-  "hardware_snapshot": null,
-  "fixed_conditions": null,
-  "runs": []
+  "status": "running",
+  "generated_at": "2026-07-24T07:17:15+09:00",
+  "hardware_snapshot": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_mib": 32607,
+    "driver": "610.62",
+    "cuda_driver": "13.0"
+  },
+  "fixed_conditions": {
+    "samples": 10,
+    "max_tokens": 128,
+    "temperature": 0,
+    "concurrency": 1,
+    "stream": true,
+    "prompt_catalog": [
+      "conversation-01",
+      "conversation-02",
+      "development-01",
+      "planning-01",
+      "recovery-01"
+    ]
+  },
+  "runs": [
+    {
+      "runtime": "vllm",
+      "runtime_version": "0.25.1",
+      "model": "gemma4-12b",
+      "model_revision": "1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee",
+      "condition": "12b-mtp-off",
+      "mtp_enabled": false,
+      "successful_samples": 10,
+      "ttft_ms_p50": 48.034,
+      "ttft_ms_p95": 547.537,
+      "tpot_ms_p50": 7.98,
+      "tpot_ms_p95": 8.19,
+      "output_tokens_per_second_mean": 126.223,
+      "observed_total_vram_mib": 25337,
+      "oom_or_crash": 0,
+      "evidence": "E:\\Data\\LocalVoiceAgent\\benchmarks\\results\\vllm-12b-mtp-off-20260723T221500000Z.json",
+      "evidence_sha256": "fdd417bc62bdb573badff432e5541971d2326e94e3f7d53663c3c2b61401ced2"
+    }
+  ]
 }

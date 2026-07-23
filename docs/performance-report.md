@@ -1,8 +1,8 @@
 # Performance report
 
-Status: preliminary smoke observations only; the fixed-condition benchmark
-has not completed. Shared-GPU retries on 2026-07-24 were safely yielded when
-ComfyUI reclaimed the device, so no partial latency result is reported.
+Status: partial fixed-condition benchmark. The vLLM 12B MTP-OFF baseline
+completed; all other comparison rows remain open. Shared-GPU SGLang MTP
+retries on 2026-07-24 were safely yielded when ComfyUI reclaimed the device.
 
 The project does not claim TTFT, TPOT, tokens/s, first-audio latency, MTP
 speedup, VRAM peak, or end-to-end voice latency until the benchmark harness
@@ -14,6 +14,28 @@ Planned results:
 - `benchmarks/results/raw-results.json`
 - `benchmarks/reports/model-comparison.md`
 - `benchmarks/reports/runtime-comparison.md`
+
+## Fixed-condition vLLM 12B MTP-OFF baseline
+
+Ten concurrency-1 streaming samples completed with temperature 0 and a
+128-token cap against exact revision
+`1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee`.
+
+| Metric | Result |
+|---|---:|
+| TTFT p50 / p95 | 48.034 / 547.537 ms |
+| TPOT p50 / p95 | 7.980 / 8.190 ms |
+| Output throughput mean | 126.223 tokens/s |
+| Successful samples | 10 / 10 |
+| OOM / crash | 0 / 0 |
+| Highest endpoint GPU snapshot | 25,337 MiB total used; not a sampled peak |
+
+Evidence:
+`E:\Data\LocalVoiceAgent\benchmarks\results\vllm-12b-mtp-off-20260723T221500000Z.json`,
+SHA-256
+`fdd417bc62bdb573badff432e5541971d2326e94e3f7d53663c3c2b61401ced2`.
+The unusually wide TTFT p95 includes the first warm-up sample; no outlier was
+removed. This single row is not evidence of an MTP speedup or runtime win.
 
 ## Preliminary vLLM 12B smoke
 
