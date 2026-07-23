@@ -7,8 +7,26 @@ models:
     max_model_len_initial: 8192
     mtp_enabled_by_default: false
     modalities: [text, image, video, audio]
+  gemma4-12b-mtp:
+    manifest_role: mtp_target_12b
+    assistant_manifest_role: default_mtp_assistant
+    runtime: vllm-b2b8f679d058-cu130
+    max_model_len_initial: 2048
+    num_speculative_tokens_initial: 1
+    enabled: false
+    enable_after: exact_pair_runtime_and_quality_gate
+    modalities: [text, image, video, audio]
   gemma4-31b:
     manifest_role: escalation_target
     max_model_len_initial: 8192
     mtp_enabled_by_default: false
+    modalities: [text, image]
+  gemma4-31b-mtp:
+    manifest_role: mtp_target_31b
+    assistant_manifest_role: escalation_mtp_assistant
+    runtime: vllm-b2b8f679d058-cu130
+    max_model_len_initial: 2048
+    num_speculative_tokens_initial: 1
+    enabled: false
+    enable_after: cpu_offload_exact_pair_runtime_and_quality_gate
     modalities: [text, image]

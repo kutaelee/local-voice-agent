@@ -34,6 +34,9 @@ See [docs/architecture.md](docs/architecture.md) and
 
 `D:` is backup-only on this workstation and must never host active workloads.
 Model weights and runtime data are intentionally excluded from Git.
+GPU admission and measured-peak gates are defined in
+[`configs/gpu-resources.yaml`](configs/gpu-resources.yaml); unknown high-VRAM
+peaks fail closed until measured.
 
 ## Build, test, and run
 

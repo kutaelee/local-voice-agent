@@ -43,6 +43,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | vLLM MTP regression root-cause check | Passed | Upstream PR 47953 changes the width guard to EAGLE-only; exact fix commit `b2b8f679d058…` pinned |
 | Official exact MTP target metadata | Passed | 12B `b6ed862…` and 31B `1e4d8be…` revisions, sizes, and SHA-256 values pinned |
 | OpenAI-compatible smoke client static checks | Passed | Python compile and generated 32×32 red PNG decode/pixel validation |
+| Runtime/model/GPU config references | Passed | 4 configured models, 6 manifest roles, and 9 runtime IDs cross-validated; unvalidated MTP routes remain disabled |
 | Download state isolation | Passed | Explicit cache-side state path; 29,372-byte live transfer and 1/1 resume passed |
 | Protocol/tool contract catalog consistency | Passed | 22 events, 21 tools; drift checks and Draft 2020-12 schema validation passed |
 | Benchmark prompt catalog | Passed | 160 unique Korean cases with required 20/30/20/20/20/20/10/20 category counts |

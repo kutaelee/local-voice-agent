@@ -1,0 +1,41 @@
+schema_version: "1.0"
+device: nvidia-rtx-5090
+capacity:
+  source: query_at_runtime
+  require_preflight_vram_query: true
+  require_measured_model_peak: true
+  operating_headroom_percent: 20
+priorities:
+  - voice_interruption
+  - tts_first_audio
+  - active_12b_response
+  - stt
+  - approved_tool_work
+  - 31b_analysis
+  - image_video_generation
+exclusive_rules:
+  gemma4-31b:
+    deny_concurrent:
+      - image_generation
+      - video_generation
+  gemma4-31b-mtp:
+    deny_concurrent:
+      - image_generation
+      - video_generation
+      - other_gpu_model_load
+oom:
+  reject_when_peak_estimate_unknown: true
+  unload_before_retry: true
+  clear_only_runtime_owned_cache: true
+  restart_failed_worker: true
+  fallback_mode: gemma4-12b
+measurements:
+  gemma4-12b:
+    peak_vram_mib: 18881
+    measurement_kind: preliminary_poll_not_true_peak
+  gemma4-12b-mtp:
+    peak_vram_mib: null
+  gemma4-31b:
+    peak_vram_mib: null
+  gemma4-31b-mtp:
+    peak_vram_mib: null

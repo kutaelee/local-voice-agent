@@ -1,5 +1,6 @@
 schema_version: "1.0"
 primary: vllm-0.25.1
+mtp_candidate: vllm-b2b8f679d058-cu130
 comparison: sglang-0.5.15.post1
 fallback: null
 startup:
@@ -10,5 +11,16 @@ startup:
 vllm:
   model_runner: v1
   model_runner_reason: wsl_cuda_uva_unavailable_for_v2
+  environment:
+    VLLM_USE_V2_MODEL_RUNNER: "0"
+vllm_mtp_candidate:
+  exact_commit: b2b8f679d0589f0c956f3e734cc70dab07b27b8a
+  enabled: false
+  enable_after:
+    - wheel_sha256_recorded
+    - cuda_smoke_passed
+    - exact_q4_target_assistant_pair_passed
+    - stable_regression_smoke_passed
+  rollback_runtime: vllm-0.25.1
   environment:
     VLLM_USE_V2_MODEL_RUNNER: "0"
