@@ -11,6 +11,7 @@ WSL runtime installation plan
 - runtime root: ${runtime_root}
 - Python: uv-managed 3.12 per environment
 - vLLM: 0.25.1 isolated environment
+- vLLM MTP fix: exact commit b2b8f679d058 isolated environment
 - SGLang: 0.5.15.post1 isolated environment
 - STT: faster-whisper 1.2.1 isolated CUDA 12/CPU environment
 - VAD: Silero VAD 6.2.1 ONNX CPU environment
@@ -91,6 +92,23 @@ case "${mode}" in
       "${wheel}" \
       "16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e" \
       "250100306"
+    create_environment "${environment}"
+    "${uv_bin}" pip install \
+      --python "${environment}/.venv/bin/python" \
+      --torch-backend=cu130 \
+      "${wheel}"
+    "${environment}/.venv/bin/python" -c \
+      'import torch, vllm; print(f"vllm={vllm.__version__} torch={torch.__version__} cuda={torch.version.cuda} gpu={torch.cuda.get_device_name(0)}")'
+    ;;
+
+  --install-vllm-mtp-fix)
+    environment="${runtime_root}/vllm-b2b8f679d058-cu130"
+    wheel="${cache_root}/vllm-0.23.1rc1.dev1352+gb2b8f679d-cp38-abi3-manylinux_2_28_x86_64.whl"
+    download_verified \
+      "https://wheels.vllm.ai/b2b8f679d0589f0c956f3e734cc70dab07b27b8a/vllm-0.23.1rc1.dev1352%2Bgb2b8f679d-cp38-abi3-manylinux_2_28_x86_64.whl" \
+      "${wheel}" \
+      "d19e66ce501be98d2790a64c01d07d10c376e7785b0b4ca623db23ca4ebf0d61" \
+      "308229710"
     create_environment "${environment}"
     "${uv_bin}" pip install \
       --python "${environment}/.venv/bin/python" \

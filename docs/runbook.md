@@ -44,6 +44,16 @@ python scripts/smoke-openai-api.py \
   --output /mnt/e/Data/LocalVoiceAgent/runtime/evidence/vllm-12b-mtp-smoke.json
 ```
 
+The unreleased MTP-fix runtime is installed only into its versioned
+environment:
+
+```bash
+bash scripts/install-wsl.sh --install-vllm-mtp-fix
+```
+
+Rollback is a runtime configuration switch to the untouched
+`vllm-0.25.1` environment.
+
 ## Installation gates
 
 1. Confirm manifests reference exact official revisions.

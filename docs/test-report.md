@@ -43,6 +43,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | vLLM W4A16 + Q4_0 assistant MTP dispatch | Passed | vLLM selected `Gemma4MTPModel` and `method='mtp'`, not generic draft decoding |
 | vLLM W4A16 + Q4_0 assistant MTP compile | Failed | Stable guard kept the 1,024-wide assistant embedding separate: measured 4,864 versus required 7,680; no health endpoint |
 | vLLM MTP regression root-cause check | Passed | Upstream PR 47953 changes the width guard to EAGLE-only; exact fix commit `b2b8f679d058…` pinned |
+| vLLM MTP fix wheel integrity | Passed | Official exact-commit cu130 wheel, 308,229,710 bytes, SHA-256 `d19e66ce501be98d2790a64c01d07d10c376e7785b0b4ca623db23ca4ebf0d61`; embedded source contains the EAGLE-only guard |
 | Official exact MTP target metadata | Passed | 12B `b6ed862…` and 31B `1e4d8be…` revisions, sizes, and SHA-256 values pinned |
 | OpenAI-compatible smoke client static checks | Passed | Python compile and generated 32×32 red PNG decode/pixel validation |
 | Runtime/model/GPU config references | Passed | 4 configured models, 6 manifest roles, and 9 runtime IDs cross-validated; unvalidated MTP routes remain disabled |
