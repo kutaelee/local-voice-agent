@@ -12,7 +12,9 @@ from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError, ValidationError
 
 from .browser import BROWSER_MUTATION_TOOLS, BROWSER_READ_TOOLS
+from .development import DEVELOPMENT_TOOLS
 from .windows_ui import UI_MUTATION_TOOLS, UI_READ_TOOLS
+from .system import SYSTEM_TOOLS
 from .digests import sha256_json
 from .errors import ToolArgumentsInvalid, ToolContractError, ToolNotSupported
 
@@ -50,12 +52,15 @@ SUPPORTED_READ_TOOLS = (
     | GIT_READ_TOOLS
     | BROWSER_READ_TOOLS
     | UI_READ_TOOLS
+    | SYSTEM_TOOLS
+    | (DEVELOPMENT_TOOLS - {"run_tests"})
 )
 SUPPORTED_TOOLS = (
     SUPPORTED_READ_TOOLS
     | FILESYSTEM_MUTATION_TOOLS
     | BROWSER_MUTATION_TOOLS
     | UI_MUTATION_TOOLS
+    | (DEVELOPMENT_TOOLS & {"run_tests"})
 )
 
 

@@ -51,7 +51,7 @@ PC server has a hexagonal `ToolExecutionPort` and HTTP adapter that carries the 
 ID, idempotency key, argument digest, tool-definition digest, risk level,
 approval binding, and expiry. Planner-to-executor read and approved
 create/rollback paths have passed process smokes. The conversational model
-loop exposes only the 45 implemented executor tools, rejects malformed,
+loop exposes only the 47 implemented executor tools, rejects malformed,
 parallel, or unavailable calls, and runs at most four sequential calls.
 Level 0 results return to the model immediately; Level 1 pauses with the exact
 approval binding and resumes the same voice turn only after approval. The
@@ -62,6 +62,13 @@ without repeating a successful call. The PostgreSQL adapter now durably
 recovers exact idempotent tool records and rejects stale versions across new
 connections; wiring every live WebSocket transition through that adapter is
 the next composition milestone.
+
+Registered development profiles are an additional Level 1 boundary. The model
+may select only a profile ID from the allowlisted workspace configuration; it
+cannot supply an executable, shell fragment, working directory, environment,
+or flags. The first profile invokes the repository validation suite through a
+fixed WSL argv, stores a bounded redacted log outside Git, and exposes it only
+through its workspace-bound evidence UUID.
 
 Each attempted execution emits structured JSONL audit events and an atomic,
 metadata-only evidence record outside Git. Tool arguments, returned file

@@ -31,6 +31,10 @@ class SystemInspectionError(ToolExecutorError):
     code = "SYSTEM_INSPECTION_FAILED"
 
 
+class DevelopmentToolError(ToolExecutorError):
+    code = "DEVELOPMENT_TOOL_FAILED"
+
+
 class WorkspaceConfigurationError(ToolExecutorError):
     code = "WORKSPACE_CONFIGURATION_INVALID"
 

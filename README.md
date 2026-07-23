@@ -21,7 +21,7 @@ worker; its authenticated streaming smoke detected speech and a 500 ms
 endpoint, and Android stops capture when the server reports that endpoint.
 The WebSocket response path accepts and deduplicates cancellation while
 STT/LLM/TTS processing is still active. Gemma's model-visible tool loop now
-limits itself to 45 implemented tools, validates every call through
+limits itself to 47 implemented tools, validates every call through
 the planner/policy engine, pauses Level 1 work for an exact approval, resumes
 the same turn, and returns verified results to the model. A separate Tool
 Executor implements bounded filesystem, Git, browser, Windows UI, and ten

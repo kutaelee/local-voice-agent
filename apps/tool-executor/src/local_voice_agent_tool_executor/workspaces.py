@@ -44,12 +44,25 @@ class WorkspaceAccess(str, Enum):
 
 
 @dataclass(frozen=True, slots=True)
+class CommandProfile:
+    profile_id: str
+    kind: str
+    executable_id: str
+    arguments: tuple[str, ...]
+    working_directory_relative: str
+    timeout_seconds: int
+    max_output_bytes: int
+    environment_keys: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class Workspace:
     workspace_id: str
     platform: WorkspacePlatform
     root: Path
     access: WorkspaceAccess
     git_enabled: bool = False
+    command_profiles: tuple[CommandProfile, ...] = ()
 
     def __post_init__(self) -> None:
         if not _WORKSPACE_ID.fullmatch(self.workspace_id):
@@ -81,6 +94,21 @@ class Workspace:
                 f"{self.workspace_id}: filesystem root is too broad"
             )
         object.__setattr__(self, "root", resolved)
+        profile_ids: set[str] = set()
+        for profile in self.command_profiles:
+            if profile.profile_id in profile_ids:
+                raise WorkspaceConfigurationError(
+                    f"{self.workspace_id}: duplicate command profile"
+                )
+            profile_ids.add(profile.profile_id)
+
+    def command_profile(self, profile_id: str) -> CommandProfile:
+        for profile in self.command_profiles:
+            if profile.profile_id == profile_id:
+                return profile
+        raise WorkspaceConfigurationError(
+            f"{self.workspace_id}: command profile is not registered"
+        )
 
 
 @dataclass(frozen=True, slots=True)

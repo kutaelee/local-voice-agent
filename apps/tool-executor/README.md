@@ -46,6 +46,11 @@ fixed code-owned PowerShell/CIM and `nvidia-smi` queries; no model-generated
 command is executed. Command lines are opt-in and common credential forms are
 masked.
 
+`run_tests` is a Level 1 registered-profile operation. It requires an exact
+approval and idempotency key, accepts only a configured `profile_id`, caps
+wall time and output, and saves a redacted test log under the external evidence
+root. `inspect_test_log` is a workspace-bound Level 0 reader for that evidence.
+
 The executor reloads and validates the repository tool contracts rather than
 trusting validation performed by the PC server. Workspace lookup is
 fail-closed. Absolute paths, traversal, Windows alternate data streams,

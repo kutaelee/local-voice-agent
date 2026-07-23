@@ -11,6 +11,7 @@ from .contracts import (
     FILESYSTEM_READ_TOOLS,
     ReadToolContracts,
 )
+from .development import DEVELOPMENT_TOOLS, DevelopmentToolExecutor
 from .errors import (
     GitWorkspaceRejected,
     MutationPreconditionFailed,
@@ -36,6 +37,7 @@ class ReadOnlyToolExecutor:
         browser: BrowserAutomation | None = None,
         windows_ui: WindowsUiAutomation | None = None,
         system_inspector: WindowsSystemInspector | None = None,
+        development: DevelopmentToolExecutor | None = None,
     ) -> None:
         self._contracts = ReadToolContracts.load(
             definitions_dir=definitions_dir,
@@ -62,6 +64,7 @@ class ReadOnlyToolExecutor:
         self._browser = browser
         self._windows_ui = windows_ui
         self._system = system_inspector
+        self._development = development
 
     def execute(
         self,
@@ -96,6 +99,12 @@ class ReadOnlyToolExecutor:
                     "Windows system inspection adapter is not configured"
                 )
             result = self._system.execute(tool_name, normalized)
+        elif tool_name in DEVELOPMENT_TOOLS:
+            if self._development is None:
+                raise ToolNotSupported(
+                    "development command adapter is not configured"
+                )
+            result = self._development.execute(tool_name, normalized)
         else:
             if self._git is None:
                 raise GitWorkspaceRejected("Git adapter is not configured")

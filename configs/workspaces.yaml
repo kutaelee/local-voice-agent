@@ -5,5 +5,20 @@ workspaces:
     root: 'C:\Dev\Repos\local-voice-agent'
     access: read_write
     git: true
-    command_profiles: []
+    command_profiles:
+      - id: repository-validation
+        kind: test
+        executable_id: wsl
+        arguments:
+          - -d
+          - Ubuntu
+          - --cd
+          - /mnt/c/Dev/Repos/local-voice-agent
+          - --
+          - /home/kutae/.local/share/local-voice-agent/runtimes/pc-server/.venv/bin/python
+          - scripts/validate-repository.py
+        working_directory_relative: .
+        timeout_seconds: 60
+        max_output_bytes: 262144
+        environment_keys: []
 # Add other workspaces explicitly. Never use a drive root, user profile, or wildcard.

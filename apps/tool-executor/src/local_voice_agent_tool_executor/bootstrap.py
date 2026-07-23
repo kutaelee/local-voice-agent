@@ -15,11 +15,13 @@ import yaml
 from .api import ExecutorApiSettings, create_app
 from .audit import AuditEvidenceStore
 from .browser import BrowserAutomation
+from .development import DevelopmentToolExecutor
 from .errors import WorkspaceConfigurationError
 from .executor import ReadOnlyToolExecutor
 from .service import BoundExecutionService
 from .system import WindowsSystemInspector
 from .workspaces import (
+    CommandProfile,
     Workspace,
     WorkspaceAccess,
     WorkspacePlatform,
@@ -52,8 +54,9 @@ def create_app_from_environment() -> FastAPI:
             raise RuntimeError("registered Git workspaces require git")
         git_executable = Path(discovered).resolve(strict=True)
 
+    workspace_registry = WorkspaceRegistry(workspaces)
     executor = ReadOnlyToolExecutor(
-        workspaces=WorkspaceRegistry(workspaces),
+        workspaces=workspace_registry,
         definitions_dir=repo_root / "packages/tool-registry/definitions",
         definition_schema_path=(
             repo_root / "packages/tool-registry/schemas/tool-definition.schema.json"
@@ -76,6 +79,24 @@ def create_app_from_environment() -> FastAPI:
             else None
         ),
         system_inspector=WindowsSystemInspector() if os.name == "nt" else None,
+        development=(
+            DevelopmentToolExecutor(
+                workspaces=workspace_registry,
+                executables={
+                    "wsl": Path(
+                        os.environ.get(
+                            "WINDIR",
+                            r"C:\Windows",
+                        )
+                    )
+                    / "System32"
+                    / "wsl.exe",
+                },
+                artifact_root=evidence_dir / "development" / "tests",
+            )
+            if os.name == "nt"
+            else None
+        ),
     )
     service = BoundExecutionService(
         executor=executor,
@@ -136,6 +157,21 @@ def load_workspaces(
                 root=Path(record["root"]),
                 access=WorkspaceAccess(record["access"]),
                 git_enabled=record["git"],
+                command_profiles=tuple(
+                    CommandProfile(
+                        profile_id=profile["id"],
+                        kind=profile["kind"],
+                        executable_id=profile["executable_id"],
+                        arguments=tuple(profile["arguments"]),
+                        working_directory_relative=(
+                            profile["working_directory_relative"]
+                        ),
+                        timeout_seconds=profile["timeout_seconds"],
+                        max_output_bytes=profile["max_output_bytes"],
+                        environment_keys=tuple(profile["environment_keys"]),
+                    )
+                    for profile in record["command_profiles"]
+                ),
             )
         )
     return tuple(loaded)
