@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "name": "move_file",
+  "description": "Move one hash-pinned file to a new path inside an allowed workspace.",
+  "risk_level": 1,
+  "timeout_seconds": 60,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "workspace_id",
+      "source_relative_path",
+      "source_sha256",
+      "destination_relative_path",
+      "destination_must_not_exist",
+      "idempotency_key"
+    ],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "source_relative_path": {"type": "string", "minLength": 1, "maxLength": 1024},
+      "source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "destination_relative_path": {"type": "string", "minLength": 1, "maxLength": 1024},
+      "destination_must_not_exist": {"const": true},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

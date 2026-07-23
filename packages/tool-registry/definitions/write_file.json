@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "name": "write_file",
+  "description": "Create or replace one bounded UTF-8 file after approval and hash precondition checks.",
+  "risk_level": 1,
+  "timeout_seconds": 30,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "workspace_id",
+      "relative_path",
+      "expected_sha256",
+      "content",
+      "idempotency_key"
+    ],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "relative_path": {"type": "string", "minLength": 1, "maxLength": 1024},
+      "expected_sha256": {
+        "oneOf": [
+          {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          {"type": "null"}
+        ]
+      },
+      "content": {"type": "string", "maxLength": 1048576},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

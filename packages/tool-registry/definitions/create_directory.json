@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "name": "create_directory",
+  "description": "Create one directory inside an allowed workspace without replacing an existing entry.",
+  "risk_level": 1,
+  "timeout_seconds": 10,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "workspace_id",
+      "relative_path",
+      "must_not_exist",
+      "idempotency_key"
+    ],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "relative_path": {"type": "string", "minLength": 1, "maxLength": 1024},
+      "must_not_exist": {"const": true},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

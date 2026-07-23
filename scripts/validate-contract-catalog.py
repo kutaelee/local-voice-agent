@@ -100,6 +100,24 @@ def validate_tool_definitions() -> int:
             or parameters.get("additionalProperties") is not False
         ):
             raise ValueError(f"{path}: parameter object must be closed")
+        required = parameters.get("required", [])
+        properties = parameters.get("properties", {})
+        if risk >= 1:
+            if "idempotency_key" not in required:
+                raise ValueError(f"{path}: mutating tool requires idempotency_key")
+            if properties.get("idempotency_key") != {
+                "type": "string",
+                "format": "uuid",
+            }:
+                raise ValueError(f"{path}: invalid idempotency_key schema")
+        if risk >= 2:
+            if "approval_id" not in required:
+                raise ValueError(f"{path}: Level 2+ tool requires approval_id")
+            if properties.get("approval_id") != {
+                "type": "string",
+                "format": "uuid",
+            }:
+                raise ValueError(f"{path}: invalid approval_id schema")
     return len(paths)
 
 

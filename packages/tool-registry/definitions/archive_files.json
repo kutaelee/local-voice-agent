@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "name": "archive_files",
+  "description": "Create a bounded ZIP archive from explicitly listed workspace files.",
+  "risk_level": 1,
+  "timeout_seconds": 300,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "workspace_id",
+      "source_relative_paths",
+      "destination_relative_path",
+      "destination_must_not_exist",
+      "idempotency_key"
+    ],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "source_relative_paths": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 256,
+        "uniqueItems": true,
+        "items": {"type": "string", "minLength": 1, "maxLength": 1024}
+      },
+      "destination_relative_path": {"type": "string", "minLength": 1, "maxLength": 1024},
+      "destination_must_not_exist": {"const": true},
+      "max_input_bytes": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1073741824,
+        "default": 268435456
+      },
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "name": "delete_file",
+  "description": "Delete one hash-pinned workspace file after exact per-execution approval.",
+  "risk_level": 2,
+  "timeout_seconds": 30,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "workspace_id",
+      "relative_path",
+      "expected_sha256",
+      "approval_id",
+      "idempotency_key"
+    ],
+    "properties": {
+      "workspace_id": {"type": "string", "minLength": 1},
+      "relative_path": {"type": "string", "minLength": 1, "maxLength": 1024},
+      "expected_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "approval_id": {"type": "string", "format": "uuid"},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}
