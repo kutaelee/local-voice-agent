@@ -11,11 +11,11 @@ modified.
 | E: | Seagate FireCuda ZP4000GM30073 | NVMe SSD | 3726.01 GiB | 3411.21 GiB | Models, data, caches |
 | D: | ST1000DM003-1CH162 | SATA HDD | 930.62 GiB | 551.56 GiB | Backup-only; prohibited for active workloads |
 
-The currently pinned default, exact-MTP, and primary TTS candidate set is
-approximately 116.59 GiB of repository content before cache overhead. This includes both
+The currently pinned default, exact-MTP, primary TTS, and STT candidate set is
+approximately 118.55 GiB of repository content before cache overhead. This includes both
 W4A16 serving targets and the separate Q4_0-unquantized targets required for
-officially matched MTP testing, plus the pinned Chatterbox Multilingual V3
-files. Even with a conservative 2×
+officially matched MTP testing, the pinned Chatterbox Multilingual V3 files,
+and two measured-selection STT candidates. Even with a conservative 2×
 download/staging allowance,
 E: remains well above the required 20% operational free-space reserve.
 

@@ -133,3 +133,34 @@ models:
     voice_cloning_enabled: false
     downloaded_at: null
     validation_status: planned_dependency_compatibility_gate
+  - role: stt_gpu_candidate
+    model_id: mobiuslabsgmbh/faster-whisper-large-v3-turbo
+    repository: https://huggingface.co/mobiuslabsgmbh/faster-whisper-large-v3-turbo
+    revision: 0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf
+    license: MIT
+    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\stt\faster-whisper-large-v3-turbo\0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf'
+    weight_format: CTranslate2 model.bin
+    size_bytes: 1617884929
+    primary_weight:
+      filename: model.bin
+      size_bytes: 1617884929
+      sha256: e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da
+    runtime_candidates: [faster-whisper-1.2.1]
+    official_linkage: faster_whisper_1_2_1_model_alias
+    downloaded_at: null
+    validation_status: planned_korean_accuracy_latency_vram_gate
+  - role: stt_cpu_fallback_candidate
+    model_id: Systran/faster-whisper-small
+    repository: https://huggingface.co/Systran/faster-whisper-small
+    revision: 536b0662742c02347bc0e980a01041f333bce120
+    license: MIT
+    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\stt\faster-whisper-small\536b0662742c02347bc0e980a01041f333bce120'
+    weight_format: CTranslate2 model.bin
+    size_bytes: 483546902
+    primary_weight:
+      filename: model.bin
+      size_bytes: 483546902
+      sha256: 3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671
+    runtime_candidates: [faster-whisper-1.2.1]
+    downloaded_at: null
+    validation_status: planned_korean_accuracy_latency_cpu_gate

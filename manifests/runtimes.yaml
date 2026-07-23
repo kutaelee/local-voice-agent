@@ -66,14 +66,20 @@ runtimes:
     status: planned_isolated_cuda12_or_cpu
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1
     python: "3.12"
-    source: https://github.com/SYSTRAN/faster-whisper
+    source: https://github.com/SYSTRAN/faster-whisper/tree/65882eee9f5cdbeeb2d877f1131d48cf241b327d
+    package_source: https://pypi.org/project/faster-whisper/1.2.1/
+    package_wheel_size_bytes: 1118909
+    package_wheel_sha256: 79a66ad50688c0b794dd501dc340a736992a6342f7f95e5811be60b5224a26a7
   - id: silero-vad-6.2.1
     role: vad_candidate
     version: 6.2.1
     status: planned_cpu_onnx
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/vad-silero-6.2.1
     python: "3.12"
-    source: https://github.com/snakers4/silero-vad/releases/tag/v6.2.1
+    source: https://github.com/snakers4/silero-vad/tree/7e30209a3e901f9842f81b225f3e93d8199902b1
+    package_source: https://pypi.org/project/silero-vad/6.2.1/
+    package_wheel_size_bytes: 9146242
+    package_wheel_sha256: 09de93c4d874bb19c53e62a47dd38be5f163cedad2b5599583231f2a84ef79cb
   - id: chatterbox-multilingual-v3
     role: tts_candidate
     version: chatterbox-tts-0.1.7

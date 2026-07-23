@@ -36,6 +36,10 @@ model repositories, and upstream release notes are used for selections.
 - faster-whisper 1.2.1 / CTranslate2 currently documents CUDA 12 + cuDNN 9,
   so it must be isolated from the CUDA 13 inference runtimes or initially use
   CPU fallback.
+- faster-whisper 1.2.1 maps `large-v3-turbo` to the linked
+  `mobiuslabsgmbh/faster-whisper-large-v3-turbo` conversion. That exact
+  revision and the official Systran `small` revision are pinned as GPU and
+  CPU candidates; neither is selected before Korean audio measurement.
 - Chatterbox Multilingual V3 officially lists Korean and uses the MIT
   license. Its 0.1.7 package pins torch/torchaudio 2.6 on Python below 3.14,
   which is not mixed into the tested CUDA 13 inference environments. The
@@ -76,7 +80,7 @@ model repositories, and upstream release notes are used for selections.
 | Component | Candidate | License | Korean | Streaming | GPU/CPU | Selected rationale |
 |---|---|---|---|---|---|---|
 | VAD | Silero VAD 6.2.1 ONNX | MIT | Language-agnostic, 6000+ language training claim | Yes | Prefer CPU | Lightweight and independent of CUDA stack |
-| STT | faster-whisper 1.2.1 | MIT | Whisper multilingual | Chunk/partial orchestration required | CUDA 12 + cuDNN 9 or CPU | Benchmark candidate; isolate from CUDA 13 |
+| STT | faster-whisper 1.2.1, `large-v3-turbo` + `small` | MIT | Whisper multilingual | Chunk/partial orchestration required | CUDA 12 + cuDNN 9 or CPU | GPU/CPU benchmark pair; isolate from CUDA 13 |
 | STT alternative | Gemma 4 12B audio understanding / newer runtime ASR | Apache-2.0/model-specific | Yes, measure | Runtime-dependent | GPU | Not the baseline until latency and tool contention are measured |
 | TTS | Chatterbox Multilingual V3, HF `5bb1f6e…`, package 0.1.7 | MIT | Officially listed | Sentence/chunk orchestration | PyTorch pin compatibility gate | Primary quality candidate |
 | TTS fallback | Kokoro 82M | Model/code license requires final inventory | Official list lacks Korean | Fast | CPU/GPU | Rejected as Korean default |
