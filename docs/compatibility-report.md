@@ -24,8 +24,10 @@ model repositories, and upstream release notes are used for selections.
 - SGLang stable 0.5.15.post1 supports Gemma 4; the dedicated Gemma 4 MTP head
   landed in 0.5.12. Its isolated CUDA 13 environment, official
   `sglang-kernel` 0.4.4 CUDA 13 wheel, package check, RTX 5090 device query,
-  and CUDA matrix multiplication pass locally. Model loading remains deferred
-  while an unrelated Windows process occupies most VRAM.
+  and CUDA matrix multiplication pass locally. The exact 12B pair was promoted
+  to `FROZEN_KV_MTP` and passed text, tool, schema, streaming, image, and
+  thinking smoke with 4 GiB CPU offload. The fixed-condition MTP latency run
+  remains pending because the shared GPU was yielded to a new ComfyUI render.
 - vLLM's official 0.25.1 x86_64 release wheel is pinned by its GitHub release
   SHA-256. The byte-identical PyPI artifact is used as a faster mirror and
   installed with uv's explicit CUDA 13.0 backend selection.
@@ -72,7 +74,7 @@ model repositories, and upstream release notes are used for selections.
 | Gemma assistant | `google/gemma-4-31B-it-qat-q4_0-unquantized-assistant` @ `96d4c8c…` | Google HF | SHA-256 passed; exact target downloaded | N/A | Yes | Dedicated assistant | Follows target path | Output-equivalence test required | Q4_0 QAT assistant | Yes, exact-pair gated |
 | vLLM | 0.25.1 stable | vLLM docs/releases | CUDA passed locally | Passed MTP OFF | Text/tool/schema/stream passed | Dispatch passes; embedding share regression blocks stable MTP | 12B image passed; 31B image and audio/video pending | Gemma4 parser + structured outputs passed | compressed-tensors passed | Stable baseline |
 | vLLM MTP fix | commit `b2b8f679d058…`, cu130 wheel | vLLM commit/PR/nightly index | RTX 5090 text MTP passed | Exact-pair text API passed | Conditional | Exact pair loaded; 48 drafted / 43 accepted | Q4 target config blocks multimodal init | Tool + structured-output smoke passed | Exact wheel/package check passed | Disabled pending quality and multimodal gates |
-| SGLang | 0.5.15.post1 stable + kernel 0.4.4 cu130 | SGLang releases/docs | Local CUDA 13/SM 12.0 and 12B W4A16 load passed | Text/image/tool/schema/stream/thinking passed; 10-sample latency recorded | Official; local load pending | Exact assistant promoted to `FROZEN_KV_MTP`; functional run interrupted by shared-GPU turn | 12B red-image smoke passed | Gemma4 tool/reasoning parsers passed locally | W4A16 compressed-tensors passed; Q4_0 pair load began | Installed comparison candidate; MTP functional gate pending |
+| SGLang | 0.5.15.post1 stable + kernel 0.4.4 cu130 | SGLang releases/docs | Local CUDA 13/SM 12.0, W4A16, and exact-pair MTP load passed | Text/image/tool/schema/stream/thinking passed; MTP-OFF 10-sample latency recorded | Official; local load pending | Exact assistant promoted to `FROZEN_KV_MTP`; 4 GiB CPU-offload functional smoke passed | 12B red-image smoke passed with MTP OFF and ON | Gemma4 tool/reasoning parsers passed locally | W4A16 and exact Q4_0 pair passed | Installed comparison candidate; MTP latency/quality gate pending |
 | Transformers | >=5.10.1, lock after runtime resolution | Google Gemma function-calling guide | Wheels/test required | Official | Official | Official MTP guide | Official | `apply_chat_template(tools=…)` | Model dependent | Validation oracle |
 | PyTorch | Runtime-pinned 2.11-class CUDA wheel | vLLM/SGLang release notes | SM 12.0 build must be verified | Yes | Yes | N/A | Yes | N/A | FP8/NVFP4 ecosystem | Per-runtime lock |
 | Windows fallback | llama.cpp b10092 + `ggml-org/gemma-4-12B-it-GGUF` Q4_0 @ `d72ee272…` | Google llama.cpp integration, ggml-org release/model | CPU-only Windows path passed while GPU was occupied; CUDA binary installed, GPU smoke pending | 12B Korean text passed | N/A | Disabled for fallback | Text only guaranteed | Native tool call and strict JSON passed | Q4_0 GGUF, SHA-256 passed | Selected recovery fallback |

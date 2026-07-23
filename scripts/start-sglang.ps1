@@ -6,6 +6,9 @@ param(
     [ValidateRange(1, 5)]
     [int]$SpeculativeSteps = 1,
 
+    [ValidateRange(0, 16)]
+    [int]$MtpCpuOffloadGiB = 4,
+
     [ValidateRange(1024, 65535)]
     [int]$Port = 8768,
 
@@ -46,6 +49,7 @@ $bridgeNames = @(
     'LVA_SGLANG_API_KEY',
     'LVA_SGLANG_MODE',
     'LVA_SGLANG_SPECULATIVE_STEPS',
+    'LVA_SGLANG_MTP_CPU_OFFLOAD_GIB',
     'LVA_SGLANG_PORT',
     'LVA_SGLANG_STARTUP_TIMEOUT_SECONDS'
 )
@@ -58,6 +62,7 @@ $previousWslEnv = $env:WSLENV
 try {
     $env:LVA_SGLANG_MODE = $Mode
     $env:LVA_SGLANG_SPECULATIVE_STEPS = [string]$SpeculativeSteps
+    $env:LVA_SGLANG_MTP_CPU_OFFLOAD_GIB = [string]$MtpCpuOffloadGiB
     $env:LVA_SGLANG_PORT = [string]$Port
     $env:LVA_SGLANG_STARTUP_TIMEOUT_SECONDS = [string]$StartupTimeoutSeconds
     $existingBridgeEntries = @(

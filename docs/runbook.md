@@ -193,8 +193,8 @@ tracked:
 cd /mnt/c/Dev/Repos/local-voice-agent/apps/pc-server
 export UV_PROJECT_ENVIRONMENT=\
 /home/kutae/.local/share/local-voice-agent/runtimes/pc-server/.venv
-/home/kutae/.local/bin/uv sync --locked --extra test
-/home/kutae/.local/bin/uv run --locked --extra test pytest
+/home/kutae/.local/bin/uv sync --locked --extra test --extra persistence
+/home/kutae/.local/bin/uv run --locked --extra test --extra persistence pytest
 ```
 
 Process-level loopback smoke with a test-only token:

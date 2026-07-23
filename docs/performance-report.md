@@ -112,3 +112,26 @@ KV cache rather than claiming more shared GPU memory.
 | JSON Schema request | 1,575.09 ms, valid object |
 | Streaming | 67.33 ms TTFT, 1,504.65 ms total, 51 chunks |
 | Completed API requests | 4 / 4; zero error/abort |
+
+## Preliminary SGLang 12B MTP functional smoke
+
+This is a functional compatibility result, not the fixed-condition MTP
+benchmark. SGLang 0.5.15.post1 recognized the exact paired assistant as
+`FROZEN_KV_MTP`. Loading the full target and assistant without offload used
+30.08 GiB and failed before health because no KV cache could be allocated.
+With 4 GiB of official CPU weight offload, the same pair became healthy:
+
+| Item | Observed |
+|---|---:|
+| Target / assistant load | 132.92 s / 5.58 s |
+| Reported target / assistant GPU weight memory | 19.12 GiB / 0.50 GiB |
+| Runtime memory available after KV allocation | 4.39 GiB |
+| Health-time total GPU memory | 28,619 MiB |
+| Speculation | 1 step, 2 draft tokens, top-k 1 |
+| Functional checks | Korean, tool call, strict JSON, streaming, image, thinking passed |
+| Streaming sample | 402.958 ms TTFT / 5,704.630 ms total |
+| Point-in-time speculative acceptance | 0.625; not a distribution |
+
+The full 10-sample latency run was interrupted when a separately managed
+ComfyUI render acquired the shared GPU. Only the owned SGLang process group
+was stopped. No p50/p95 or speedup is claimed for this interrupted run.

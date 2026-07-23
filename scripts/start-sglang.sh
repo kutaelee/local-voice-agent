@@ -12,6 +12,7 @@ pid_file="${run_root}/sglang.pid"
 port="${LVA_SGLANG_PORT:-8768}"
 mode="${LVA_SGLANG_MODE:-base}"
 speculative_steps="${LVA_SGLANG_SPECULATIVE_STEPS:-1}"
+mtp_cpu_offload_gib="${LVA_SGLANG_MTP_CPU_OFFLOAD_GIB:-4}"
 startup_timeout_seconds="${LVA_SGLANG_STARTUP_TIMEOUT_SECONDS:-480}"
 
 api_key_for_validation="${LVA_SGLANG_API_KEY:-}"
@@ -37,9 +38,13 @@ unset api_key_for_validation
   echo "LVA_SGLANG_SPECULATIVE_STEPS must be between 1 and 5." >&2
   exit 7
 }
+[[ "${mtp_cpu_offload_gib}" =~ ^([0-9]|1[0-6])$ ]] || {
+  echo "LVA_SGLANG_MTP_CPU_OFFLOAD_GIB must be between 0 and 16." >&2
+  exit 8
+}
 [[ -x "${runtime}/bin/python" && -f "${launcher}" ]] || {
   echo "The pinned SGLang runtime or secure launcher is unavailable." >&2
-  exit 8
+  exit 9
 }
 
 if [[ "${mode}" == "base" ]]; then
@@ -63,20 +68,21 @@ else
     --speculative-num-steps "${speculative_steps}"
     --speculative-num-draft-tokens "$((speculative_steps + 1))"
     --speculative-eagle-topk 1
+    --cpu-offload-gb "${mtp_cpu_offload_gib}"
   )
 fi
 
 [[ -d "${model}" ]] || {
   echo "The pinned SGLang runtime or Gemma model is unavailable." >&2
-  exit 9
+  exit 10
 }
 if [[ "${mode}" == "mtp" && ! -d "${mtp_assistant}" ]]; then
   echo "The paired Gemma MTP assistant is unavailable." >&2
-  exit 10
+  exit 11
 fi
 command -v nvidia-smi >/dev/null 2>&1 || {
   echo "nvidia-smi is unavailable; refusing an unverified GPU reservation." >&2
-  exit 11
+  exit 12
 }
 
 # A stable two-sample free-memory gate avoids racing a concurrently loading
@@ -91,13 +97,13 @@ for sample in 1 2; do
   )"
   [[ "${free_mib}" =~ ^[0-9]+$ ]] || {
     echo "Unable to measure free GPU memory." >&2
-    exit 12
+    exit 13
   }
   if ((free_mib < minimum_free_mib)); then
     echo \
       "GPU reservation declined: mode=${mode} requires ${minimum_free_mib} MiB free; observed ${free_mib} MiB. A concurrent workload is preserved." \
       >&2
-    exit 13
+    exit 14
   fi
   ((sample == 2)) || sleep 2
 done
@@ -109,7 +115,7 @@ if [[ -f "${pid_file}" ]]; then
   if [[ "${existing_pid}" =~ ^[0-9]+$ ]] \
     && kill -0 "${existing_pid}" 2>/dev/null; then
     echo "SGLang is already running with PID ${existing_pid}." >&2
-    exit 14
+    exit 15
   fi
 fi
 
@@ -134,7 +140,7 @@ unset LVA_SGLANG_API_KEY
 for ((elapsed = 0; elapsed < startup_timeout_seconds; elapsed += 1)); do
   if ! kill -0 "${pid}" 2>/dev/null; then
     echo "SGLang exited during startup; see ${log_file}" >&2
-    exit 15
+    exit 16
   fi
   if curl \
     --silent \

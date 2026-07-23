@@ -40,10 +40,13 @@ registered Notepad windows. The Android 0.6.0 client records and streams PCM, pl
 ordered PCM output, supports client-side interruption, and keeps pairing
 tokens in Android Keystore-backed storage. The installed SGLang 0.5.15.post1
 runtime now passes the 12B base text, tool/schema, streaming, image, thinking,
-and latency smoke set. A pinned native Windows llama.cpp Q4_0 fallback also
+and latency smoke set. Its exact 12B target/assistant pair is recognized as
+`FROZEN_KV_MTP` and passes the same functional API checks with 4 GiB CPU
+offload; its fixed-condition MTP latency run is still pending. A pinned native
+Windows llama.cpp Q4_0 fallback also
 passes CPU-only Korean text, tool/schema, and streaming while WSL/GPU work
-continues. No full product acceptance is claimed until SGLang MTP
-completes model comparison,
+continues. No full product acceptance is claimed until MTP/runtime model
+comparison,
 computer-use, physical-device barge-in/audio, and the required failure
 matrix pass.
 

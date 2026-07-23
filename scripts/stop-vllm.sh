@@ -12,6 +12,7 @@ pid="$(<"${pid_file}")"
   exit 3
 }
 if ! kill -0 "${pid}" 2>/dev/null; then
+  rm -f -- "${pid_file}"
   echo "Owned vLLM process is not running."
   exit 0
 fi

@@ -248,7 +248,7 @@ runtimes:
   - id: sglang-0.5.15.post1
     role: comparison_candidate
     version: 0.5.15.post1
-    status: installed_12b_base_openai_multimodal_thinking_and_latency_smoke_passed_mtp_functional_pending
+    status: installed_12b_base_and_mtp_openai_multimodal_thinking_smoke_passed_mtp_latency_pending
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/sglang-0.5.15.post1
     python: "3.12.13"
     cuda: "13.0"
@@ -284,7 +284,29 @@ runtimes:
       output_tokens_per_second_mean: 54.335
     secure_launcher: api_key_absent_from_argv_and_redacted_in_server_args
     gpu_admission: base_22000_mib_mtp_28500_mib_two_sample_fail_closed
-    mtp_probe: exact_assistant_promoted_to_FROZEN_KV_MTP_then_interrupted_for_concurrent_comfyui_turn
+    gemma4_12b_mtp:
+      target_revision: b6ed86275a6a5735884e208bfed95b445a684ca2
+      assistant_revision: 18934064dd4c5c6cc3621f6381e7d377fc8cb7bd
+      algorithm: FROZEN_KV_MTP
+      speculative_steps: 1
+      speculative_draft_tokens: 2
+      speculative_topk: 1
+      cpu_offload_gib: 4
+      target_weight_load_seconds: 132.92
+      target_gpu_memory_gib_reported: 19.12
+      assistant_weight_load_seconds: 5.58
+      assistant_gpu_memory_gib_reported: 0.50
+      runtime_available_memory_gib_after_kv: 4.39
+      health_observed_vram_mib: 28619
+      checks: korean_text_tool_structured_stream_image_thinking_passed
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\sglang-12b-mtp-s1-openai-smoke.json'
+      evidence_sha256: 564959732e93fcfba02ec38ec2e4abcd6963236ae185c848a3328c3fc2dbdd61
+      metrics_observation:
+        spec_accept_length: 1.625
+        spec_accept_rate: 0.625
+        note: point_in_time_not_a_statistical_benchmark
+      latency_status: interrupted_to_yield_gpu_to_concurrent_comfyui_work
+    mtp_probe: exact_assistant_promoted_to_FROZEN_KV_MTP_and_functional_smoke_passed
     rollback: retain previous versioned environment and switch config pointer
   - id: llama-cpp-b10092
     role: windows_native_fallback

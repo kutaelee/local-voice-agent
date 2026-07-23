@@ -17,6 +17,7 @@ def test_sglang_launcher_keeps_api_key_out_of_argv() -> None:
     assert "launch-sglang-secure.py" in start
     assert 'unset LVA_SGLANG_API_KEY' in start
     assert "minimum_free_mib=28500" in start
+    assert '--cpu-offload-gb "${mtp_cpu_offload_gib}"' in start
 
 
 def test_vllm_launcher_uses_official_environment_key() -> None:
