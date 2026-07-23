@@ -32,9 +32,21 @@ resolves an explicit workspace before every operation, rejects ambiguous or
 escaping paths and link/reparse segments, verifies the opened file identity
 against pre/post path state, and bounds traversal, subprocess time, and
 output. Git uses fixed argv with external execution features disabled and
-rejects metadata escape mechanisms. It has no transport connection to
-`pc-server` yet; write, delete, Git mutation, process, browser, UI, and shell
-adapters remain unavailable.
+rejects metadata escape mechanisms. Write, delete, Git mutation, process,
+browser, UI, and shell adapters remain unavailable.
+
+The current transport boundary is an authenticated HTTP API bound by the
+launcher to `127.0.0.1:8790`. The PC server has a hexagonal
+`ToolExecutionPort` and loopback HTTP adapter that carries the exact execution
+ID, idempotency key, argument digest, tool-definition digest, risk level, and
+expiry. Session orchestration does not invoke the adapter yet. The executor
+revalidates those bindings, serializes duplicate keys in process, and returns
+the prior terminal response without repeating a successful call. Durable
+idempotency across process restarts remains a PostgreSQL milestone.
+
+Each attempted execution emits structured JSONL audit events and an atomic,
+metadata-only evidence record outside Git. Tool arguments, returned file
+content, bearer tokens, and raw secrets are not copied into those records.
 
 ## State machines
 

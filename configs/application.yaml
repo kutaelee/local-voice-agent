@@ -3,6 +3,10 @@ server:
   host: 127.0.0.1
   port: 8765
   public_network_bind_allowed: false
+tool_executor:
+  host: 127.0.0.1
+  port: 8790
+  public_network_bind_allowed: false
 session:
   idle_timeout_seconds: 900
   approval_timeout_seconds: 120

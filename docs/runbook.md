@@ -133,6 +133,29 @@ Do not put the token in a command history or tracked file in normal use.
 `scripts/start-server.ps1` remains fail-closed until registered PID/status
 handling is implemented.
 
+## Tool Executor
+
+The Windows-native Tool Executor is independently locked and always starts on
+loopback. Keep its IPC token in the current process environment or a future OS
+credential-store integration, never in Git:
+
+```powershell
+$env:LVA_TOOL_EXECUTOR_TOKEN = '<at-least-32-random-characters>'
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+.\scripts\start-tool-executor.ps1
+Invoke-RestMethod http://127.0.0.1:8790/health
+.\scripts\stop-tool-executor.ps1
+```
+
+The process-scoped execution-policy command does not change the user or
+machine policy. Runtime PID/status, logs, audit JSONL, and evidence are written
+under `E:\Data\LocalVoiceAgent\runtime`. The checked-in
+`configs/workspaces.yaml` is empty, so health can pass while all file/Git
+requests still fail closed. Register only explicit project roots before
+functional use. A restart clears the current in-memory idempotency cache;
+do not treat it as durable until PostgreSQL-backed execution persistence is
+implemented.
+
 ## Installation gates
 
 1. Confirm manifests reference exact official revisions.

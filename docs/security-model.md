@@ -52,8 +52,23 @@ prompts, pagers, hooks, fsmonitor, external diff, and textconv are disabled.
 The executor rejects `.git` links/reparse points, linked worktrees, alternate
 object stores, and config includes before invoking Git. Windows-native
 junction tests and WSL symlink tests pass. This does not authorize writes:
-the executor is not connected to the server, the workspace allowlist is
-empty, and mutation/approval/rollback adapters do not exist yet.
+the checked-in workspace allowlist is empty, and mutation/approval/rollback
+adapters do not exist yet.
+
+The implemented IPC boundary accepts only closed-schema Level 0 requests on a
+launcher-enforced loopback address. A bearer token of at least 32 characters
+is required before request parsing. Request bodies, response bodies, expiry,
+UUID canonical form, normalized-argument hashes, and tool-definition hashes
+are bounded or verified. Idempotency keys are bound to the complete execution
+fingerprint; an exact duplicate cannot repeat a completed in-process
+execution, while conflicting reuse is rejected. The current cache is
+process-local, so restart-safe deduplication remains gated on durable storage.
+
+Audit JSONL and evidence files are append/no-replace and stored below
+`E:\Data\LocalVoiceAgent\runtime`. Evidence contains hashes, IDs, timings,
+status, and sanitized error codes but not tool arguments or result bodies.
+The launcher writes a registered PID/executable status record and the stop
+script refuses to stop a PID whose executable does not match.
 
 The checked-in application and pairing schemas permit only loopback server
 binding and WSS, require Android Keystore token storage, and keep cleartext,

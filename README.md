@@ -13,11 +13,14 @@ runtime; its multimodal initialization remains blocked and MTP stays disabled
 by default. The pinned 31B W4A16 model passed a constrained text, tool,
 structured-output, and streaming smoke run with an explicit small KV cache.
 A locked PC-server environment now runs the first state, approval, policy,
-protocol, model-runtime/router, and authenticated FastAPI/WebSocket tests. A separate read-only
-Tool Executor implements thirteen bounded Level 0 filesystem/Git observation
-tools and passed both Windows-native and WSL tests, including Windows junction
-rejection and Git metadata escape checks. It is not yet connected to the PC
-server. No end-to-end product acceptance criterion is claimed yet.
+protocol, model-runtime/router, authenticated FastAPI/WebSocket, and Tool
+Executor client-adapter tests. A separate read-only Tool Executor implements
+thirteen bounded Level 0 filesystem/Git observation tools, an authenticated
+loopback API, execution-binding/idempotency checks, and metadata-only
+audit/evidence records. Windows-native and WSL suites pass, and the Windows
+process passed loopback start, authentication rejection, health, and clean
+stop smoke checks. The adapter is implemented but session orchestration does
+not invoke it yet. No end-to-end product acceptance criterion is claimed yet.
 
 ## Architecture
 
@@ -51,14 +54,19 @@ peaks fail closed until measured.
 
 Installation scripts default to planning or validation and do not silently
 install system components. The PC-server domain/API slice and the standalone
-read-only Tool Executor have isolated lockfiles. The two processes are not
-connected yet.
+read-only Tool Executor have isolated lockfiles.
 
 ```powershell
 pwsh -File scripts\health-check.ps1
 pwsh -File scripts\install.ps1 -PlanOnly
 pwsh -File scripts\download-models.ps1 -PlanOnly
 ```
+
+After setting an untracked `LVA_TOOL_EXECUTOR_TOKEN` with at least 32 random
+characters, the isolated executor can be started and stopped with
+`scripts\start-tool-executor.ps1` and `scripts\stop-tool-executor.ps1`.
+Both scripts keep the service on `127.0.0.1:8790`; the checked-in workspace
+allowlist is empty and therefore permits no file access by default.
 
 From an isolated project/runtime environment containing PyYAML and
 jsonschema, all network-free repository checks can be run with:

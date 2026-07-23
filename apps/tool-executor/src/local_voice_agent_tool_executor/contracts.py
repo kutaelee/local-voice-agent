@@ -11,6 +11,7 @@ from typing import Any, Mapping
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError, ValidationError
 
+from .digests import sha256_json
 from .errors import ToolArgumentsInvalid, ToolContractError, ToolNotSupported
 
 
@@ -42,6 +43,7 @@ SUPPORTED_READ_TOOLS = FILESYSTEM_READ_TOOLS | GIT_READ_TOOLS
 class ReadToolContract:
     name: str
     timeout_seconds: int
+    definition_sha256: str
     validator: Draft202012Validator
 
 
@@ -88,6 +90,7 @@ class ReadToolContracts:
             contracts[name] = ReadToolContract(
                 name=name,
                 timeout_seconds=raw["timeout_seconds"],
+                definition_sha256=sha256_json(raw),
                 validator=Draft202012Validator(
                     raw["parameters"],
                     format_checker=FormatChecker(),
@@ -95,7 +98,7 @@ class ReadToolContracts:
             )
         return cls(contracts)
 
-    def validate(self, name: str, arguments: Mapping[str, Any]) -> None:
+    def validate(self, name: str, arguments: Mapping[str, Any]) -> str:
         try:
             contract = self._contracts[name]
         except KeyError as error:
@@ -112,10 +115,17 @@ class ReadToolContracts:
             raise ToolArgumentsInvalid(
                 f"{name}: invalid arguments at {', '.join(locations)}"
             )
+        return sha256_json(dict(arguments))
 
     def timeout_seconds(self, name: str) -> int:
         try:
             return self._contracts[name].timeout_seconds
+        except KeyError as error:
+            raise ToolNotSupported(name) from error
+
+    def definition_sha256(self, name: str) -> str:
+        try:
+            return self._contracts[name].definition_sha256
         except KeyError as error:
             raise ToolNotSupported(name) from error
 

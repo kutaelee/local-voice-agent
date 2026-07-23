@@ -54,3 +54,13 @@ class ReadOnlyToolExecutor:
             "status": "succeeded",
             "result": handler(**normalized),
         }
+
+    def validate_arguments(
+        self,
+        tool_name: str,
+        arguments: Mapping[str, Any],
+    ) -> str:
+        return self._contracts.validate(tool_name, arguments)
+
+    def definition_sha256(self, tool_name: str) -> str:
+        return self._contracts.definition_sha256(tool_name)

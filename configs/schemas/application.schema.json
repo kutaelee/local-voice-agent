@@ -3,10 +3,28 @@
   "$id": "https://local-voice-agent.invalid/schemas/application.schema.json",
   "title": "PC server security-sensitive application configuration",
   "type": "object",
-  "required": ["schema_version", "server", "session", "audio", "retention", "paths"],
+  "required": [
+    "schema_version",
+    "server",
+    "tool_executor",
+    "session",
+    "audio",
+    "retention",
+    "paths"
+  ],
   "properties": {
     "schema_version": {"const": "1.0"},
     "server": {
+      "type": "object",
+      "required": ["host", "port", "public_network_bind_allowed"],
+      "properties": {
+        "host": {"type": "string", "enum": ["127.0.0.1", "::1"]},
+        "port": {"type": "integer", "minimum": 1024, "maximum": 65535},
+        "public_network_bind_allowed": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "tool_executor": {
       "type": "object",
       "required": ["host", "port", "public_network_bind_allowed"],
       "properties": {

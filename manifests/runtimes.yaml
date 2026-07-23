@@ -74,23 +74,27 @@ runtimes:
     starlette: "1.3.1"
     uvicorn: "0.51.0"
     test_client: httpx2-2.7.0
-    test_status: 67_passed
+    test_status: 75_passed_including_tool_executor_loopback_adapter
     rollback: stop the registered server and switch away before archiving only this environment
   - id: tool-executor-0.1.0
     role: tool_executor
     version: 0.1.0
-    status: level_0_filesystem_and_git_tests_passed_not_connected
+    status: authenticated_loopback_level_0_executor_and_client_adapter_tests_passed
     windows_environment: 'C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv'
     wsl_environment: /home/kutae/.local/share/local-voice-agent/runtimes/tool-executor/.venv
     python: "3.12.13"
     installed_at: "2026-07-23T19:21:00+09:00"
     lock_file: apps/tool-executor/uv.lock
-    lock_sha256: 9deae904501bad8f17280bbb5250b39789f10d4e2ada7da511b440c64a4cc20c
+    lock_sha256: 1876584974af8a970cfcf6598c69d97c569fa3f2f1df719ecc38150f79f5c6dd
     package_source: https://pypi.org/simple
     dependency_integrity: exact_versions_urls_sizes_and_sha256_in_uv_lock
     jsonschema: "4.26.0"
-    windows_test_status: 38_passed_including_directory_junction_and_git_metadata_escape_rejection
-    wsl_test_status: 38_passed_including_symlink_and_git_metadata_escape_rejection
+    fastapi: "0.139.2"
+    pydantic: "2.13.4"
+    pyyaml: "6.0.3"
+    uvicorn: "0.51.0"
+    windows_test_status: 57_passed_and_loopback_process_smoke_passed
+    wsl_test_status: 57_passed_including_symlink_and_host_workspace_filtering
     enabled_tools:
       - calculate_hash
       - list_files
@@ -105,7 +109,15 @@ runtimes:
       - git_log
       - git_show
       - git_status
-    connection_status: not_connected_to_pc_server
+    connection_status: hexagonal_client_adapter_implemented_session_orchestration_pending
+    ipc:
+      host: 127.0.0.1
+      port: 8790
+      authentication: bearer_token_environment_only
+      request_limit_bytes: 65536
+      idempotency_scope: process_memory
+    audit_path: 'E:\Data\LocalVoiceAgent\runtime\audit\tool-executor.jsonl'
+    evidence_path: 'E:\Data\LocalVoiceAgent\runtime\evidence\tool-executor'
     rollback: stop future executor process and switch away before archiving only its isolated environments
   - id: sglang-0.5.15.post1
     role: comparison_candidate

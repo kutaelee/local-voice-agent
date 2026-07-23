@@ -61,3 +61,23 @@ class GitCommandTimedOut(ToolExecutorError):
 
 class GitOutputDecodingError(ToolExecutorError):
     code = "GIT_OUTPUT_DECODING_ERROR"
+
+
+class ExecutionBindingError(ToolExecutorError):
+    code = "EXECUTION_BINDING_MISMATCH"
+
+
+class ExecutionExpired(ToolExecutorError):
+    code = "EXECUTION_EXPIRED"
+
+
+class IdempotencyConflict(ToolExecutorError):
+    code = "IDEMPOTENCY_CONFLICT"
+
+
+class EvidenceWriteError(ToolExecutorError):
+    code = "EVIDENCE_WRITE_ERROR"
+
+
+class InternalExecutionError(ToolExecutorError):
+    code = "INTERNAL_EXECUTION_ERROR"

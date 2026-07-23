@@ -8,11 +8,16 @@ version = "0.1.0"
 description = "Least-privilege Local Voice Agent tool executor"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "fastapi==0.139.2",
   "jsonschema[format-nongpl]==4.26.0",
+  "pydantic==2.13.4",
+  "pyyaml==6.0.3",
+  "uvicorn[standard]==0.51.0",
 ]
 
 [project.optional-dependencies]
 test = [
+  "httpx2==2.7.0",
   "pytest==9.0.2",
 ]
 
