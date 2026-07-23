@@ -1,0 +1,13 @@
+schema_version: "1.0"
+defaults:
+  level_0: allow_within_scope
+  level_1: require_session_approval
+  level_2: require_exact_execution_approval
+  level_3: deny
+approval:
+  expires_seconds: 120
+  bind_normalized_arguments: true
+  invalidate_on_precondition_change: true
+restricted_shell:
+  exposed_to_model: false
+  elevation_allowed: false

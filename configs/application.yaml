@@ -1,0 +1,20 @@
+schema_version: "1.0"
+server:
+  host: 127.0.0.1
+  port: 8765
+  public_network_bind_allowed: false
+session:
+  idle_timeout_seconds: 900
+  approval_timeout_seconds: 120
+audio:
+  transport_baseline: pcm_s16le
+  sample_rate_hz: 16000
+  channels: 1
+retention:
+  raw_audio: false
+  full_conversation: false
+  audit_days: 90
+paths:
+  runtime_root: 'E:\Data\LocalVoiceAgent\runtime'
+  model_root: 'E:\AI\Models\Standalone\LocalVoiceAgent'
+  cache_root: 'E:\Cache\LocalVoiceAgent'

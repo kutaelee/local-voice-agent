@@ -1,0 +1,3 @@
+schema_version: "1.0"
+workspaces: []
+# Add workspaces explicitly. Never use a drive root, user profile, or wildcard.

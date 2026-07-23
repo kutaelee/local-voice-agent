@@ -1,0 +1,26 @@
+schema_version: "1.0"
+registry_status: design_only
+families:
+  filesystem:
+    read_risk: 0
+    write_risk: 1
+    delete_risk: 2
+  git:
+    read_risk: 0
+    commit_push_risk: 2
+    destructive_risk: 3
+  development:
+    registered_commands_only: true
+    default_risk: 1
+  system:
+    inspect_risk: 0
+    process_stop_risk: 2
+  browser:
+    read_risk: 0
+    external_submit_risk: 2
+  windows_ui:
+    accessibility_first: true
+    coordinate_fallback_requires_fresh_screenshot: true
+  shell:
+    enabled: false
+    risk: 2

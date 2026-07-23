@@ -1,0 +1,9 @@
+schema_version: "1.0"
+primary: vllm-0.25.1
+comparison: sglang-0.5.15.post1
+fallback: null
+startup:
+  gpu_memory_utilization_initial: 0.75
+  health_timeout_seconds: 300
+  model_load_timeout_seconds: 900
+  require_gemma4_mtp_log_path: true

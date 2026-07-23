@@ -1,0 +1,12 @@
+schema_version: "1.0"
+default: gemma4-12b
+escalate_to: gemma4-31b
+escalation_reasons:
+  - explicit_user_request
+  - complex_multistep_plan
+  - long_log_or_diff_analysis
+  - failure_recovery_or_rollback_plan
+  - level_2_preflight_review
+  - repeated_12b_tool_failure
+fallback_on_31b_failure: gemma4-12b
+preserve_voice_priority: true

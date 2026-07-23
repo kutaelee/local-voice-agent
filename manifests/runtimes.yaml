@@ -1,0 +1,55 @@
+schema_version: "1.0"
+generated_at: "2026-07-23T15:24:00+09:00"
+runtimes:
+  - id: vllm-0.25.1
+    role: primary_candidate
+    version: 0.25.1
+    status: planned
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/vllm-0.25.1
+    python: "3.12"
+    cuda: runtime-resolved-cu13
+    pytorch: runtime-resolved-2.11-class
+    source: https://github.com/vllm-project/vllm/releases/tag/v0.25.1
+    rollback: retain previous versioned environment and switch config pointer
+  - id: sglang-0.5.15.post1
+    role: comparison_candidate
+    version: 0.5.15.post1
+    status: planned
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/sglang-0.5.15.post1
+    python: "3.12"
+    cuda: "13.0"
+    pytorch: runtime-resolved-2.11-class
+    source: https://github.com/sgl-project/sglang/releases/tag/v0.5.15.post1
+    rollback: retain previous versioned environment and switch config pointer
+  - id: faster-whisper-1.2.1
+    role: stt_candidate
+    version: 1.2.1
+    status: planned_isolated_cuda12_or_cpu
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1
+    python: "3.12"
+    source: https://github.com/SYSTRAN/faster-whisper
+  - id: silero-vad-6.2.1
+    role: vad_candidate
+    version: 6.2.1
+    status: planned_cpu_onnx
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/vad-silero-6.2.1
+    python: "3.12"
+    source: https://github.com/snakers4/silero-vad/releases/tag/v6.2.1
+  - id: chatterbox-multilingual-v3
+    role: tts_candidate
+    version: upstream-v3-model
+    status: planned
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-v3
+    python: "3.12"
+    source: https://github.com/resemble-ai/chatterbox
+  - id: postgresql-18.4
+    role: database
+    version: "18.4"
+    status: approval_required
+    data_path: 'E:\Data\DB\Active\LocalVoiceAgent'
+    source: https://www.postgresql.org/docs/18/
+  - id: sqlalchemy-2.0.51
+    role: orm
+    version: 2.0.51
+    status: planned
+    note: SQLAlchemy 2.1 is beta as of the research date

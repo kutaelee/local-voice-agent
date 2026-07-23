@@ -1,0 +1,73 @@
+schema_version: "1.0"
+generated_at: "2026-07-23T15:24:00+09:00"
+model_root: 'E:\AI\Models\Standalone\LocalVoiceAgent'
+status: planned
+models:
+  - role: default_target
+    model_id: google/gemma-4-12B-it-qat-w4a16-ct
+    repository: https://huggingface.co/google/gemma-4-12B-it-qat-w4a16-ct
+    revision: 1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee
+    license: Apache-2.0
+    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\12b\target\1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee'
+    weight_format: safetensors
+    quantization: compressed-tensors W4A16 QAT
+    size_bytes: 10296461612
+    primary_weight:
+      filename: model.safetensors
+      size_bytes: 10264229896
+      sha256: 60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3
+    runtime_candidates: [vllm-0.25.1, sglang-0.5.15.post1]
+    mtp_assistant: google/gemma-4-12B-it-qat-q4_0-unquantized-assistant
+    downloaded_at: null
+    validation_status: planned
+  - role: default_mtp_assistant
+    model_id: google/gemma-4-12B-it-qat-q4_0-unquantized-assistant
+    repository: https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-unquantized-assistant
+    revision: 18934064dd4c5c6cc3621f6381e7d377fc8cb7bd
+    license: Apache-2.0
+    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\12b\mtp-assistant\18934064dd4c5c6cc3621f6381e7d377fc8cb7bd'
+    weight_format: safetensors
+    quantization: Q4_0 QAT extracted half-precision assistant
+    size_bytes: 877944019
+    primary_weight:
+      filename: model.safetensors
+      size_bytes: 845719296
+      sha256: 67f1420cf24aa5065089aaed175223f7c245ccfda16111b6c56765afd7280db6
+    runtime_candidates: [vllm-0.25.1, sglang-0.5.15.post1]
+    mtp_target: google/gemma-4-12B-it-qat-w4a16-ct
+    downloaded_at: null
+    validation_status: planned_pair_compatibility_gate
+  - role: escalation_target
+    model_id: google/gemma-4-31B-it-qat-w4a16-ct
+    repository: https://huggingface.co/google/gemma-4-31B-it-qat-w4a16-ct
+    revision: 52f3f65bc7a02d555763bc923bd1d9094898219d
+    license: Apache-2.0
+    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\31b\target\52f3f65bc7a02d555763bc923bd1d9094898219d'
+    weight_format: safetensors
+    quantization: compressed-tensors W4A16 QAT
+    size_bytes: 23297596043
+    primary_weight:
+      filename: model.safetensors
+      size_bytes: 23265352448
+      sha256: 1b9b1d622a93f02c0d33f98e502f233b5d707443af6ddc464ed0bf5498506c20
+    runtime_candidates: [vllm-0.25.1, sglang-0.5.15.post1]
+    mtp_assistant: google/gemma-4-31B-it-qat-q4_0-unquantized-assistant
+    downloaded_at: null
+    validation_status: planned
+  - role: escalation_mtp_assistant
+    model_id: google/gemma-4-31B-it-qat-q4_0-unquantized-assistant
+    repository: https://huggingface.co/google/gemma-4-31B-it-qat-q4_0-unquantized-assistant
+    revision: 96d4c8ca3cb38c107a8478587878124895d1e844
+    license: Apache-2.0
+    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\31b\mtp-assistant\96d4c8ca3cb38c107a8478587878124895d1e844'
+    weight_format: safetensors
+    quantization: Q4_0 QAT extracted half-precision assistant
+    size_bytes: 971267211
+    primary_weight:
+      filename: model.safetensors
+      size_bytes: 939042560
+      sha256: 50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9
+    runtime_candidates: [vllm-0.25.1, sglang-0.5.15.post1]
+    mtp_target: google/gemma-4-31B-it-qat-w4a16-ct
+    downloaded_at: null
+    validation_status: planned_pair_compatibility_gate

@@ -1,0 +1,7 @@
+schema_version: "1.0"
+enabled: false
+server_url: wss://127.0.0.1:8765
+token_storage: android_keystore
+token_rotation_days: 30
+allow_cleartext: false
+local_network_permission_required_for_target_api_37: true
