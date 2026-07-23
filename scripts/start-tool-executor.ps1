@@ -22,6 +22,7 @@ $auditPath = Join-Path $runtimeRoot 'audit\tool-executor.jsonl'
 $evidencePath = Join-Path $runtimeRoot 'evidence\tool-executor'
 $backupPath = Join-Path $runtimeRoot 'backups\tool-executor'
 $logDirectory = Join-Path $runtimeRoot 'logs'
+$playwrightBrowsers = 'C:\Dev\Tools\LocalVoiceAgent\browsers\playwright-1.61.0'
 
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
     throw "Tool Executor Python is unavailable: $python"
@@ -31,6 +32,9 @@ if (-not (Test-Path -LiteralPath $repoRoot -PathType Container)) {
 }
 if (-not $env:LVA_TOOL_EXECUTOR_TOKEN -or $env:LVA_TOOL_EXECUTOR_TOKEN.Length -lt 32) {
     throw 'Set LVA_TOOL_EXECUTOR_TOKEN to a secret containing at least 32 characters.'
+}
+if (-not (Test-Path -LiteralPath $playwrightBrowsers -PathType Container)) {
+    throw "Playwright browser runtime is unavailable: $playwrightBrowsers"
 }
 
 $bindAddress = '127.0.0.1'
@@ -102,6 +106,7 @@ $env:LVA_REPO_ROOT = $repoRoot
 $env:LVA_TOOL_EXECUTOR_AUDIT_LOG = $auditPath
 $env:LVA_TOOL_EXECUTOR_EVIDENCE_DIR = $evidencePath
 $env:LVA_TOOL_EXECUTOR_BACKUP_DIR = $backupPath
+$env:PLAYWRIGHT_BROWSERS_PATH = $playwrightBrowsers
 
 $arguments = @(
     '-m',

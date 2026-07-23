@@ -18,6 +18,10 @@ This file records licenses verified during Slice 0. It is not legal advice.
 | Uvicorn 0.51.0 | BSD-3-Clause | Installed in isolated PC-server environment |
 | jsonschema 4.26.0 | MIT | Installed in isolated PC-server environment |
 | HTTPX2 2.7.0 | BSD-3-Clause | Test-only dependency |
+| Playwright Python 1.61.0 | Apache-2.0 | Installed in isolated Tool Executor environment |
+| Chrome for Testing 149.0.7827.55 | Chromium component notices | Installed in versioned computer-use browser root |
+| pywinauto 0.6.9 | BSD-3-Clause | Installed in isolated Windows Tool Executor environment |
+| Pillow 12.3.0 | HPND | Installed for bounded screenshot metadata |
 | Android Open Source components | Component-specific | To be locked with Gradle dependency report |
 
 Third-party notices and exact dependency license snapshots will be generated

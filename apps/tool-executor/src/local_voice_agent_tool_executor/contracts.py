@@ -11,6 +11,8 @@ from typing import Any, Mapping
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError, ValidationError
 
+from .browser import BROWSER_MUTATION_TOOLS, BROWSER_READ_TOOLS
+from .windows_ui import UI_MUTATION_TOOLS, UI_READ_TOOLS
 from .digests import sha256_json
 from .errors import ToolArgumentsInvalid, ToolContractError, ToolNotSupported
 
@@ -43,8 +45,18 @@ FILESYSTEM_MUTATION_TOOLS = frozenset(
         "write_file",
     }
 )
-SUPPORTED_READ_TOOLS = FILESYSTEM_READ_TOOLS | GIT_READ_TOOLS
-SUPPORTED_TOOLS = SUPPORTED_READ_TOOLS | FILESYSTEM_MUTATION_TOOLS
+SUPPORTED_READ_TOOLS = (
+    FILESYSTEM_READ_TOOLS
+    | GIT_READ_TOOLS
+    | BROWSER_READ_TOOLS
+    | UI_READ_TOOLS
+)
+SUPPORTED_TOOLS = (
+    SUPPORTED_READ_TOOLS
+    | FILESYSTEM_MUTATION_TOOLS
+    | BROWSER_MUTATION_TOOLS
+    | UI_MUTATION_TOOLS
+)
 
 
 @dataclass(frozen=True, slots=True)

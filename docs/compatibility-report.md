@@ -87,6 +87,8 @@ model repositories, and upstream release notes are used for selections.
 | TTS | Chatterbox Multilingual V3, HF `5bb1f6e…`, package 0.1.7 | MIT | Officially listed | Sentence/chunk orchestration | PyTorch pin compatibility gate | Primary quality candidate |
 | TTS fallback | Kokoro 82M | Model/code license requires final inventory | Official list lacks Korean | Fast | CPU/GPU | Rejected as Korean default |
 | Android | Kotlin + Compose, target API 37 | Android licenses | N/A | WebSocket/audio APIs | Device | Android 17 is current; local-network permission must be handled |
+| Browser automation | Playwright Python 1.61.0 + Chrome for Testing 149 | Apache-2.0 / browser notices | N/A | DOM, ARIA, screenshot | CPU | Selected; Windows 11 supported, isolated loopback-only live smoke passed |
+| Windows UI | Microsoft UI Automation + pywinauto 0.6.9 | Windows API / BSD-3-Clause | N/A | Accessibility tree, invoke, text, screenshot | CPU | Selected for bounded non-coordinate fallback; action executable allowlist enforced |
 | Database | PostgreSQL 18.4 | PostgreSQL License | N/A | N/A | CPU | Current supported release |
 | ORM | SQLAlchemy 2.0.51 async | MIT | N/A | Async | CPU | Stable; 2.1 is beta |
 | Migration | Alembic 1.18.5 | MIT | N/A | N/A | CPU | Current stable |

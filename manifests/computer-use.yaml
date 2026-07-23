@@ -1,0 +1,53 @@
+schema_version: "1.0"
+generated_at: "2026-07-24T02:01:19+09:00"
+browser:
+  package: playwright
+  package_version: "1.61.0"
+  official_source: https://playwright.dev/python/docs/intro
+  package_source: https://pypi.org/project/playwright/1.61.0/
+  browser_root: 'C:\Dev\Tools\LocalVoiceAgent\browsers\playwright-1.61.0'
+  browser_root_size_bytes: 721890091
+  chrome_for_testing:
+    version: "149.0.7827.55"
+    playwright_revision: 1228
+    executable: chromium-1228/chrome-win64/chrome.exe
+    executable_size_bytes: 4059648
+    executable_sha256: b798f9e53a98d29eb7f36f8c409f905d3184780a04d2bcb56989067194784bd1
+  headless_shell:
+    version: "149.0.7827.55"
+    playwright_revision: 1228
+    executable: chromium_headless_shell-1228/chrome-headless-shell-win64/chrome-headless-shell.exe
+    executable_size_bytes: 203034112
+    executable_sha256: 28016df6864d302434c9231e1f9f1a8a7ecc512cb2fe3faabb2a36130b96bcf1
+  ffmpeg_revision: 1011
+  winldd_revision: 1007
+  installed_at: "2026-07-24T01:50:00+09:00"
+  network_policy: explicit_loopback_http_https_only
+  download_policy: blocked
+  submit_policy: unavailable
+  validation_status: approved_local_navigation_state_type_click_screenshot_close_passed
+  screenshot_artifact_id: e874748d-295e-4e04-be06-3b80d873cc28
+  screenshot_sha256: e976c9f14390fb41137b4fb4d2476074a07b4ed6874b4e9eddfbc269e689691c
+windows_ui:
+  api: Microsoft UI Automation
+  official_source: https://learn.microsoft.com/en-us/windows/win32/winauto/entry-uiautocore-overview
+  adapter_package: pywinauto
+  adapter_version: "0.6.9"
+  adapter_source: https://pypi.org/project/pywinauto/0.6.9/
+  pillow_version: "12.3.0"
+  action_process_allowlist:
+    - notepad.exe
+  coordinate_actions_enabled: false
+  external_side_effects_enabled: false
+  validation_status: observation_capture_and_approved_notepad_type_passed_with_cleanup_incident
+  cleanup:
+    file_saved: false
+    test_text_removed: true
+    restored_tab_discarded: true
+    notepad_process_remaining: false
+    smoke_temp_file_created: false
+  screenshot_artifact_id: 476e581d-3a2b-417d-aecd-a992d64a7b3f
+  screenshot_sha256: 20c5f32f43196c5065ae569d42f8234e1e04681d1658e1a582e7cae142e7827a
+rollback:
+  browser: stop the registered executor, verify owned browser processes are absent, then archive only the versioned browser root
+  windows_ui: stop the registered executor; no system component was installed or changed

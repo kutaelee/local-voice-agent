@@ -35,8 +35,9 @@ state, and bounds traversal, subprocess time, and output. File changes bind
 an exact approval, idempotency key, SHA-256 precondition, external backup, and
 verified post-state; rollback has its own approval and concurrent-change
 guard. Git uses fixed argv with external execution features disabled and
-rejects metadata escape mechanisms. Delete, Git mutation, process, browser,
-UI, and shell adapters remain unavailable.
+rejects metadata escape mechanisms. Browser and Windows UI adapters now cover
+their bounded Level 0/1 subsets. Delete, Git mutation, process, coordinate UI,
+external browser submission, and shell adapters remain unavailable.
 
 The current transport boundary is an authenticated HTTP API bound by default
 to `127.0.0.1:8790`. In WSL NAT mode the launcher can instead bind only the
@@ -61,6 +62,15 @@ Each attempted execution emits structured JSONL audit events and an atomic,
 metadata-only evidence record outside Git. Tool arguments, returned file
 content, bearer tokens, and raw secrets are not copied into those records.
 Pre-mutation bytes live only in the external runtime backup tree.
+
+Browser automation owns isolated Playwright sessions on a single dedicated
+thread. Requests and WebSockets are restricted to explicit loopback hosts,
+downloads and submit-capable controls are blocked, and each element action
+requires the exact fresh DOM-state fingerprint. Screenshot PNGs are
+no-replace evidence artifacts. Windows UI Automation similarly returns opaque
+window/element references and requires a fresh bounded tree fingerprint.
+Actions are currently restricted to `notepad.exe`; coordinate actions and
+cursor injection are unavailable.
 
 Agent status observation uses an optional strict status-file contract plus
 process, terminal, and Git adapters. Facts are tagged observed, inferred, or

@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T01:45:26+09:00"
+generated_at: "2026-07-24T02:01:19+09:00"
 runtimes:
   - id: android-client-build-0.4.0
     role: android_client_build
@@ -105,13 +105,13 @@ runtimes:
   - id: tool-executor-0.1.0
     role: tool_executor
     version: 0.1.0
-    status: authenticated_level_0_and_approved_level_1_with_rollback_passed
+    status: authenticated_files_git_browser_and_windows_ui_level_0_1_passed
     windows_environment: 'C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv'
     wsl_environment: /home/kutae/.local/share/local-voice-agent/runtimes/tool-executor/.venv
     python: "3.12.13"
     installed_at: "2026-07-23T19:21:00+09:00"
     lock_file: apps/tool-executor/uv.lock
-    lock_sha256: 1876584974af8a970cfcf6598c69d97c569fa3f2f1df719ecc38150f79f5c6dd
+    lock_sha256: 3e472549967f0eab7126761c135ce747da7f87f7a71ffee9b50bf679d9e1c4bc
     package_source: https://pypi.org/simple
     dependency_integrity: exact_versions_urls_sizes_and_sha256_in_uv_lock
     jsonschema: "4.26.0"
@@ -119,8 +119,11 @@ runtimes:
     pydantic: "2.13.4"
     pyyaml: "6.0.3"
     uvicorn: "0.51.0"
-    windows_test_status: 65_passed_one_symlink_test_skipped_and_live_rollback_passed
-    wsl_test_status: 66_passed_including_symlink_mutation_and_rollback
+    playwright: "1.61.0"
+    pywinauto: "0.6.9"
+    pillow: "12.3.0"
+    windows_test_status: 68_passed_one_symlink_test_skipped_with_browser_and_ui_smokes
+    wsl_test_status: 67_passed_two_windows_only_tests_skipped
     enabled_tools:
       - calculate_hash
       - list_files
@@ -138,6 +141,25 @@ runtimes:
       - apply_patch
       - rollback_file_change
       - write_file
+      - browser_click
+      - browser_close
+      - browser_console_logs
+      - browser_download_status
+      - browser_get_page_state
+      - browser_launch
+      - browser_navigate
+      - browser_network_errors
+      - browser_screenshot
+      - browser_scroll
+      - browser_select
+      - browser_type
+      - ui_capture_screen
+      - ui_click_element
+      - ui_focus_window
+      - ui_get_accessibility_tree
+      - ui_list_windows
+      - ui_press_key
+      - ui_type_text
     connection_status: live_model_tool_loop_read_file_smoke_passed
     ipc:
       default_host: 127.0.0.1
@@ -169,6 +191,18 @@ runtimes:
       rollback_latency_ms: 12.758
       final_file_exists: false
     rollback: stop future executor process and switch away before archiving only its isolated environments
+  - id: playwright-1.61.0-windows
+    role: computer_use_browser
+    version: "1.61.0"
+    status: installed_loopback_only_live_smoke_passed
+    environment: 'C:\Dev\Tools\LocalVoiceAgent\browsers\playwright-1.61.0'
+    browser: Chrome for Testing 149.0.7827.55
+    browser_revision: 1228
+    installed_at: "2026-07-24T01:50:00+09:00"
+    package_lock: apps/tool-executor/uv.lock
+    manifest: manifests/computer-use.yaml
+    network_policy: loopback_only
+    rollback: stop the registered executor, verify browser children are absent, then archive only this versioned root
   - id: sglang-0.5.15.post1
     role: comparison_candidate
     version: 0.5.15.post1

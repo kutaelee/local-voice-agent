@@ -14,6 +14,7 @@ import yaml
 
 from .api import ExecutorApiSettings, create_app
 from .audit import AuditEvidenceStore
+from .browser import BrowserAutomation
 from .errors import WorkspaceConfigurationError
 from .executor import ReadOnlyToolExecutor
 from .service import BoundExecutionService
@@ -23,6 +24,7 @@ from .workspaces import (
     WorkspacePlatform,
     WorkspaceRegistry,
 )
+from .windows_ui import WindowsUiAutomation
 
 
 def create_app_from_environment() -> FastAPI:
@@ -57,6 +59,21 @@ def create_app_from_environment() -> FastAPI:
         ),
         git_executable=git_executable,
         backup_root=backup_dir,
+        browser=(
+            BrowserAutomation(
+                artifact_root=evidence_dir / "computer-use" / "browser",
+            )
+            if os.name == "nt"
+            and os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+            else None
+        ),
+        windows_ui=(
+            WindowsUiAutomation(
+                artifact_root=evidence_dir / "computer-use" / "windows-ui",
+            )
+            if os.name == "nt"
+            else None
+        ),
     )
     service = BoundExecutionService(
         executor=executor,

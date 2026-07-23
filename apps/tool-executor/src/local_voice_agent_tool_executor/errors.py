@@ -19,6 +19,14 @@ class ToolNotSupported(ToolExecutorError):
     code = "TOOL_NOT_SUPPORTED"
 
 
+class BrowserAutomationError(ToolExecutorError):
+    code = "BROWSER_AUTOMATION_FAILED"
+
+
+class UiAutomationError(ToolExecutorError):
+    code = "UI_AUTOMATION_FAILED"
+
+
 class WorkspaceConfigurationError(ToolExecutorError):
     code = "WORKSPACE_CONFIGURATION_INVALID"
 

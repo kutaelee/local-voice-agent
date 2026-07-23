@@ -22,6 +22,18 @@ from .tool_registry import ToolRegistry
 EXECUTOR_TOOL_NAMES = frozenset(
     {
         "apply_patch",
+        "browser_click",
+        "browser_close",
+        "browser_console_logs",
+        "browser_download_status",
+        "browser_get_page_state",
+        "browser_launch",
+        "browser_navigate",
+        "browser_network_errors",
+        "browser_screenshot",
+        "browser_scroll",
+        "browser_select",
+        "browser_type",
         "calculate_hash",
         "git_blame",
         "git_branch",
@@ -36,6 +48,13 @@ EXECUTOR_TOOL_NAMES = frozenset(
         "read_file_range",
         "rollback_file_change",
         "search_files",
+        "ui_capture_screen",
+        "ui_click_element",
+        "ui_focus_window",
+        "ui_get_accessibility_tree",
+        "ui_list_windows",
+        "ui_press_key",
+        "ui_type_text",
         "write_file",
     }
 )

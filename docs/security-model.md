@@ -61,8 +61,16 @@ bounded UTF-8 input and atomic replacement. Pre-state backups and metadata
 are stored outside the worktree under the runtime backup root. Rollback is a
 separate approved operation and requires the exact backup ID, workspace,
 relative path, and current post-change hash; a concurrent change invalidates
-it. Delete, Git mutation, process, browser, UI, and shell adapters remain
-unimplemented.
+it. Delete, Git mutation, process, coordinate UI, external browser
+submission, and shell adapters remain unimplemented.
+
+The Playwright adapter creates isolated sessions and routes only explicit
+loopback HTTP(S); external requests and WebSockets, downloads, submit controls,
+and stale element references are blocked. Windows UI Automation observations
+are bounded by depth/node count. Element actions require a current tree
+fingerprint and are restricted to the executable allowlist, currently
+`notepad.exe`; coordinate input is disabled. Both screenshot paths write
+UUID-addressed no-replace PNG evidence outside Git.
 
 The implemented IPC boundary accepts closed-schema Level 0 and approved Level
 1 requests on a launcher-enforced loopback address by default. NAT-mode WSL

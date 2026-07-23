@@ -249,6 +249,31 @@ token; its final output includes the metadata-only evidence ID.
 A restart clears the current in-memory idempotency cache; do not treat it as
 durable until PostgreSQL-backed execution persistence is implemented.
 
+## Computer-use
+
+Playwright 1.61.0 and Chrome for Testing 149 are isolated under
+`C:\Dev\Tools\LocalVoiceAgent\browsers\playwright-1.61.0`. The executor
+launcher sets the official `PLAYWRIGHT_BROWSERS_PATH`; do not add the browser
+to system PATH. The `local-loopback` profile rejects external HTTP(S),
+external WebSockets, downloads, submit controls, and stale page fingerprints.
+
+With the executor running on loopback, this smoke starts its own local HTTP
+server and performs approved launch, navigation, input, click, screenshot,
+and close operations:
+
+```powershell
+C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv\Scripts\python.exe `
+  .\scripts\smoke-browser.py
+```
+
+`smoke-windows-ui.py` requires exactly one visible Notepad window whose title
+contains the isolated `.lva-ui-smoke-...` filename supplied in
+`LVA_UI_SMOKE_FILENAME`. It fails before input if modern Notepad restores a
+different tab. Never run it against a restored user tab. Windows UI actions
+are restricted to the registered `notepad.exe` executable, require fresh
+window/tree fingerprints and exact approval, and cannot press Enter, submit,
+or use coordinates.
+
 ## Android client build and install
 
 The command-line toolchain is isolated from the system PATH:

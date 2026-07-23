@@ -5,15 +5,21 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping
 
+from .browser import BROWSER_TOOLS, BrowserAutomation
 from .contracts import (
     FILESYSTEM_MUTATION_TOOLS,
     FILESYSTEM_READ_TOOLS,
     ReadToolContracts,
 )
-from .errors import GitWorkspaceRejected, MutationPreconditionFailed
+from .errors import (
+    GitWorkspaceRejected,
+    MutationPreconditionFailed,
+    ToolNotSupported,
+)
 from .filesystem import ReadOnlyFilesystem
 from .git import ReadOnlyGit
 from .mutations import FileMutationExecutor
+from .windows_ui import UI_TOOLS, WindowsUiAutomation
 from .workspaces import WorkspaceRegistry
 
 
@@ -26,6 +32,8 @@ class ReadOnlyToolExecutor:
         definition_schema_path: Path,
         git_executable: Path | None = None,
         backup_root: Path | None = None,
+        browser: BrowserAutomation | None = None,
+        windows_ui: WindowsUiAutomation | None = None,
     ) -> None:
         self._contracts = ReadToolContracts.load(
             definitions_dir=definitions_dir,
@@ -49,6 +57,8 @@ class ReadOnlyToolExecutor:
             if backup_root is not None
             else None
         )
+        self._browser = browser
+        self._windows_ui = windows_ui
 
     def execute(
         self,
@@ -69,6 +79,14 @@ class ReadOnlyToolExecutor:
                 )
             handler = getattr(self._mutations, tool_name)
             result = handler(execution_id=execution_id, **normalized)
+        elif tool_name in BROWSER_TOOLS:
+            if self._browser is None:
+                raise ToolNotSupported("browser adapter is not configured")
+            result = self._browser.execute(tool_name, normalized)
+        elif tool_name in UI_TOOLS:
+            if self._windows_ui is None:
+                raise ToolNotSupported("Windows UI adapter is not configured")
+            result = self._windows_ui.execute(tool_name, normalized)
         else:
             if self._git is None:
                 raise GitWorkspaceRejected("Git adapter is not configured")

@@ -32,7 +32,11 @@ writes metadata-only audit/evidence records plus external rollback backups.
 Windows-native and WSL suites pass, and live process smokes passed both
 planner-driven reads and approved create/rollback. Coding-agent status
 adapters observe supported processes, optional strict status files, and
-workspace Git state without assuming private APIs. The Android 0.4.0 client
+workspace Git state without assuming private APIs. An isolated Playwright
+1.61.0 browser now permits loopback-only DOM/accessibility observation and
+approved non-submit navigation/input/clicks; Microsoft UI Automation supports
+bounded window/tree/screenshot observation and approved actions only in
+registered Notepad windows. The Android 0.4.0 client
 records and streams PCM, plays
 ordered PCM output, supports client-side interruption, and keeps pairing
 tokens in Android Keystore-backed storage. No full product acceptance is
