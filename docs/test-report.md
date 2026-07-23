@@ -49,6 +49,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Runtime/model/GPU config references | Passed | 4 configured models, 6 manifest roles, and 9 runtime IDs cross-validated; unvalidated MTP routes remain disabled |
 | Download state isolation | Passed | Explicit cache-side state path; 29,372-byte live transfer and 1/1 resume passed |
 | Protocol/tool contract catalog consistency | Passed | 22 events, 21 tools; drift checks and Draft 2020-12 schema validation passed |
+| Event payload contract coverage | Passed | All 22 catalog events have closed, bounded Draft 2020-12 payload definitions |
 | Benchmark prompt catalog | Passed | 160 unique Korean cases with required 20/30/20/20/20/20/10/20 category counts |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 

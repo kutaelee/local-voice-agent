@@ -40,6 +40,19 @@ def validate_event_catalog() -> int:
             raise ValueError(f"invalid direction for {event['type']}")
         if not isinstance(event["replayable"], bool):
             raise ValueError(f"invalid replayable flag for {event['type']}")
+
+    payloads = load_json(
+        PROTOCOL_ROOT / "schemas" / "event-payloads.schema.json"
+    )
+    payload_types = {
+        name for name in payloads["$defs"] if not name.startswith("_")
+    }
+    if set(catalog_types) != payload_types:
+        missing = sorted(set(catalog_types) - payload_types)
+        extra = sorted(payload_types - set(catalog_types))
+        raise ValueError(
+            f"payload schema mismatch: missing={missing}, extra={extra}"
+        )
     return len(catalog_types)
 
 
