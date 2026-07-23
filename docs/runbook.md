@@ -187,10 +187,11 @@ Invoke-RestMethod http://127.0.0.1:8765/health
 .\scripts\stop-server.ps1
 ```
 
-The launcher binds only `127.0.0.1`, derives the loopback PostgreSQL URL from
-the external password file, records verified Windows/WSL PIDs and log paths,
-and sends `SIGTERM` to the registered Linux server before stopping its owned
-launcher. It does not create a firewall rule or an Android/LAN listener.
+The launcher binds only `127.0.0.1` unless the private-network mode below is
+explicitly selected. It derives the loopback PostgreSQL URL from the external
+password file, records verified Windows/WSL PIDs and log paths, and sends
+`SIGTERM` to the registered Linux server before stopping its owned launcher.
+It never creates a firewall rule.
 
 Stop only registered project processes:
 
@@ -199,9 +200,37 @@ bash scripts/stop-vllm.sh
 bash scripts/stop-audio-workers.sh
 ```
 
-Android-facing TLS/private-network termination is still separate from the
-loopback PC-server lifecycle; do not bind the server to a LAN address until its
-pairing and TLS boundary has been explicitly configured and verified.
+### Android private-network TLS
+
+The Android app accepts only `wss://` origins. Its Network Security
+Configuration permits the system store and device-owner-installed CAs while
+continuing to reject cleartext traffic. This supports either a certificate from
+a publicly trusted private-network name or a device-owner-installed private CA.
+The certificate subject alternative name must match the exact LAN IP address or
+DNS name entered in the app.
+
+Keep the server loopback-only by default. A LAN listener is intentionally an
+explicit runtime action: it accepts only RFC1918 IPv4 or IPv6 ULA addresses,
+requires a PEM certificate and key, and requires the
+`-EnablePrivateNetwork` switch. It still does **not** open Windows Firewall;
+if the existing firewall blocks the chosen port, stop and obtain explicit
+approval before changing a firewall rule.
+
+```powershell
+$env:LVA_PAIRING_TOKEN = '<at-least-32-random-characters>'
+.\scripts\start-server.ps1 `
+  -ListenAddress 192.168.1.20 `
+  -EnablePrivateNetwork `
+  -TlsCertificatePath 'E:\Data\LocalVoiceAgent\tls\server-cert.pem' `
+  -TlsPrivateKeyPath 'E:\Data\LocalVoiceAgent\tls\server-key.pem'
+```
+
+The private key and certificate are runtime data, not repository files. Import
+the private CA on the Android device using the device-owner flow, then pair the
+app with `wss://192.168.1.20:8765` and the pairing token. Treat every installed
+user CA as part of the device trust boundary. For an Android Emulator, prefer
+the loopback-only listener through `adb reverse` rather than exposing a LAN
+port; authorizing USB debugging remains a physical-device action.
 
 ## Tool Executor
 

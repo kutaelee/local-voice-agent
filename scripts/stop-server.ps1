@@ -10,7 +10,22 @@ if (-not (Test-Path -LiteralPath $statusPath -PathType Leaf)) {
 }
 
 $status = Get-Content -LiteralPath $statusPath -Raw | ConvertFrom-Json
-if ($status.component -ne 'pc-server' -or $status.host -ne '127.0.0.1' -or -not $status.port -or -not $status.launcher_pid -or -not $status.linux_pid) {
+$statusAddress = $null
+$validHost = [System.Net.IPAddress]::TryParse([string]$status.host, [ref]$statusAddress) -and (
+    [System.Net.IPAddress]::IsLoopback($statusAddress) -or
+    (
+        $statusAddress.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork -and (
+            ($statusAddress.GetAddressBytes())[0] -eq 10 -or
+            (($statusAddress.GetAddressBytes())[0] -eq 172 -and ($statusAddress.GetAddressBytes())[1] -ge 16 -and ($statusAddress.GetAddressBytes())[1] -le 31) -or
+            (($statusAddress.GetAddressBytes())[0] -eq 192 -and ($statusAddress.GetAddressBytes())[1] -eq 168)
+        )
+    ) -or
+    (
+        $statusAddress.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetworkV6 -and
+        ((($statusAddress.GetAddressBytes())[0] -band 0xFE) -eq 0xFC)
+    )
+)
+if ($status.component -ne 'pc-server' -or -not $validHost -or -not $status.port -or -not $status.launcher_pid -or -not $status.linux_pid) {
     throw 'Registered PC server status is invalid; refusing to stop a process.'
 }
 $launcher = Get-CimInstance -ClassName Win32_Process -Filter "ProcessId = $([int]$status.launcher_pid)" -ErrorAction SilentlyContinue

@@ -1,7 +1,15 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1024, 65535)]
-    [int]$Port = 8765
+    [int]$Port = 8765,
+
+    [string]$ListenAddress = '127.0.0.1',
+
+    [string]$TlsCertificatePath,
+
+    [string]$TlsPrivateKeyPath,
+
+    [switch]$EnablePrivateNetwork
 )
 
 $ErrorActionPreference = 'Stop'
@@ -14,8 +22,65 @@ $passwordFile = 'E:\Data\LocalVoiceAgent\secrets\postgres-password'
 $wslPython = '/home/kutae/.local/share/local-voice-agent/runtimes/pc-server/.venv/bin/python'
 $wslAppRoot = '/mnt/c/Dev/Repos/local-voice-agent/apps/pc-server'
 
+function Test-PrivateNetworkAddress {
+    param([System.Net.IPAddress]$Address)
+
+    if ($Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork) {
+        $bytes = $Address.GetAddressBytes()
+        return $bytes[0] -eq 10 -or
+            ($bytes[0] -eq 172 -and $bytes[1] -ge 16 -and $bytes[1] -le 31) -or
+            ($bytes[0] -eq 192 -and $bytes[1] -eq 168)
+    }
+
+    # IPv6 Unique Local Addresses are fc00::/7. Link-local and public IPv6
+    # addresses remain intentionally unsupported by this launcher.
+    if ($Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetworkV6) {
+        return (($Address.GetAddressBytes())[0] -band 0xFE) -eq 0xFC
+    }
+
+    return $false
+}
+
+function ConvertTo-BashLiteral {
+    param([string]$Value)
+    $embeddedSingleQuote = [string]::Concat([char]39, [char]34, [char]39, [char]34, [char]39)
+    return "'" + $Value.Replace("'", $embeddedSingleQuote) + "'"
+}
+
 if (-not (Test-Path -LiteralPath $repoRoot -PathType Container)) {
     throw "Repository is unavailable: $repoRoot"
+}
+
+$parsedAddress = $null
+if (-not [System.Net.IPAddress]::TryParse($ListenAddress, [ref]$parsedAddress)) {
+    throw 'ListenAddress must be a numeric IP address; hostnames and wildcard bindings are rejected.'
+}
+$isLoopback = [System.Net.IPAddress]::IsLoopback($parsedAddress)
+$tlsEnabled = -not [string]::IsNullOrWhiteSpace($TlsCertificatePath) -or
+    -not [string]::IsNullOrWhiteSpace($TlsPrivateKeyPath)
+if ($tlsEnabled -and ([string]::IsNullOrWhiteSpace($TlsCertificatePath) -or [string]::IsNullOrWhiteSpace($TlsPrivateKeyPath))) {
+    throw 'TLS requires both -TlsCertificatePath and -TlsPrivateKeyPath.'
+}
+if (-not $isLoopback) {
+    if (-not $EnablePrivateNetwork) {
+        throw 'Non-loopback binding requires the explicit -EnablePrivateNetwork switch.'
+    }
+    if (-not (Test-PrivateNetworkAddress $parsedAddress)) {
+        throw 'Only RFC1918 IPv4 or IPv6 ULA addresses may be used for a private-network listener.'
+    }
+    if (-not $tlsEnabled) {
+        throw 'A private-network listener requires TLS certificate and key files.'
+    }
+}
+if ($tlsEnabled) {
+    if (-not (Test-Path -LiteralPath $TlsCertificatePath -PathType Leaf)) {
+        throw "TLS certificate file is unavailable: $TlsCertificatePath"
+    }
+    if (-not (Test-Path -LiteralPath $TlsPrivateKeyPath -PathType Leaf)) {
+        throw "TLS private-key file is unavailable: $TlsPrivateKeyPath"
+    }
+    $TlsCertificatePath = (Resolve-Path -LiteralPath $TlsCertificatePath).Path
+    $TlsPrivateKeyPath = (Resolve-Path -LiteralPath $TlsPrivateKeyPath).Path
 }
 if (-not $env:LVA_PAIRING_TOKEN -or $env:LVA_PAIRING_TOKEN.Length -lt 32 -or $env:LVA_PAIRING_TOKEN -eq 'CHANGE_ME') {
     throw 'Set LVA_PAIRING_TOKEN to a non-placeholder secret of at least 32 characters.'
@@ -38,15 +103,12 @@ if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
     }
 }
 
-$listener = [System.Net.Sockets.TcpListener]::new(
-    [System.Net.IPAddress]::Loopback,
-    $Port
-)
+$listener = [System.Net.Sockets.TcpListener]::new($parsedAddress, $Port)
 try {
     $listener.Start()
 }
 catch {
-    throw "Loopback PC server port 127.0.0.1`:$Port is unavailable."
+    throw "PC server port $ListenAddress`:$Port is unavailable."
 }
 finally {
     $listener.Stop()
@@ -89,10 +151,23 @@ $env:WSLENV = (($bridgeEntries + @($previousWslEnv)) -ne '' -join ':')
 $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
 $stdoutPath = Join-Path $logDirectory "pc-server-$stamp.stdout.log"
 $stderrPath = Join-Path $logDirectory "pc-server-$stamp.stderr.log"
+$tlsArguments = ''
+if ($tlsEnabled) {
+    $wslCertificatePath = (wsl.exe -d Ubuntu -- wslpath -a $TlsCertificatePath).Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($wslCertificatePath)) {
+        throw 'TLS certificate path could not be translated for WSL.'
+    }
+    $wslPrivateKeyPath = (wsl.exe -d Ubuntu -- wslpath -a $TlsPrivateKeyPath).Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($wslPrivateKeyPath)) {
+        throw 'TLS private-key path could not be translated for WSL.'
+    }
+    $tlsArguments = " --ssl-certfile $(ConvertTo-BashLiteral $wslCertificatePath)" +
+        " --ssl-keyfile $(ConvertTo-BashLiteral $wslPrivateKeyPath)"
+}
 $linuxCommand = (
     "cd $wslAppRoot && exec $wslPython -m uvicorn " +
     'local_voice_agent_server.api:create_app_from_environment --factory ' +
-    "--host 127.0.0.1 --port $Port --no-access-log"
+    "--host $ListenAddress --port $Port --no-access-log$tlsArguments"
 )
 
 try {
@@ -111,7 +186,20 @@ try {
             break
         }
         try {
-            $response = Invoke-RestMethod -Uri "http://127.0.0.1`:$Port/health" -TimeoutSec 1
+            $scheme = if ($tlsEnabled) { 'https' } else { 'http' }
+            $healthUri = "${scheme}://$ListenAddress`:$Port/health"
+            if ($tlsEnabled) {
+                # The launcher is checking its own just-created local listener.
+                # Android clients still perform normal certificate validation.
+                $healthBody = & curl.exe --silent --show-error --fail --insecure --max-time 1 $healthUri 2>$null
+                if ($LASTEXITCODE -ne 0) {
+                    throw 'TLS health endpoint is unavailable.'
+                }
+                $response = $healthBody | ConvertFrom-Json
+            }
+            else {
+                $response = Invoke-RestMethod -Uri $healthUri -TimeoutSec 1
+            }
             if ($response.status -eq 'ok' -and $response.component -eq 'pc-server') {
                 $healthy = $true
                 break
@@ -140,8 +228,10 @@ try {
         schema_version = '1.0'
         component = 'pc-server'
         state = 'running'
-        host = '127.0.0.1'
+        host = $ListenAddress
         port = $Port
+        protocol = if ($tlsEnabled) { 'https' } else { 'http' }
+        tls_enabled = $tlsEnabled
         launcher_pid = $process.Id
         launcher_executable = $process.Path
         linux_pid = [int]$linuxPidText.Trim()

@@ -14,7 +14,7 @@
 ## Required controls
 
 - Bind to `127.0.0.1` by default; LAN/VPN binding is an explicit
-  configuration change.
+  configuration change and requires TLS plus a private-address allowlist.
 - Pair with a one-time token, rotate credentials, and store Android secrets in
   Android Keystore.
 - Authenticate WebSocket and REST requests; expire idle sessions.
@@ -93,11 +93,15 @@ PIDs/executables to its status record. The stop script verifies each
 executable and command line before stopping it, then confirms the listener is
 gone.
 
-The checked-in application and pairing schemas permit only loopback server
-binding and WSS, require Android Keystore token storage, and keep cleartext,
-raw-audio retention, and full-conversation retention disabled. LAN or VPN
-binding requires a future explicit configuration and threat review rather
-than changing these baseline fields.
+The Android client permits only WSS, stores the pairing token in Android
+Keystore, and keeps cleartext, raw-audio retention, and full-conversation
+retention disabled. It trusts system CAs and device-owner-installed CAs to
+support a private CA without embedding a mutable certificate in the APK.
+The server remains loopback-only by default. A private listener must use an
+explicit launcher switch, an RFC1918 IPv4 or IPv6 ULA address, and a PEM TLS
+certificate/key; wildcard, public-address, and non-TLS bindings fail before a
+server process starts. The launcher never creates a firewall rule. Device CA
+installation and any firewall change require a user-controlled approval step.
 
 ## Approval integrity
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+      Private LAN deployments may use a CA installed by the device owner.
+      Cleartext remains disabled in the manifest, and all app traffic must use
+      the WSS origin validated by the platform TLS stack.
+    -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

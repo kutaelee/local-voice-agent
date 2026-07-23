@@ -3,6 +3,9 @@
 Native Kotlin and Jetpack Compose client using ViewModel, `StateFlow`,
 immutable `UiState`, and one-way event flow. Pairing tokens are encrypted with
 an Android Keystore-backed AES key before they enter private app preferences.
+Only `wss://` server origins are accepted. Cleartext is disabled; platform
+system CAs and a device-owner-installed private CA are valid trust anchors for
+an explicitly configured private-LAN server.
 
 The client contains all eight required destinations, connection/assistant
 states, Keystore pairing, authenticated TLS WebSocket transport, PCM capture
@@ -14,8 +17,8 @@ More without clipping compact screens.
 Version 0.4.1 was installed on an API 37 emulator. Launch, status/navigation
 insets, the More destination list, portrait/landscape recreation, and
 force-stop/relaunch passed without an AndroidRuntime error. Physical-device
-microphone, Bluetooth, and end-to-end voice timing remain separate acceptance
-tests. Room persistence remains deferred.
+private-CA installation, microphone, Bluetooth, and end-to-end voice timing
+remain separate acceptance tests. Room persistence remains deferred.
 
 ## Isolated build
 

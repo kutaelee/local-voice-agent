@@ -102,7 +102,7 @@ progress. No product acceptance test has run.
 | 12B/31B route planner | Passed | Default/escalation/switch-back, voice and high-VRAM deferral, VRAM rejection/degradation, capability gates, multiple-ready rejection, and cleanup-before-31B-failure fallback tested without starting a process |
 | PC-server process smoke first wrapper | Failed, corrected | Inline Bash used command substitution that PowerShell parsed first; command failed before starting a process, so a shell-isolated smoke script was added |
 | PC-server Uvicorn process smoke | Passed | Loopback `127.0.0.1:8787`, `/health` HTTP 200, owned PID 51847 cleanly stopped, port confirmed closed |
-| Registered PC-server lifecycle scripts | Passed | `start-server.ps1` derived the local PostgreSQL URL without logging its secret, launched the WSL Uvicorn factory on `127.0.0.1:8787`, recorded verified Windows/WSL PIDs, served `/health`, then `stop-server.ps1` sent a graceful Linux stop; port and process were absent afterward |
+| Registered PC-server lifecycle scripts | Passed | `start-server.ps1` derived the local PostgreSQL URL without logging its secret, launched the WSL Uvicorn factory on `127.0.0.1:8788`, recorded verified Windows/WSL PIDs plus `http`/TLS status, served `/health`, then `stop-server.ps1` sent a graceful Linux stop; port and process were absent afterward. Numeric-host, wildcard, missing explicit private-network mode, and missing TLS key/certificate gates all failed before listener creation |
 | vLLM smoke explicit-cache argument guards | Passed after wrapper correction | Bash syntax passed; invalid KV-cache bytes exited 8 and invalid max sequences exited 9. The first combined assertion was invalid because PowerShell expanded Bash `$?` before execution; no server was launched |
 | Tool Executor first Windows-native run | Failed, corrected | 22/26 passed; one assertion assumed LF after a Windows text write, and three fixtures attempted privileged symlink creation. No production file was accessed |
 | Tool Executor Windows-native suite | Passed | Latest run: 81 passed and one symlink case skipped with the registered Playwright path; filesystem/Git, browser/UI, system observation, approval-bound write/patch/rollback, registered-test profiles, atomic replacement, concurrent-hash rejection, API binding, and no-replace evidence passed |
@@ -123,7 +123,7 @@ progress. No product acceptance test has run.
 | Git metadata escape gates | Passed | Non-Git and disabled workspaces, `.git` file/worktree, object alternates, config includes, and Windows junction/WSL symlink metadata paths rejected |
 | Android command-line SDK integrity | Passed | Official 155,655,386-byte command-line tools archive matched SHA-256 `90ae805d20434428bffcb699c290860f19bb5f66a67e6b330067e3de801fb04a`; API 37, Build Tools 36.0.0, Platform Tools 37.0.0 installed without PATH/registry changes |
 | Android API 37 clean build | Passed | Gradle 9.6.1 distribution checksum pinned; AGP 9.3.0; latest `clean testDebugUnitTest lintDebug assembleDebug assembleRelease` succeeded in 1m02s |
-| Android network/reducer unit tests | Passed | 11 tests, 0 failures, 0 errors, 0 skipped; strict protocol envelopes, secure endpoint parsing, authenticated trusted-TLS WebSocket exchange, and reducer state covered |
+| Android network/reducer unit tests and build | Passed | `testDebugUnitTest lintDebug assembleDebug assembleRelease` completed after adding a Network Security Configuration that keeps cleartext disabled and allows device-owner private CAs; strict protocol envelopes, secure endpoint parsing, authenticated trusted-TLS WebSocket exchange, and reducer state remain covered by 11 unit tests |
 | Android lint | Passed | 0 findings after secure backup rules, current stable AndroidX dependencies, and adaptive/monochrome icon fixes |
 | Android package metadata | Passed | AAPT2 verified application ID `dev.localvoiceagent.android`, min SDK 26, compile/target SDK 37 |
 | Android debug signature | Passed | APK Signature Scheme v2 verified with the generated Android debug certificate |
@@ -144,5 +144,7 @@ progress. No product acceptance test has run.
 
 Exact Q4_0 MTP multimodal compatibility, statistical MTP quality/latency
 benchmark, 31B multimodal and exact-pair MTP, SGLang model comparison,
-audio/video coverage, full benchmark, security matrix, Android device/voice,
-and product acceptance tests remain `NOT_RUN` or in progress.
+audio/video coverage, full benchmark, security matrix, Android physical
+private-CA/LAN/voice testing, and product acceptance tests remain `NOT_RUN` or
+in progress. The TLS private-LAN launcher was gate-tested, but no LAN listener
+or firewall change was made.
