@@ -71,6 +71,7 @@ launch disables CUDA graphs to minimize unmeasured VRAM:
 
 ```bash
 VLLM_SMOKE_ENFORCE_EAGER=1 \
+VLLM_SMOKE_LANGUAGE_MODEL_ONLY=1 \
 VLLM_SMOKE_SPECULATIVE_TOKENS=1 \
 bash scripts/serve-vllm-smoke.sh 12b on
 ```
@@ -80,6 +81,11 @@ stdout/stderr under the external runtime log root. On startup failure, stop
 only that runtime process, retain logs/evidence, verify VRAM returned, and
 leave the stable MTP-OFF environment untouched. Eager mode is removed only
 after this exact-pair path passes and measured headroom permits graph capture.
+The exact Q4_0 target revision currently omits
+`vision_config.num_soft_tokens`, so the first MTP compatibility run is
+language-only and cannot count as an MTP multimodal pass. Do not patch the
+official model config in place; resolve and record an upstream-compatible
+multimodal path separately.
 
 ## Installation gates
 

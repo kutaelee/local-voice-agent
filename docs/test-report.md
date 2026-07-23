@@ -28,7 +28,13 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | 12B exact MTP target SHA-256 | Passed | 23,919,549,408-byte final file; downloader and wrapper both matched `26f2cee4292298a3f9f92209643c37c80e34e011381e22434088870d9439a0a0` |
 | 12B target safetensors structure | Passed | 1,334 tensors; file end matches final tensor offset |
 | 12B target/assistant tensor contract | Passed | Target embedding 262,144×3,840; assistant pre-projection 1,024×7,680; target embedding sharing is required |
-| 12B exact target/assistant offline pair | Passed | Target 677 BF16 tensors, assistant 48 BF16 tensors; all 11 model/dimension/embedding/projection/context checks passed; runtime loading remains pending |
+| 12B exact target/assistant offline pair | Passed | Target 677 BF16 tensors, assistant 48 BF16 tensors; all 11 model/dimension/embedding/projection/context checks passed |
+| 12B exact MTP multimodal initialization | Failed | Official Q4_0 target config omits `vision_config.num_soft_tokens`; exact-fix vLLM input processor raised `AttributeError` before weight load and health |
+| 12B exact MTP text-only load/health | Passed | Exact-fix runtime selected `method='mtp'` and `Gemma4MTPModel`; target + assistant loaded, health 200, 2,048-token context |
+| 12B exact MTP smoke client first invocation | Failed, corrected | Base URL incorrectly included `/v1`, causing `GET /v1/health` HTTP 404; retry used the documented port-root URL |
+| 12B exact MTP text API smoke | Passed | Korean text, `inspect_gpu` tool call with valid `{}`, strict JSON Schema, and 32-chunk streaming all passed; evidence `vllm-12b-mtp-textonly-smoke.json` |
+| 12B exact MTP speculative metrics | Passed (preliminary) | 48 draft tokens, 43 accepted (89.6%); 4/4 API requests succeeded, no request errors |
+| 12B exact MTP controlled stop | Passed | Only owned API/engine PIDs stopped; port closed and total GPU use fell from 32,038 MiB to 2,957 MiB |
 | Identical-hash mirror resume | Passed | vLLM wheel reused 1/4 ranges after GitHub-to-PyPI URL change |
 | vLLM wheel SHA-256 | Passed | `16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e` |
 | vLLM isolated dependency install | Passed | vLLM 0.25.1, Python 3.12.13, torch 2.11.0+cu130; 192-package compatibility check |
@@ -68,7 +74,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Approval and policy contracts | Passed | Canonical argument digest/precondition binding validated; Level 2 direct allow and Level 3 approval decisions are rejected by schema |
 | Workspace configuration guard | Passed | Closed schema validated; drive root, user profile root, backup-only D:, protected E: backup root, wildcard, and WSL mounted-drive cases rejected |
 | Application and pairing security defaults | Passed | Public bind, raw-audio retention, cleartext pairing, and plaintext token storage cases rejected |
-| Network-free repository validation suite | Passed | 10 validators completed in 849.11 ms: configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
+| Network-free repository validation suite | Passed | Latest run: 10 validators completed in 1,169.76 ms using the isolated WSL runtime; configs, manifests, contracts, catalogs, status, approval/policy, workspaces, and security defaults |
 | Read-only health check | Passed | Detected both isolated vLLM versions, two finalized 12B artifacts, active partial MTP target, RTX 5090/WSL GPU state, canonical paths, and stopped server without mutation |
 | Event payload contract coverage | Passed | All 24 catalog events have closed, bounded Draft 2020-12 payload definitions |
 | Explicit cancellation protocol | Passed (static) | Idempotent request/result events distinguish cancelled, draining, non-cancellable, already-terminal, and missing operations |
@@ -77,7 +83,7 @@ Status: Slice 2 validation in progress. No product acceptance test has run.
 | Benchmark result/report envelopes | Passed (static) | Raw result remains explicitly `not_run` with zero runs; model/runtime comparison matrices exist and every unmeasured cell is `NOT_RUN` |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 
-Exact Q4_0 MTP-target download/runtime test, 31B artifact completion, SGLang,
-audio/video, full benchmark, security,
+Exact Q4_0 MTP multimodal compatibility, statistical MTP quality/latency
+benchmark, 31B artifact completion, SGLang, audio/video, full benchmark, security,
 Android, rollback, and product acceptance tests remain `NOT_RUN` or in
 progress.

@@ -51,6 +51,35 @@ stable release. No latency, acceptance-rate, or speedup result is reported
 for that failed run. The benchmark now requires both the exact
 `qat-q4_0-unquantized` pair and the pinned fix runtime.
 
+## Preliminary exact-pair MTP text smoke
+
+This is a four-request smoke run on a machine shared with other model setup,
+not a fixed-condition benchmark and not evidence of MTP speedup. The exact
+Q4_0 target and matching assistant ran with one speculative token, eager mode,
+the V1 runner, a 2,048-token context, and `--language-model-only`.
+
+| Item | Observed |
+|---|---:|
+| Runtime | exact vLLM commit `b2b8f679d058…` / torch 2.11.0+cu130 |
+| Target checkpoint / assistant | 22.28 GiB / 0.79 GiB reported |
+| Target weight read / assistant read | 159.23 s / 5.77 s |
+| Total model loading | 165.84 s, 23.62 GiB |
+| Engine profile/cache/warmup | 54.75 s |
+| GPU KV cache | 2.34 GiB / 7,260 tokens |
+| Highest polled total GPU memory | 32,050 MiB; only 138 MiB free |
+| Korean text | 4,950.13 ms, correct answer; includes first-inference JIT |
+| Tool call | 201.72 ms, valid `inspect_gpu({})` |
+| Strict structured output | 1,548.87 ms, valid object |
+| Streaming | 101.15 ms TTFT, 1,038.74 ms total, 32 chunks |
+| Speculative acceptance | 43 / 48 draft tokens = 89.6% |
+| Completed API requests | 4 / 4; zero error/abort |
+
+The official exact target currently omits `vision_config.num_soft_tokens`.
+Normal multimodal initialization failed before weight loading, so the passing
+run explicitly disabled all multimodal processing. MTP remains disabled by
+default until multimodal compatibility and the fixed-condition quality,
+accuracy, latency, and VRAM gates pass.
+
 The first PowerShell 5.1 request encoded Korean incorrectly. Sending explicit
 UTF-8 bytes, and then repeating with the WSL Python client, produced correct
 Korean input/output. Android and PC clients must always set and test UTF-8

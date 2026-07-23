@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T18:35:00+09:00"
+generated_at: "2026-07-23T18:43:00+09:00"
 model_root: 'E:\AI\Models\Standalone\LocalVoiceAgent'
 status: partially_downloaded
 models:
@@ -36,7 +36,7 @@ models:
     runtime_candidates: [vllm-0.25.1, sglang-0.5.15.post1]
     mtp_target: google/gemma-4-12B-it-qat-q4_0-unquantized
     downloaded_at: "2026-07-23T16:08:36+09:00"
-    validation_status: sha256_passed_exact_target_offline_pair_passed_runtime_pending
+    validation_status: exact_fix_vllm_text_mtp_api_passed_multimodal_config_blocked
   - role: mtp_target_12b
     model_id: google/gemma-4-12B-it-qat-q4_0-unquantized
     repository: https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-unquantized
@@ -53,7 +53,7 @@ models:
     runtime_candidates: [vllm-0.25.1, sglang-0.5.15.post1]
     mtp_assistant: google/gemma-4-12B-it-qat-q4_0-unquantized-assistant
     downloaded_at: "2026-07-23T18:34:38+09:00"
-    validation_status: sha256_and_safetensors_pair_structure_passed_runtime_loading_pending
+    validation_status: exact_fix_vllm_text_mtp_api_passed_multimodal_config_blocked
   - role: escalation_target
     model_id: google/gemma-4-31B-it-qat-w4a16-ct
     repository: https://huggingface.co/google/gemma-4-31B-it-qat-w4a16-ct

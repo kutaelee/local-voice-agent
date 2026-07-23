@@ -14,8 +14,10 @@ models:
     max_model_len_initial: 2048
     num_speculative_tokens_initial: 1
     enabled: false
-    enable_after: exact_pair_runtime_and_quality_gate
+    enable_after: text_mtp_quality_and_multimodal_compatibility_gate
     modalities: [text, image, video, audio]
+    validated_modalities: [text]
+    blocked_modalities: [image, video, audio]
   gemma4-31b:
     manifest_role: escalation_target
     max_model_len_initial: 8192

@@ -10,6 +10,7 @@ host="${VLLM_SMOKE_HOST:-127.0.0.1}"
 port="${VLLM_SMOKE_PORT:-8766}"
 speculative_tokens="${VLLM_SMOKE_SPECULATIVE_TOKENS:-1}"
 enforce_eager="${VLLM_SMOKE_ENFORCE_EAGER:-0}"
+language_model_only="${VLLM_SMOKE_LANGUAGE_MODEL_ONLY:-0}"
 # WSL did not expose CUDA UVA to vLLM's V2 runner on this workstation.
 # vLLM 0.25.1 officially supports forcing the V1 runner with this variable.
 export VLLM_USE_V2_MODEL_RUNNER="${VLLM_USE_V2_MODEL_RUNNER:-0}"
@@ -40,6 +41,10 @@ esac
 [[ "${enforce_eager}" =~ ^[01]$ ]] || {
   echo "VLLM_SMOKE_ENFORCE_EAGER must be 0 or 1" >&2
   exit 6
+}
+[[ "${language_model_only}" =~ ^[01]$ ]] || {
+  echo "VLLM_SMOKE_LANGUAGE_MODEL_ONLY must be 0 or 1" >&2
+  exit 7
 }
 
 case "${mtp_mode}" in
@@ -104,8 +109,14 @@ args=(
 if [[ "${enforce_eager}" == "1" ]]; then
   args+=(--enforce-eager)
 fi
+if [[ "${language_model_only}" == "1" ]]; then
+  args+=(--language-model-only)
+fi
 
 echo \
-  "Starting ${served_name} MTP=${mtp_mode} runtime=${runtime_root} runner_v2=${VLLM_USE_V2_MODEL_RUNNER} enforce_eager=${enforce_eager} on ${host}:${port}" \
+  "Starting ${served_name} MTP=${mtp_mode} runtime=${runtime_root} runner_v2=${VLLM_USE_V2_MODEL_RUNNER} enforce_eager=${enforce_eager} language_model_only=${language_model_only} on ${host}:${port}" \
   >&2
+for variable_name in "${!VLLM_SMOKE_@}"; do
+  unset "${variable_name}"
+done
 exec "${vllm_bin}" "${args[@]}"

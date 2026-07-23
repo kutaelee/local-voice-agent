@@ -34,7 +34,11 @@ measurements:
     peak_vram_mib: 18881
     measurement_kind: preliminary_poll_not_true_peak
   gemma4-12b-mtp:
-    peak_vram_mib: null
+    peak_vram_mib: 32050
+    measurement_kind: preliminary_shared_host_poll_not_true_peak
+    max_model_len: 2048
+    gpu_memory_utilization: 0.90
+    minimum_observed_free_vram_mib: 138
   gemma4-31b:
     peak_vram_mib: null
   gemma4-31b-mtp:
