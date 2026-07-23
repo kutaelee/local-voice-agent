@@ -1,6 +1,16 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T15:24:00+09:00"
+generated_at: "2026-07-23T15:37:38+09:00"
 runtimes:
+  - id: huggingface-hub-1.24.0
+    role: model_download_tool
+    version: 1.24.0
+    status: installed
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/model-download
+    python: "3.12.13"
+    installed_at: "2026-07-23T15:28:00+09:00"
+    lock_file: manifests/locks/model-download.txt
+    source: https://pypi.org/project/huggingface-hub/1.24.0/
+    rollback: remove only the versioned model-download environment after inventory
   - id: vllm-0.25.1
     role: primary_candidate
     version: 0.25.1

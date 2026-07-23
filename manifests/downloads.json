@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-23T15:24:00+09:00",
+  "generated_at": "2026-07-23T15:37:38+09:00",
   "canonical_cache": "E:\\Cache\\LocalVoiceAgent\\downloads",
   "free_space_before_bytes": 3636472119296,
   "license": "Apache-2.0",
   "official_owner": "google",
-  "status": "planned",
+  "status": "downloading",
   "downloads": [
     {
       "model_id": "google/gemma-4-12B-it-qat-w4a16-ct",

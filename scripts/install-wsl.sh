@@ -25,14 +25,18 @@ if [[ "${mode}" != "--bootstrap-download-tool" ]]; then
   exit 2
 fi
 
-command -v uv >/dev/null 2>&1 || {
+uv_bin="$(command -v uv || true)"
+if [[ -z "${uv_bin}" && -x "${HOME}/.local/bin/uv" ]]; then
+  uv_bin="${HOME}/.local/bin/uv"
+fi
+[[ -n "${uv_bin}" ]] || {
   echo "uv is required and was not found." >&2
   exit 3
 }
 
 download_env="${runtime_root}/model-download"
 mkdir -p "${download_env}"
-uv venv --python 3.12 "${download_env}/.venv"
-uv pip install --python "${download_env}/.venv/bin/python" \
-  "huggingface_hub[cli]==0.36.0"
+"${uv_bin}" venv --python 3.12 "${download_env}/.venv"
+"${uv_bin}" pip install --python "${download_env}/.venv/bin/python" \
+  "huggingface_hub==1.24.0"
 "${download_env}/.venv/bin/hf" version

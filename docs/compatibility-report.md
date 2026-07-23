@@ -29,6 +29,11 @@ model repositories, and upstream release notes are used for selections.
   not selected as the primary Korean fallback.
 - PostgreSQL 18.4 is current. SQLAlchemy 2.1 remains beta; stable 2.0.51 is
   selected initially.
+- Hugging Face Hub 1.24.0 is the current stable download client and supports
+  Python 3.10+; it is isolated in a uv-managed Python 3.12 environment.
+- Hugging Face Hub 1.24.0 rejects simultaneous `--local-dir` and
+  `--cache-dir`. The download script uses the official `HF_HOME` mechanism and
+  `HF_XET_HIGH_PERFORMANCE=1`, while retaining per-target resume metadata.
 
 ## Runtime and model matrix
 
@@ -87,6 +92,8 @@ model repositories, and upstream release notes are used for selections.
 - [Gemma 4 function calling](https://ai.google.dev/gemma/docs/capabilities/text/function-calling-gemma4)
 - [Google Gemma 4 collection](https://huggingface.co/collections/google/gemma-4)
 - [Google Gemma 4 QAT collection](https://huggingface.co/collections/google/gemma-4-qat-q4-0)
+- [Hugging Face Hub downloads](https://huggingface.co/docs/huggingface_hub/guides/download)
+- [Hugging Face Hub environment variables](https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables)
 - [vLLM supported models](https://docs.vllm.ai/en/stable/models/supported_models/)
 - [vLLM Gemma 4 recipe](https://docs.vllm.ai/projects/recipes/en/stable/Google/Gemma4.html)
 - [vLLM releases](https://github.com/vllm-project/vllm/releases)

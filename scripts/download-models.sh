@@ -14,7 +14,7 @@ models=(
   "google/gemma-4-31B-it-qat-q4_0-unquantized-assistant|96d4c8ca3cb38c107a8478587878124895d1e844|${model_root}/gemma4/31b/mtp-assistant/96d4c8ca3cb38c107a8478587878124895d1e844|model.safetensors|50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9|939042560"
 )
 
-required_bytes=35200000000
+required_bytes=36000000000
 available_bytes="$(df -B1 --output=avail /mnt/e | tail -1 | tr -d ' ')"
 
 echo "Official source: https://huggingface.co/google"
@@ -52,13 +52,14 @@ fi
 }
 
 mkdir -p "${cache_root}"
+export HF_HOME="${cache_root}"
+export HF_XET_HIGH_PERFORMANCE=1
 
 for entry in "${models[@]}"; do
   IFS='|' read -r model revision target filename expected_sha expected_bytes <<<"${entry}"
   mkdir -p "${target}"
   "${hf_bin}" download "${model}" \
     --revision "${revision}" \
-    --cache-dir "${cache_root}" \
     --local-dir "${target}"
 
   actual_file="${target}/${filename}"
