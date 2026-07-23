@@ -1,0 +1,31 @@
+name: local-voice-agent
+
+services:
+  postgres:
+    image: postgres:18.4-bookworm@sha256:1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296
+    pull_policy: never
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:55432:5432"
+    environment:
+      POSTGRES_DB: local_voice_agent
+      POSTGRES_USER: local_voice_agent
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - type: bind
+        source: ${LVA_POSTGRES_DATA_DIR:?set LVA_POSTGRES_DATA_DIR}
+        target: /var/lib/postgresql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U local_voice_agent -d local_voice_agent
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+secrets:
+  postgres_password:
+    file: ${LVA_POSTGRES_PASSWORD_FILE:?set LVA_POSTGRES_PASSWORD_FILE}

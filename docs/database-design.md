@@ -1,10 +1,12 @@
 # Database design
 
-PostgreSQL 18 is the intended authoritative state store. Installation remains
-approval-gated because no existing server or client is present and a Windows
-service/installer may require elevation. Active cluster data belongs only at
+PostgreSQL 18.4 is the authoritative state store. It runs in the existing
+Docker Desktop backend from an exact digest, publishes only
+`127.0.0.1:55432`, and does not install a Windows service or change PATH,
+firewall, or Windows features. Active cluster data belongs only at
 `E:\Data\DB\Active\LocalVoiceAgent`; logical dumps belong under
-`E:\Data\DB\Dumps`.
+`E:\Data\DB\Dumps`. The generated database password is outside Git at
+`E:\Data\LocalVoiceAgent\secrets\postgres-password`.
 
 ## Ownership
 
@@ -59,3 +61,9 @@ Migrations are forward-only in normal operation. Every schema change includes
 a logical backup command, compatibility window, application rollback target,
 and explicit data-loss assessment. Destructive down migrations are not
 automatic.
+
+The initial `0001_initial` migration and async store have been exercised
+against PostgreSQL 18.4. The integration test verifies exact idempotent replay,
+conflicting-key rejection, compare-and-swap failure for a stale writer,
+transactional transition/outbox insertion, and recovery through a new
+database connection.

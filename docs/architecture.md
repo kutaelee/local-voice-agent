@@ -55,8 +55,10 @@ approval binding and resumes the same voice turn only after approval. The
 WSL-to-Windows process smoke completed a model-selected `read_file` and
 persisted metadata-only evidence. The executor revalidates those bindings,
 serializes duplicate keys in process, and returns the prior terminal response
-without repeating a successful call. Durable
-idempotency across process restarts remains a PostgreSQL milestone.
+without repeating a successful call. The PostgreSQL adapter now durably
+recovers exact idempotent tool records and rejects stale versions across new
+connections; wiring every live WebSocket transition through that adapter is
+the next composition milestone.
 
 Each attempted execution emits structured JSONL audit events and an atomic,
 metadata-only evidence record outside Git. Tool arguments, returned file
@@ -106,7 +108,8 @@ JSONB; lifecycle fields remain typed columns.
 
 SQLAlchemy 2.0.51 is selected for the first implementation because 2.1 is
 still beta as of 2026-07-23. Alembic 1.18.5 and asyncpg are compatible with
-PostgreSQL 18. Redis is deferred.
+PostgreSQL 18. The exact PostgreSQL 18.4 container is loopback-only and keeps
+its data and generated secret outside Git. Redis is deferred.
 
 Aggregate ownership, compare-and-swap transitions, idempotency constraints,
 transaction boundaries, and migration rollback are detailed in

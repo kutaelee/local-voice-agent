@@ -15,11 +15,11 @@ Local Voice Agent Windows installation plan
 Already present:
 - Git, Git LFS, GitHub CLI, uv, JDK 17, WSL2 Ubuntu, Docker Desktop
 - Android command-line tools 22.0, API 37, Build Tools 36.0.0, ADB 37.0.0
+- PostgreSQL 18.4 exact container image; project start/migration scripts
 
 Missing and not installed by this script:
 - Node.js
 - FFmpeg
-- PostgreSQL 18
 - Windows fallback runtime
 
 Approval-gated:

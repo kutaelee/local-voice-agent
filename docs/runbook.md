@@ -246,8 +246,35 @@ with a deterministic mock model response and the real Windows executor. It
 must be given the executor URL, exact WSL host IP, and the same transient
 token; its final output includes the metadata-only evidence ID.
 
-A restart clears the current in-memory idempotency cache; do not treat it as
-durable until PostgreSQL-backed execution persistence is implemented.
+A restart still clears the Tool Executor's response-body cache. The PC-server
+PostgreSQL adapter durably preserves normalized execution identity, state,
+versioned events, and outbox records; live composition must consult it before
+reissuing an execution.
+
+## PostgreSQL
+
+The database uses the existing Docker Desktop backend and binds only to
+`127.0.0.1:55432`. The start script creates a random external secret on first
+use, refuses a non-empty unregistered data directory, starts the exact pinned
+image, waits for health, and writes a secret-free status record:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\start-postgres.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\migrate-postgres.ps1
+```
+
+Stop without deleting the container, cluster, secret, or network:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\stop-postgres.ps1
+```
+
+Rollback is application-first: stop the PC server, switch back to a compatible
+Git revision, and keep the database intact. Never run `compose down -v`, remove
+the bind directory, or downgrade a destructive migration automatically.
 
 ## Computer-use
 

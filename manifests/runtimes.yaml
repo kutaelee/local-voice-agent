@@ -333,11 +333,21 @@ runtimes:
   - id: postgresql-18.4
     role: database
     version: "18.4"
-    status: approval_required
+    status: installed_healthy_initial_migration_and_async_persistence_test_passed
+    installed_at: "2026-07-24T02:09:12+09:00"
+    image: postgres:18.4-bookworm
+    image_digest: sha256:1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296
+    endpoint: "127.0.0.1:55432"
     data_path: 'E:\Data\DB\Active\LocalVoiceAgent'
+    secret_path: 'E:\Data\LocalVoiceAgent\secrets\postgres-password'
+    migration: 0001_initial
+    test_status: idempotency_cas_outbox_reconnect_passed
     source: https://www.postgresql.org/docs/18/
+    rollback: stop container without deleting data or secret; switch application revision
   - id: sqlalchemy-2.0.51
     role: orm
     version: 2.0.51
-    status: planned
+    status: installed_asyncpg_in_pc_server_environment
+    alembic: 1.18.5
+    asyncpg: 0.31.0
     note: SQLAlchemy 2.1 is beta as of the research date
