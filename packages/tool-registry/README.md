@@ -16,6 +16,10 @@ The current definitions are contracts, not an executable registry:
 - deletion: one hash-pinned file or one empty directory at Level 2
 - development: registered test, lint, format, build, and loopback-only
   development-server profiles; logs are retrieved by evidence ID
+- system: service observation, registered non-elevated process start, and
+  identity-bound Level 2 process stop
+- restricted shell: exact allowlisted executable/arguments/environment at
+  Level 2, while remaining disabled in the model-visible registry by default
 
 Path normalization, workspace containment, reparse-point defense, approval,
 execution, and rollback remain executor responsibilities; JSON Schema alone
@@ -34,3 +38,7 @@ Git mutation contracts bind exact commit and worktree/index fingerprints.
 `git_push.force` is always false, merge is fast-forward-only, and clean cannot
 include ignored files. Level 3 definitions exist for explicit policy denial
 and auditability, not to make destructive operations normally available.
+
+Process termination binds the executor handle, PID, and observed start time to
+defend against PID reuse. The restricted shell has no raw shell command
+string, elevation path, or caller-supplied environment variables.

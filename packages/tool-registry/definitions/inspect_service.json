@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "name": "inspect_service",
+  "description": "Inspect one Windows service by its exact service name.",
+  "risk_level": 0,
+  "timeout_seconds": 10,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["service_name"],
+    "properties": {
+      "service_name": {"type": "string", "minLength": 1, "maxLength": 256}
+    },
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "name": "list_services",
+  "description": "List bounded Windows service metadata without changing service state.",
+  "risk_level": 0,
+  "timeout_seconds": 15,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "state": {
+        "type": "string",
+        "enum": ["all", "running", "stopped"],
+        "default": "all"
+      },
+      "name_prefix": {"type": "string", "maxLength": 128},
+      "limit": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100}
+    },
+    "additionalProperties": false
+  }
+}

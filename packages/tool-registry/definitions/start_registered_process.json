@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "name": "start_registered_process",
+  "description": "Start a preconfigured non-elevated process profile with an executor-issued handle.",
+  "risk_level": 1,
+  "timeout_seconds": 120,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": ["profile_id", "idempotency_key"],
+    "properties": {
+      "profile_id": {"type": "string", "minLength": 1, "maxLength": 128},
+      "workspace_id": {"type": "string", "minLength": 1},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

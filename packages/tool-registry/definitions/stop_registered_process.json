@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "name": "stop_registered_process",
+  "description": "Stop one exact registered process after per-execution approval and identity revalidation.",
+  "risk_level": 2,
+  "timeout_seconds": 60,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "process_handle",
+      "expected_pid",
+      "expected_started_at",
+      "approval_id",
+      "idempotency_key"
+    ],
+    "properties": {
+      "process_handle": {"type": "string", "format": "uuid"},
+      "expected_pid": {"type": "integer", "minimum": 1},
+      "expected_started_at": {"type": "string", "format": "date-time"},
+      "approval_id": {"type": "string", "format": "uuid"},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}
