@@ -53,6 +53,10 @@ SQLAlchemy 2.0.51 is selected for the first implementation because 2.1 is
 still beta as of 2026-07-23. Alembic 1.18.5 and asyncpg are compatible with
 PostgreSQL 18. Redis is deferred.
 
+Aggregate ownership, compare-and-swap transitions, idempotency constraints,
+transaction boundaries, and migration rollback are detailed in
+[`database-design.md`](database-design.md).
+
 ## Protocol
 
 WebSocket envelopes contain `schema_version`, `type`, `session_id`,
