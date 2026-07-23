@@ -5,7 +5,9 @@ conversation and policy-controlled computer use. The target workstation is a
 Windows 11 PC with an RTX 5090 32 GB GPU; inference runtimes run in WSL2 and
 the Android client uses Kotlin and Jetpack Compose.
 
-Current status: **Slices 0-2 complete; Slices 3-9 are under integration**.
+Current status: **core implementation is integrated; final acceptance is in
+progress**. Thirteen of the twenty product criteria are verified and seven
+remain partial; see [docs/acceptance-status.md](docs/acceptance-status.md).
 The pinned 12B W4A16 model passed text, image, structured-output, streaming,
 and function-calling smoke tests. The exact 12B Q4_0 target/assistant pair
 also passed text-only MTP loading and API smoke on a pinned upstream-fix
@@ -56,10 +58,10 @@ and latency smoke set. Its exact 12B target/assistant pair is recognized as
 offload; its fixed-condition MTP latency run is still pending. A pinned native
 Windows llama.cpp Q4_0 fallback also
 passes CPU-only Korean text, tool/schema, and streaming while WSL/GPU work
-continues. No full product acceptance is claimed until MTP/runtime model
-comparison,
-computer-use, physical-device barge-in/audio, and the required failure
-matrix pass.
+continues. The required 24-case failure/security matrix and the bounded
+computer-use smokes pass. No full product acceptance is claimed until the
+remaining MTP/runtime measurements, live model switch, physical-device
+barge-in/audio, and clean-environment reproduction are complete.
 
 ## Architecture
 
