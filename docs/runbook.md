@@ -16,6 +16,31 @@ bash scripts/install-wsl.sh --plan-only
 bash scripts/download-models.sh --plan-only
 ```
 
+Selective model transfer:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\download-models.ps1 `
+  -Execute -Only mtp_target_12b
+```
+
+Offline target/assistant inspection:
+
+```bash
+python scripts/inspect-model-pair.py \
+  /mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4/12b/mtp-target/b6ed86275a6a5735884e208bfed95b445a684ca2 \
+  /mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4/12b/mtp-assistant/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd \
+  --target-format unquantized
+```
+
+After a local vLLM endpoint passes health:
+
+```bash
+python scripts/smoke-openai-api.py \
+  --model gemma4-12b-mtp \
+  --include-image \
+  --output /mnt/e/Data/LocalVoiceAgent/runtime/evidence/vllm-12b-mtp-smoke.json
+```
+
 ## Installation gates
 
 1. Confirm manifests reference exact official revisions.

@@ -18,7 +18,9 @@ model repositories, and upstream release notes are used for selections.
 - The 32 GB RTX 5090 cannot safely host 31B BF16 (Google estimates 69.9 GB
   including 20% loading overhead). Q4/W4A16 is required for 31B.
 - vLLM stable 0.25.1 explicitly supports Gemma 4 Unified, multimodal inputs,
-  reasoning, tool use, structured output, and the Gemma 4 MTP path.
+  reasoning, tool use, structured output, and the Gemma 4 MTP path. Its
+  released embedding-share guard has a measured Gemma 4 Unified MTP
+  regression; upstream commit `b2b8f679d058…` fixes that exact guard.
 - SGLang stable 0.5.15.post1 supports Gemma 4; the dedicated Gemma 4 MTP head
   landed in 0.5.12. It remains a benchmark candidate until function calling,
   multimodal paths, and MTP are tested on this workstation.
@@ -58,7 +60,8 @@ model repositories, and upstream release notes are used for selections.
 | Gemma default target | `google/gemma-4-31B-it-qat-w4a16-ct` @ `52f3f65…` | Google HF | Download/test pending | N/A | Yes | No matching W4A16 assistant selected | Text/image, no audio | Native model protocol | W4A16 compressed-tensors | Yes, on-demand candidate |
 | Gemma MTP target | `google/gemma-4-31B-it-qat-q4_0-unquantized` @ `1e4d8be…` | Google HF | CPU-offload feasibility gate | N/A | Yes | Exact target for 31B assistant | Text/image, no audio | Output-equivalence test required | Q4_0 QAT extracted half precision | Conditional |
 | Gemma assistant | `google/gemma-4-31B-it-qat-q4_0-unquantized-assistant` @ `96d4c8c…` | Google HF | Download/test pending | N/A | Yes | Dedicated assistant | Follows target path | Output-equivalence test required | Q4_0 QAT assistant | Yes, exact-pair gated |
-| vLLM | 0.25.1 stable | vLLM docs/releases | CUDA supports NVIDIA; local test required | Official | Official | Official Gemma 4 path | Official | Gemma4 parser + structured outputs | compressed-tensors, FP8/NVFP4 paths | Primary |
+| vLLM | 0.25.1 stable | vLLM docs/releases | CUDA passed locally | Passed MTP OFF | Download pending | Dispatch passes; embedding share regression blocks run | Image passed; audio/video pending | Gemma4 parser + structured outputs passed | compressed-tensors passed | Stable baseline |
+| vLLM MTP fix | commit `b2b8f679d058…`, cu130 wheel | vLLM commit/PR/nightly index | Test pending | Exact-pair test pending | Conditional | Fixes measured target-embedding share regression | Regression test required | Regression test required | Same stack, exact wheel test pending | MTP candidate |
 | SGLang | 0.5.15.post1 stable | SGLang releases/docs | CUDA 13 / Blackwell features; local test required | Official | Official | Added in 0.5.12 | Official VLM path | Local parser validation required | Multiple; exact QAT path test required | Comparison |
 | Transformers | >=5.10.1, lock after runtime resolution | Google Gemma function-calling guide | Wheels/test required | Official | Official | Official MTP guide | Official | `apply_chat_template(tools=…)` | Model dependent | Validation oracle |
 | PyTorch | Runtime-pinned 2.11-class CUDA wheel | vLLM/SGLang release notes | SM 12.0 build must be verified | Yes | Yes | N/A | Yes | N/A | FP8/NVFP4 ecosystem | Per-runtime lock |
@@ -80,38 +83,43 @@ model repositories, and upstream release notes are used for selections.
 
 ## Known issues and gates
 
-1. Google requires the assistant and target QAT precision to match. A measured
-   vLLM attempt using the 12B W4A16 target with the Q4_0-unquantized assistant
-   correctly selected `Gemma4MTPModel` and `method='mtp'`, then failed during
-   compile: the activation width was 4,864 while the assistant projection
-   expected 7,680. This pair is rejected. The exact 12B and 31B
-   `qat-q4_0-unquantized` targets are pinned in the manifests for the next
-   runtime gate.
+1. Google requires the assistant and target QAT precision to match. The exact
+   12B and 31B `qat-q4_0-unquantized` targets are therefore pinned for MTP;
+   W4A16 remains the non-MTP serving format.
    vLLM 0.25.1 requires
    `{"method":"mtp","model":"<assistant>","num_speculative_tokens":1}` in
    `--speculative-config`; a log that resolves the method as `draft_model` is
    an explicit failure.
-2. The 31B W4A16 repository is about 21.7 GiB on disk and Google estimates
+2. A measured vLLM 0.25.1 probe correctly selected `Gemma4MTPModel` and
+   `method='mtp'`, then failed during compile: it kept the assistant's
+   1,024-wide embedding separate, concatenated it with the 3,840-wide target
+   state (4,864), and passed that to a projection expecting 7,680. Upstream
+   PR 47953 restricts the embedding-width guard to EAGLE so MTP shares the
+   target embedding as designed. The fix commit
+   `b2b8f679d0589f0c956f3e734cc70dab07b27b8a` landed on 2026-07-21, after
+   v0.25.1 was published on 2026-07-14. It must be tested in a separate,
+   rollback-safe environment; the stable environment remains untouched.
+3. The 31B W4A16 repository is about 21.7 GiB on disk and Google estimates
    about 17.5 GB static inference memory for Q4_0, excluding KV cache and
    software. The exact 31B MTP target is about 58.3 GiB on disk and cannot
    reside wholly in 32 GB VRAM; it is conditional on a measured CPU-offload
    feasibility test. Context length must start conservatively.
-3. MTP is disabled by default for tool execution until JSON-schema validity,
+4. MTP is disabled by default for tool execution until JSON-schema validity,
    tool selection, and argument accuracy are statistically no worse than MTP
    off.
-4. Stable releases are preferred. A nightly is allowed only if a reproduced
+5. Stable releases are preferred. A nightly is allowed only if a reproduced
    defect blocks a required capability and the exact build/commit and stable
    rollback are recorded.
-5. No Windows-native vLLM deployment is selected. WSL2 is the primary path.
-6. Android 17 requires explicit local-network permission behavior for LAN
+6. No Windows-native vLLM deployment is selected. WSL2 is the primary path.
+7. Android 17 requires explicit local-network permission behavior for LAN
    communication and foreground-service microphone rules.
-7. On this WSL 2 host, vLLM 0.25.1's default V2 Model Runner failed before
+8. On this WSL 2 host, vLLM 0.25.1's default V2 Model Runner failed before
    weight loading with `RuntimeError: UVA is not available`. The documented
    `VLLM_USE_V2_MODEL_RUNNER=0` switch selected the V1 runner, which loaded the
    exact 12B checkpoint and passed health, text, function calling, structured
    output, streaming, and image requests. This is a measured host-specific
    compatibility setting, not a claim that every WSL host lacks UVA.
-8. V1 startup reported failed best-effort multimodal warmups, but an actual
+9. V1 startup reported failed best-effort multimodal warmups, but an actual
    in-memory PNG request returned the correct dominant color. Audio and video
    requests remain separate gates. The default model sampling configuration
    is disabled in repeatable smoke/benchmark launches with
@@ -131,6 +139,7 @@ model repositories, and upstream release notes are used for selections.
 - [vLLM MTP configuration](https://docs.vllm.ai/en/stable/features/speculative_decoding/mtp/)
 - [vLLM Gemma 4 recipe](https://docs.vllm.ai/projects/recipes/en/stable/Google/Gemma4.html)
 - [vLLM releases](https://github.com/vllm-project/vllm/releases)
+- [vLLM MTP embedding-share fix](https://github.com/vllm-project/vllm/pull/47953)
 - [SGLang releases](https://github.com/sgl-project/sglang/releases)
 - [SGLang installation](https://docs.sglang.ai/get-started/install.html)
 - [NVIDIA CUDA GPU compute capability](https://developer.nvidia.com/cuda/gpus)

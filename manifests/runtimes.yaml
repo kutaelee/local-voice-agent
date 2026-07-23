@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-23T17:07:38+09:00"
+generated_at: "2026-07-23T17:50:00+09:00"
 runtimes:
   - id: huggingface-hub-1.24.0
     role: model_download_tool
@@ -27,7 +27,26 @@ runtimes:
     wheel_sha256: 16fc7a28df1576eb6f7ca0455026551b8f9adb674c19c66059359ef3e964bd1e
     package_check: 192_packages_compatible
     gpu_smoke: rtx_5090_compute_capability_12_0_cuda_matmul_passed
+    gemma4_mtp_status: blocked_by_embedding_share_regression_fixed_after_release
     rollback: retain previous versioned environment and switch config pointer
+  - id: vllm-b2b8f679d058-cu130
+    role: mtp_fix_candidate
+    version: 0.23.1rc1.dev1352+gb2b8f679d
+    commit: b2b8f679d0589f0c956f3e734cc70dab07b27b8a
+    status: planned_exact_commit_wheel
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/vllm-b2b8f679d058-cu130
+    python: "3.12"
+    cuda: "13.0"
+    source: https://github.com/vllm-project/vllm/commit/b2b8f679d0589f0c956f3e734cc70dab07b27b8a
+    fix_pr: https://github.com/vllm-project/vllm/pull/47953
+    wheel_source: https://wheels.vllm.ai/b2b8f679d0589f0c956f3e734cc70dab07b27b8a/cu130/vllm/
+    wheel_size_bytes: 308229710
+    wheel_etag: 56e4af91472c65b6a21d8100512a6c43-37
+    wheel_sha256: pending_download
+    installed_at: null
+    reason: restrict_embedding_width_share_guard_to_eagle_so_gemma4_mtp_shares_target_embeddings
+    known_issues: unreleased_commit_requires_full_regression_smoke
+    rollback: switch back to untouched vllm-0.25.1 environment
   - id: sglang-0.5.15.post1
     role: comparison_candidate
     version: 0.5.15.post1

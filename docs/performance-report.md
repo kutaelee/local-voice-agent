@@ -44,9 +44,12 @@ true VRAM peak.
 The first MTP launch used the already-downloaded W4A16 target only as a
 compatibility probe. vLLM selected its dedicated Gemma 4 MTP implementation,
 but compilation failed on a measured tensor-width mismatch (4,864 versus
-7,680). No latency, acceptance-rate, or speedup result is reported for that
-failed run. The benchmark now requires the exact
-`qat-q4_0-unquantized` target/assistant pair.
+7,680). Offline tensor inspection confirmed that the assistant projection
+expects the target's 3,840-wide embedding to be shared; vLLM 0.25.1 instead
+kept the assistant's 1,024-wide embedding. Upstream fixed this after the
+stable release. No latency, acceptance-rate, or speedup result is reported
+for that failed run. The benchmark now requires both the exact
+`qat-q4_0-unquantized` pair and the pinned fix runtime.
 
 The first PowerShell 5.1 request encoded Korean incorrectly. Sending explicit
 UTF-8 bytes, and then repeating with the WSL Python client, produced correct
