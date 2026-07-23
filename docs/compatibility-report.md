@@ -96,6 +96,17 @@ model repositories, and upstream release notes are used for selections.
 5. No Windows-native vLLM deployment is selected. WSL2 is the primary path.
 6. Android 17 requires explicit local-network permission behavior for LAN
    communication and foreground-service microphone rules.
+7. On this WSL 2 host, vLLM 0.25.1's default V2 Model Runner failed before
+   weight loading with `RuntimeError: UVA is not available`. The documented
+   `VLLM_USE_V2_MODEL_RUNNER=0` switch selected the V1 runner, which loaded the
+   exact 12B checkpoint and passed health, text, function calling, structured
+   output, streaming, and image requests. This is a measured host-specific
+   compatibility setting, not a claim that every WSL host lacks UVA.
+8. V1 startup reported failed best-effort multimodal warmups, but an actual
+   in-memory PNG request returned the correct dominant color. Audio and video
+   requests remain separate gates. The default model sampling configuration
+   is disabled in repeatable smoke/benchmark launches with
+   `--generation-config vllm`; requests specify sampling explicitly.
 
 ## Official references
 

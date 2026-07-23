@@ -19,7 +19,7 @@ models:
     runtime_candidates: [vllm-0.25.1, sglang-0.5.15.post1]
     mtp_assistant: google/gemma-4-12B-it-qat-q4_0-unquantized-assistant
     downloaded_at: "2026-07-23T16:02:49+09:00"
-    validation_status: sha256_and_offline_structure_passed_runtime_loading_pending
+    validation_status: vllm_0_25_1_v1_load_text_tool_structured_stream_image_passed
   - role: default_mtp_assistant
     model_id: google/gemma-4-12B-it-qat-q4_0-unquantized-assistant
     repository: https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-unquantized-assistant

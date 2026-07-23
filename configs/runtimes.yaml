@@ -7,3 +7,8 @@ startup:
   health_timeout_seconds: 300
   model_load_timeout_seconds: 900
   require_gemma4_mtp_log_path: true
+vllm:
+  model_runner: v1
+  model_runner_reason: wsl_cuda_uva_unavailable_for_v2
+  environment:
+    VLLM_USE_V2_MODEL_RUNNER: "0"

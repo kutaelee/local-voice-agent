@@ -30,11 +30,19 @@ Status: Slice 0 only. No product acceptance test has run.
 | vLLM isolated dependency install | Passed | vLLM 0.25.1, Python 3.12.13, torch 2.11.0+cu130; 192-package compatibility check |
 | vLLM RTX 5090 CUDA smoke | Passed | Compute capability 12.0; CUDA matrix multiplication returned expected 1024.0 |
 | vLLM CLI capability inspection | Passed | `gemma4` tool parser and speculative/chat/model/GPU configuration flags present |
+| vLLM 12B default V2 runner | Failed | WSL CUDA UVA unavailable; engine stopped before weight load |
+| vLLM 12B V1 runner load/health | Passed | 9.56 GiB checkpoint; health 200; exact W4A16 compressed-tensors model |
+| vLLM 12B Korean text | Passed | Correct UTF-8 response: 대한민국의 수도는 서울입니다 |
+| vLLM 12B function calling | Passed | `inspect_gpu` selected with valid `{}` arguments and `tool_calls` finish |
+| vLLM 12B structured output | Passed | Strict schema returned South Korea / Seoul JSON |
+| vLLM 12B streaming | Passed | 49 SSE chunks; preliminary single-sample TTFT 175.88 ms |
+| vLLM 12B image input | Passed | In-memory 32x32 red PNG classified as `Red` |
+| vLLM 12B controlled stop | Passed | API and engine processes exited; VRAM returned to 1,107 MiB |
 | Download state isolation | Passed | Explicit cache-side state path; 29,372-byte live transfer and 1/1 resume passed |
 | Protocol/tool contract catalog consistency | Passed | 22 events, 3 seed tools; drift checks and Draft 2020-12 schema validation passed |
 | Benchmark prompt catalog | Passed | 160 unique Korean cases with required 20/30/20/20/20/20/10/20 category counts |
 | Mandatory failure/security test catalog | Passed | All 24 required case IDs have explicit expected outcomes; execution remains `NOT_RUN` |
 
-Model artifact download and SHA-256 validation are in progress. All functional,
-security, Android, model-loading, MTP, benchmark, and rollback tests are
-`NOT_RUN`.
+31B artifact download, SGLang, MTP, audio/video, full benchmark, security,
+Android, rollback, and product acceptance tests remain `NOT_RUN` or in
+progress.
