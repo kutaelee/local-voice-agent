@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "name": "ui_click_coordinate",
+  "description": "Click exact screen coordinates bound to a fresh screenshot and display geometry.",
+  "risk_level": 2,
+  "timeout_seconds": 30,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "screenshot_evidence_id",
+      "screenshot_sha256",
+      "screen_width",
+      "screen_height",
+      "x",
+      "y",
+      "approval_id",
+      "idempotency_key"
+    ],
+    "properties": {
+      "screenshot_evidence_id": {"type": "string", "format": "uuid"},
+      "screenshot_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "screen_width": {"type": "integer", "minimum": 1, "maximum": 32768},
+      "screen_height": {"type": "integer", "minimum": 1, "maximum": 32768},
+      "x": {"type": "integer", "minimum": 0, "maximum": 32767},
+      "y": {"type": "integer", "minimum": 0, "maximum": 32767},
+      "approval_id": {"type": "string", "format": "uuid"},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "name": "ui_focus_window",
+  "description": "Focus a freshly observed top-level window without sending input.",
+  "risk_level": 1,
+  "timeout_seconds": 15,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": ["window_ref", "window_state_fingerprint", "idempotency_key"],
+    "properties": {
+      "window_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+      "window_state_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

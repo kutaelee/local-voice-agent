@@ -23,6 +23,8 @@ The current definitions are contracts, not an executable registry:
 - browser: isolated session lifecycle, bounded DOM/accessibility/evidence
   reads, and freshness-bound interaction; external form submission is a
   separate Level 2 tool
+- Windows UI: accessibility-first observation and interaction at Levels 0-1;
+  coordinate click/drag is a fresh-screenshot-bound Level 2 fallback
 
 Path normalization, workspace containment, reparse-point defense, approval,
 execution, and rollback remain executor responsibilities; JSON Schema alone
@@ -50,3 +52,7 @@ Browser click, type, and select operations bind a fresh page-state
 fingerprint. They cannot submit; `browser_submit` separately binds the reviewed
 page and redacted payload fingerprints to an exact approval. Downloads remain
 executor-tracked evidence and are never opened automatically.
+
+UI text entry cannot submit, and the key tool omits Enter and destructive
+keys. Coordinate actions bind screenshot evidence ID, SHA-256, and screen
+dimensions so a resolution or display-layout change invalidates approval.

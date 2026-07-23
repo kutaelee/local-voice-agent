@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "name": "ui_get_accessibility_tree",
+  "description": "Read a bounded Windows UI Automation accessibility tree.",
+  "risk_level": 0,
+  "timeout_seconds": 30,
+  "idempotency": "read_only",
+  "parameters": {
+    "type": "object",
+    "required": ["window_ref"],
+    "properties": {
+      "window_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+      "max_depth": {"type": "integer", "minimum": 1, "maximum": 20, "default": 8},
+      "max_nodes": {"type": "integer", "minimum": 1, "maximum": 5000, "default": 1000}
+    },
+    "additionalProperties": false
+  }
+}

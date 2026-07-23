@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "name": "ui_click_element",
+  "description": "Invoke or click a freshly observed accessibility element with no external side effect.",
+  "risk_level": 1,
+  "timeout_seconds": 30,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "window_ref",
+      "element_ref",
+      "ui_state_fingerprint",
+      "external_side_effect",
+      "idempotency_key"
+    ],
+    "properties": {
+      "window_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+      "element_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+      "ui_state_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "external_side_effect": {"const": false},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

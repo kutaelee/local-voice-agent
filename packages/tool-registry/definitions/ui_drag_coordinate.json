@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "name": "ui_drag_coordinate",
+  "description": "Drag between exact coordinates bound to a fresh screenshot and display geometry.",
+  "risk_level": 2,
+  "timeout_seconds": 30,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "screenshot_evidence_id",
+      "screenshot_sha256",
+      "screen_width",
+      "screen_height",
+      "start_x",
+      "start_y",
+      "end_x",
+      "end_y",
+      "approval_id",
+      "idempotency_key"
+    ],
+    "properties": {
+      "screenshot_evidence_id": {"type": "string", "format": "uuid"},
+      "screenshot_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "screen_width": {"type": "integer", "minimum": 1, "maximum": 32768},
+      "screen_height": {"type": "integer", "minimum": 1, "maximum": 32768},
+      "start_x": {"type": "integer", "minimum": 0, "maximum": 32767},
+      "start_y": {"type": "integer", "minimum": 0, "maximum": 32767},
+      "end_x": {"type": "integer", "minimum": 0, "maximum": 32767},
+      "end_y": {"type": "integer", "minimum": 0, "maximum": 32767},
+      "duration_ms": {"type": "integer", "minimum": 100, "maximum": 5000, "default": 500},
+      "approval_id": {"type": "string", "format": "uuid"},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "name": "ui_type_text",
+  "description": "Type bounded text into a freshly observed editable UI Automation element.",
+  "risk_level": 1,
+  "timeout_seconds": 30,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "window_ref",
+      "element_ref",
+      "ui_state_fingerprint",
+      "text",
+      "submit",
+      "idempotency_key"
+    ],
+    "properties": {
+      "window_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+      "element_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+      "ui_state_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "text": {"type": "string", "maxLength": 16384},
+      "submit": {"const": false},
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}

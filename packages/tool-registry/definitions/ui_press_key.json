@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "name": "ui_press_key",
+  "description": "Send one allowlisted non-submit key chord to a freshly observed window.",
+  "risk_level": 1,
+  "timeout_seconds": 15,
+  "idempotency": "required",
+  "parameters": {
+    "type": "object",
+    "required": ["window_ref", "ui_state_fingerprint", "key", "modifiers", "idempotency_key"],
+    "properties": {
+      "window_ref": {"type": "string", "minLength": 1, "maxLength": 512},
+      "ui_state_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "key": {
+        "type": "string",
+        "enum": [
+          "ARROW_UP",
+          "ARROW_DOWN",
+          "ARROW_LEFT",
+          "ARROW_RIGHT",
+          "ESCAPE",
+          "TAB",
+          "HOME",
+          "END",
+          "PAGE_UP",
+          "PAGE_DOWN"
+        ]
+      },
+      "modifiers": {
+        "type": "array",
+        "maxItems": 3,
+        "uniqueItems": true,
+        "items": {"type": "string", "enum": ["ALT", "CTRL", "SHIFT"]}
+      },
+      "idempotency_key": {"type": "string", "format": "uuid"}
+    },
+    "additionalProperties": false
+  }
+}
