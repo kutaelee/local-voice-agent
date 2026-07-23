@@ -78,6 +78,10 @@ model repositories, and upstream release notes are used for selections.
    assistant checkpoints are labeled Q4_0-unquantized QAT. Do not claim MTP
    compatibility until vLLM and SGLang load the exact pair and the log shows
    the Gemma 4 MTP path, not generic draft decoding.
+   vLLM 0.25.1 requires
+   `{"method":"mtp","model":"<assistant>","num_speculative_tokens":1}` in
+   `--speculative-config`; a log that resolves the method as `draft_model` is
+   an explicit failure.
 2. The 31B W4A16 repository is about 21.7 GiB on disk and Google estimates
    about 17.5 GB static inference memory for Q4_0, excluding KV cache and
    software. Context length must start at 8K with conservative GPU memory
@@ -103,6 +107,7 @@ model repositories, and upstream release notes are used for selections.
 - [Hugging Face Hub downloads](https://huggingface.co/docs/huggingface_hub/guides/download)
 - [Hugging Face Hub environment variables](https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables)
 - [vLLM supported models](https://docs.vllm.ai/en/stable/models/supported_models/)
+- [vLLM MTP configuration](https://docs.vllm.ai/en/stable/features/speculative_decoding/mtp/)
 - [vLLM Gemma 4 recipe](https://docs.vllm.ai/projects/recipes/en/stable/Google/Gemma4.html)
 - [vLLM releases](https://github.com/vllm-project/vllm/releases)
 - [SGLang releases](https://github.com/sgl-project/sglang/releases)

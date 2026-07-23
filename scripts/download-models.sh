@@ -8,6 +8,7 @@ python_bin="${download_env}/bin/python"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 model_root="/mnt/e/AI/Models/Standalone/LocalVoiceAgent"
 cache_root="/mnt/e/Cache/LocalVoiceAgent/huggingface"
+download_workers="${MODEL_DOWNLOAD_WORKERS:-16}"
 
 models=(
   "google/gemma-4-12B-it-qat-w4a16-ct|1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|${model_root}/gemma4/12b/target/1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|model.safetensors|60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3|10264229896"
@@ -19,10 +20,16 @@ models=(
 required_bytes=36000000000
 available_bytes="$(df -B1 --output=avail /mnt/e | tail -1 | tr -d ' ')"
 
+[[ "${download_workers}" =~ ^([1-9]|1[0-6])$ ]] || {
+  echo "MODEL_DOWNLOAD_WORKERS must be an integer from 1 to 16." >&2
+  exit 3
+}
+
 echo "Official source: https://huggingface.co/google"
 echo "License: Apache-2.0"
 echo "Canonical target: ${model_root}"
 echo "Cache: ${cache_root}"
+echo "Parallel range workers: ${download_workers}"
 echo "Required download estimate: ${required_bytes} bytes"
 echo "Available on E: ${available_bytes} bytes"
 
@@ -84,7 +91,7 @@ for entry in "${models[@]}"; do
       "${partial_file}" \
       "${expected_bytes}" \
       "${expected_sha}" \
-      --workers 8
+      --workers "${download_workers}"
 
     actual_bytes="$(stat -c '%s' "${partial_file}")"
     actual_sha="$(sha256sum "${partial_file}" | awk '{print $1}')"

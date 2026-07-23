@@ -146,6 +146,7 @@ def main() -> int:
         min(CHUNK_SIZE, args.size_bytes - index * CHUNK_SIZE)
         for index in completed
     )
+    session_transferred = 0
     lock = threading.Lock()
     started = time.monotonic()
     print(
@@ -172,6 +173,7 @@ def main() -> int:
             with lock:
                 completed.add(index)
                 transferred += chunk_bytes
+                session_transferred += chunk_bytes
                 state["completed"] = sorted(completed)
                 state["updated_at"] = time.time()
                 write_state(state_path(args.output), state)
@@ -179,7 +181,7 @@ def main() -> int:
                 print(
                     f"progress: {len(completed)}/{chunks} chunks, "
                     f"{transferred}/{args.size_bytes} bytes, "
-                    f"{transferred / elapsed / 1024 / 1024:.2f} MiB/s",
+                    f"{session_transferred / elapsed / 1024 / 1024:.2f} MiB/s",
                     flush=True,
                 )
 
