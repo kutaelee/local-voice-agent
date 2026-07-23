@@ -139,3 +139,18 @@ def test_shared_vllm_mtp_benchmark_is_functionally_gated_and_yields() -> None:
     assert "LVA_RUNTIME_API_KEY = $apiKey" in shared
     assert "Bearer " not in shared
     assert "/free" not in shared
+
+
+def test_live_model_switch_is_identity_checked_and_yields_to_comfyui() -> None:
+    shared = script("run-shared-live-model-switch.ps1")
+
+    assert "12B -> 31B -> 12B" in shared
+    assert "Get-ComfyUiQueueState" in shared
+    assert "freeMemory -lt 28500" in shared
+    assert "Wait-ChildOrYield" in shared
+    assert "Stop-OwnedModel" in shared
+    assert "Assert-ModelIdentity" in shared
+    assert "/v1/models" in shared
+    assert "stopped_after_verified_12b_return" in shared
+    assert "No vLLM process was started." in shared
+    assert "/free" not in shared

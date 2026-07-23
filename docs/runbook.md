@@ -246,6 +246,19 @@ process is cleaned, and 12B is reloaded. If cleanup fails, no fallback load is
 attempted. Do not invoke a live switch until the ComfyUI queue is idle and the
 free-VRAM gate passes.
 
+The acceptance verifier performs a real `12B -> 31B -> 12B` sequence, checks
+the authenticated model identity after every load, then stops the returned
+12B to release the shared GPU:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\run-shared-live-model-switch.ps1
+```
+
+It requires two idle/free-memory samples, never calls ComfyUI `/free`, and
+polls the queue while each model loads. A new render stops only the owned
+vLLM runtime and records `yielded`.
+
 Validate that isolated environment without loading a model:
 
 ```bash
