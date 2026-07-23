@@ -1,5 +1,8 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('on', 'off')]
+    [string]$MtpMode = 'on',
+
     [ValidateRange(1, 5)]
     [int]$SpeculativeSteps = 1,
 
@@ -30,10 +33,29 @@ $statusRoot = 'E:\Data\LocalVoiceAgent\runtime\status'
 $logRoot = 'E:\Data\LocalVoiceAgent\runtime\logs'
 $evidenceRoot = 'E:\Data\LocalVoiceAgent\benchmarks\results'
 $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
+$condition = if ($MtpMode -eq 'on') {
+    "12b-mtp-on-s$SpeculativeSteps"
+}
+else {
+    '12b-exact-mtp-off'
+}
+$servedModel = if ($MtpMode -eq 'on') {
+    'gemma4-12b-mtp'
+}
+else {
+    'gemma4-12b-mtp-target-off'
+}
+$launcherMode = if ($MtpMode -eq 'on') { 'mtp' } else { 'mtp-target-off' }
+$mtpConfig = if ($MtpMode -eq 'on') {
+    "steps=$SpeculativeSteps,cpu_offload_gib=$MtpCpuOffloadGiB"
+}
+else {
+    "disabled,cpu_offload_gib=$MtpCpuOffloadGiB"
+}
 $statusPath = Join-Path $statusRoot "sglang-mtp-benchmark-$stamp.json"
 $evidencePath = Join-Path (
     $evidenceRoot
-) "sglang-12b-mtp-on-s$SpeculativeSteps-$stamp.json"
+) "sglang-$condition-$stamp.json"
 
 foreach ($path in @(
     $startScript,
@@ -67,6 +89,7 @@ function Write-RunStatus {
         phase = $Phase
         result = $Result
         detail = $Detail
+        mtp_mode = $MtpMode
         evidence = $evidencePath
         updated_at = [DateTimeOffset]::Now.ToString('o')
     }
@@ -209,7 +232,7 @@ try {
         '-NoProfile',
         '-ExecutionPolicy', 'Bypass',
         '-File', $startScript,
-        '-Mode', 'mtp',
+        '-Mode', $launcherMode,
         '-SpeculativeSteps', [string]$SpeculativeSteps,
         '-MtpCpuOffloadGiB', [string]$MtpCpuOffloadGiB,
         '-Port', [string]$Port,
@@ -258,17 +281,19 @@ try {
         '-ExecutionPolicy', 'Bypass',
         '-File', $benchmarkScript,
         '-Runtime', 'sglang',
-        '-Condition', "12b-mtp-on-s$SpeculativeSteps",
+        '-Condition', $condition,
         '-BaseUrl', "http://127.0.0.1:$Port/",
-        '-Model', 'gemma4-12b-mtp',
+        '-Model', $servedModel,
         '-ModelRevision', 'b6ed86275a6a5735884e208bfed95b445a684ca2',
         '-Samples', [string]$Samples,
         '-MaxTokens', [string]$MaxTokens,
-        '-MtpEnabled',
         '-MtpConfig',
-        "steps=$SpeculativeSteps,cpu_offload_gib=$MtpCpuOffloadGiB",
+        $mtpConfig,
         '-OutputPath', $evidencePath
     )
+    if ($MtpMode -eq 'on') {
+        $benchmarkArguments += '-MtpEnabled'
+    }
     $benchmarkProcess = Start-Process `
         -FilePath 'powershell.exe' `
         -ArgumentList $benchmarkArguments `

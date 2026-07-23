@@ -30,8 +30,8 @@ unset api_key_for_validation
   echo "LVA_SGLANG_STARTUP_TIMEOUT_SECONDS must be between 60 and 900." >&2
   exit 5
 }
-[[ "${mode}" == "base" || "${mode}" == "mtp" ]] || {
-  echo "LVA_SGLANG_MODE must be base or mtp." >&2
+[[ "${mode}" == "base" || "${mode}" == "mtp" || "${mode}" == "mtp-target-off" ]] || {
+  echo "LVA_SGLANG_MODE must be base, mtp, or mtp-target-off." >&2
   exit 6
 }
 [[ "${speculative_steps}" =~ ^[1-5]$ ]] || {
@@ -47,30 +47,42 @@ unset api_key_for_validation
   exit 9
 }
 
-if [[ "${mode}" == "base" ]]; then
-  model="${base_model}"
-  served_model="gemma4-12b"
-  context_length=4096
-  mem_fraction=0.45
-  minimum_free_mib=22000
-  log_file="${log_root}/sglang-12b-base.log"
-  speculative_args=()
-else
-  model="${mtp_model}"
-  served_model="gemma4-12b-mtp"
-  context_length=2048
-  mem_fraction=0.82
-  minimum_free_mib=28500
-  log_file="${log_root}/sglang-12b-mtp-s${speculative_steps}.log"
-  speculative_args=(
-    --speculative-algorithm NEXTN
-    --speculative-draft-model-path "${mtp_assistant}"
-    --speculative-num-steps "${speculative_steps}"
-    --speculative-num-draft-tokens "$((speculative_steps + 1))"
-    --speculative-eagle-topk 1
-    --cpu-offload-gb "${mtp_cpu_offload_gib}"
-  )
-fi
+case "${mode}" in
+  base)
+    model="${base_model}"
+    served_model="gemma4-12b"
+    context_length=4096
+    mem_fraction=0.45
+    minimum_free_mib=22000
+    log_file="${log_root}/sglang-12b-base.log"
+    speculative_args=()
+    ;;
+  mtp-target-off)
+    model="${mtp_model}"
+    served_model="gemma4-12b-mtp-target-off"
+    context_length=2048
+    mem_fraction=0.82
+    minimum_free_mib=28500
+    log_file="${log_root}/sglang-12b-mtp-target-off.log"
+    speculative_args=(--cpu-offload-gb "${mtp_cpu_offload_gib}")
+    ;;
+  mtp)
+    model="${mtp_model}"
+    served_model="gemma4-12b-mtp"
+    context_length=2048
+    mem_fraction=0.82
+    minimum_free_mib=28500
+    log_file="${log_root}/sglang-12b-mtp-s${speculative_steps}.log"
+    speculative_args=(
+      --speculative-algorithm NEXTN
+      --speculative-draft-model-path "${mtp_assistant}"
+      --speculative-num-steps "${speculative_steps}"
+      --speculative-num-draft-tokens "$((speculative_steps + 1))"
+      --speculative-eagle-topk 1
+      --cpu-offload-gb "${mtp_cpu_offload_gib}"
+    )
+    ;;
+esac
 
 [[ -d "${model}" ]] || {
   echo "The pinned SGLang runtime or Gemma model is unavailable." >&2

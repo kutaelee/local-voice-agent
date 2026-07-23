@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('base', 'mtp')]
+    [ValidateSet('base', 'mtp', 'mtp-target-off')]
     [string]$Mode = 'base',
 
     [ValidateRange(1, 5)]
@@ -37,7 +37,7 @@ $freeMemory = 0
 if (-not [int]::TryParse($freeMemoryText, [ref]$freeMemory)) {
     throw 'Unable to measure free GPU memory.'
 }
-$minimumFreeMemory = if ($Mode -eq 'mtp') { 28500 } else { 22000 }
+$minimumFreeMemory = if ($Mode -eq 'base') { 22000 } else { 28500 }
 if ($freeMemory -lt $minimumFreeMemory) {
     throw (
         "GPU reservation declined: mode=$Mode requires $minimumFreeMemory MiB free; " +

@@ -268,7 +268,7 @@ runtimes:
   - id: sglang-0.5.15.post1
     role: comparison_candidate
     version: 0.5.15.post1
-    status: installed_12b_base_and_mtp_openai_multimodal_thinking_smoke_passed_mtp_latency_pending
+    status: installed_12b_base_and_exact_target_mtp_on_off_latency_passed_functional_on_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/sglang-0.5.15.post1
     python: "3.12.13"
     cuda: "13.0"
@@ -312,9 +312,9 @@ runtimes:
       speculative_draft_tokens: 2
       speculative_topk: 1
       cpu_offload_gib: 4
-      target_weight_load_seconds: 132.92
+      target_weight_load_seconds: 132.69
       target_gpu_memory_gib_reported: 19.12
-      assistant_weight_load_seconds: 5.58
+      assistant_weight_load_seconds: 5.04
       assistant_gpu_memory_gib_reported: 0.50
       runtime_available_memory_gib_after_kv: 4.39
       health_observed_vram_mib: 28619
@@ -325,7 +325,30 @@ runtimes:
         spec_accept_length: 1.625
         spec_accept_rate: 0.625
         note: point_in_time_not_a_statistical_benchmark
-      latency_status: interrupted_to_yield_gpu_to_concurrent_comfyui_work
+      latency_status: controlled_exact_target_on_off_passed
+      exact_target_mtp_off:
+        target_weight_load_seconds: 132.86
+        ttft_ms_p50: 427.834
+        ttft_ms_p95: 502.049
+        tpot_ms_p50: 171.786
+        tpot_ms_p95: 172.388
+        output_tokens_per_second_mean: 5.885
+        successful_samples: 10
+        evidence: 'E:\Data\LocalVoiceAgent\benchmarks\results\sglang-12b-exact-mtp-off-20260723T231719498Z.json'
+        evidence_sha256: d02b4667e6a36c1b39e251e565ce0154db2b8b897ad87e45974be62d74f9a3be
+      exact_target_mtp_on:
+        ttft_ms_p50: 447.962
+        ttft_ms_p95: 523.587
+        tpot_ms_p50: 106.929
+        tpot_ms_p95: 113.024
+        output_tokens_per_second_mean: 9.441
+        successful_samples: 10
+        periodic_acceptance_observation_mean: 0.7687
+        evidence: 'E:\Data\LocalVoiceAgent\benchmarks\results\sglang-12b-mtp-on-s1-20260723T230801960Z.json'
+        evidence_sha256: 0bbac572cb7396cc0e20975ca241ae12cd28b8d3ce394571c0fa7044f5956ad6
+      controlled_mtp_output_rate_ratio: 1.604
+      default_enabled: false
+      default_disabled_reason: exact_target_off_tool_schema_and_multimodal_parity_pending
     mtp_probe: exact_assistant_promoted_to_FROZEN_KV_MTP_and_functional_smoke_passed
     rollback: retain previous versioned environment and switch config pointer
   - id: llama-cpp-b10092

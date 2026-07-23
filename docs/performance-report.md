@@ -58,7 +58,27 @@ SHA-256
 This matching base row enables a direct MTP-OFF comparison, but does not settle
 MTP behavior, model-switch reliability, or the final runtime selection.
 
-## Fixed-condition SGLang 12B exact-pair MTP-ON
+## Fixed-condition SGLang 12B exact-target MTP OFF/ON
+
+The exact target also completed ten samples with the same revision, 4 GiB CPU
+offload, context, prompts, sampling, concurrency, and output cap but without
+the assistant:
+
+- MTP OFF TTFT p50 / p95: 427.834 / 502.049 ms
+- MTP OFF TPOT p50 / p95: 171.786 / 172.388 ms
+- MTP OFF mean output rate: 5.885 tokens/s
+- MTP OFF observed endpoint GPU snapshot: 28,907 MiB
+- MTP OFF evidence SHA-256:
+  `d02b4667e6a36c1b39e251e565ce0154db2b8b897ad87e45974be62d74f9a3be`
+
+Against that controlled baseline, one-step MTP:
+
+- raised mean output rate to 9.441 tokens/s, a measured 1.60× ratio;
+- reduced TPOT p50 to 106.929 ms, a 37.8% reduction;
+- reduced mean total request time from 19,680.581 to 12,396.196 ms, a 37.0%
+  reduction;
+- increased TTFT p50 to 447.962 ms, 20.128 ms or 4.7% higher;
+- completed all 10 samples with no crash or OOM.
 
 Ten streaming samples completed with the exact target revision
 `b6ed86275a6a5735884e208bfed95b445a684ca2`, matching assistant, one MTP step,
@@ -80,10 +100,10 @@ SHA-256
 The runtime log SHA-256 is
 `6590b653853d69a8a103c1c0d25925a238a843d6c4a9efeab65c453287917c2d`.
 
-This row is much slower than the SGLang W4A16 base row, but the comparison
-also changes checkpoint format and adds CPU offload. It is not a valid
-MTP-only speedup ratio. The exact target must be measured with MTP disabled
-before a final MTP decision. Until then, MTP remains disabled by default.
+Both exact-target conditions are much slower than the W4A16 base row because
+the exact checkpoint requires CPU offload. The ON/OFF pair does isolate the
+assistant effect for latency, but exact-off tool/schema and multimodal parity
+are still unmeasured. MTP therefore remains disabled by default.
 
 ## Preliminary vLLM 12B smoke
 

@@ -18,6 +18,8 @@ def test_sglang_launcher_keeps_api_key_out_of_argv() -> None:
     assert 'unset LVA_SGLANG_API_KEY' in start
     assert "minimum_free_mib=28500" in start
     assert '--cpu-offload-gb "${mtp_cpu_offload_gib}"' in start
+    assert "mtp-target-off" in start
+    assert "gemma4-12b-mtp-target-off" in start
 
 
 def test_vllm_launcher_uses_official_environment_key() -> None:
@@ -68,6 +70,9 @@ def test_shared_sglang_benchmark_yields_to_comfyui() -> None:
     assert "$Process.WaitForExit()" in shared
     assert "independent health probe failed" in shared
     assert "Test-Path -LiteralPath $evidencePath" in shared
+    assert "[ValidateSet('on', 'off')]" in shared
+    assert "'12b-exact-mtp-off'" in shared
+    assert "'mtp-target-off'" in shared
     assert "Get-CimInstance Win32_Process" in shared
     assert "ComfyUI[\\\\/]main\\.py" in shared
     assert "busy = $processCount -gt 0" in shared

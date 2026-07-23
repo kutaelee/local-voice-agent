@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "status": "running",
-  "generated_at": "2026-07-24T08:13:02+09:00",
+  "generated_at": "2026-07-24T08:23:29+09:00",
   "hardware_snapshot": {
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_mib": 32607,
@@ -83,6 +83,27 @@
       "evidence_sha256": "0bbac572cb7396cc0e20975ca241ae12cd28b8d3ce394571c0fa7044f5956ad6",
       "runtime_log": "E:\\Data\\LocalVoiceAgent\\runtime\\logs\\sglang-12b-mtp-s1.log",
       "runtime_log_sha256": "6590b653853d69a8a103c1c0d25925a238a843d6c4a9efeab65c453287917c2d"
+    },
+    {
+      "runtime": "sglang",
+      "runtime_version": "0.5.15.post1",
+      "model": "gemma4-12b-mtp-target-off",
+      "model_revision": "b6ed86275a6a5735884e208bfed95b445a684ca2",
+      "condition": "12b-exact-mtp-off",
+      "mtp_enabled": false,
+      "mtp_config": "disabled,cpu_offload_gib=4",
+      "successful_samples": 10,
+      "ttft_ms_p50": 427.834,
+      "ttft_ms_p95": 502.049,
+      "tpot_ms_p50": 171.786,
+      "tpot_ms_p95": 172.388,
+      "output_tokens_per_second_mean": 5.885,
+      "observed_total_vram_mib": 28907,
+      "oom_or_crash": 0,
+      "evidence": "E:\\Data\\LocalVoiceAgent\\benchmarks\\results\\sglang-12b-exact-mtp-off-20260723T231719498Z.json",
+      "evidence_sha256": "d02b4667e6a36c1b39e251e565ce0154db2b8b897ad87e45974be62d74f9a3be",
+      "runtime_log": "E:\\Data\\LocalVoiceAgent\\runtime\\logs\\sglang-12b-mtp-target-off.log",
+      "runtime_log_sha256": "6cedab6c7e002e3639ae39be6f3467037659a5ad8c399c5455e8ec9656eda3cb"
     }
   ]
 }
