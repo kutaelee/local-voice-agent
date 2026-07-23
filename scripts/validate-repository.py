@@ -20,6 +20,7 @@ VALIDATORS = [
     "validate-required-test-catalog.py",
     "validate-status-contracts.py",
     "validate-approval-contracts.py",
+    "validate-workspaces.py",
 ]
 
 

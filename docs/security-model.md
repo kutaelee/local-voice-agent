@@ -32,6 +32,13 @@
 - Store no raw audio or full conversation by default.
 - Never make the tool executor an administrator.
 
+Workspace configuration is a closed schema. Windows drive roots, the user
+profile root, wildcards, traversal, the backup-only `D:` drive, and protected
+`E:\backup`/`E:\transfer` write roots are rejected. Linux-native workspaces
+must be under `/home/<user>/src`, never `/mnt/c` or `/mnt/e`. Registered
+command profiles store executable IDs and argv arrays, not shell strings or
+environment values.
+
 ## Approval integrity
 
 Approvals bind to the exact tool, normalized arguments, target fingerprint,

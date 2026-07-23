@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-voice-agent.invalid/schemas/workspaces.schema.json",
+  "title": "Workspace allowlist and registered command profiles",
+  "type": "object",
+  "required": ["schema_version", "workspaces"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "workspaces": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/workspace"}
+    }
+  },
+  "$defs": {
+    "workspace": {
+      "type": "object",
+      "required": ["id", "platform", "root", "access", "git", "command_profiles"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,127}$"
+        },
+        "platform": {
+          "type": "string",
+          "enum": ["windows_native", "wsl_linux"]
+        },
+        "root": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "access": {"type": "string", "enum": ["read_only", "read_write"]},
+        "git": {"type": "boolean"},
+        "command_profiles": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {"$ref": "#/$defs/command_profile"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "command_profile": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "executable_id",
+        "arguments",
+        "working_directory_relative",
+        "timeout_seconds",
+        "max_output_bytes",
+        "environment_keys"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,127}$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "test",
+            "test_file",
+            "lint",
+            "format",
+            "build",
+            "dev_server",
+            "process"
+          ]
+        },
+        "executable_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]{0,127}$"
+        },
+        "arguments": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "maxLength": 4096}
+        },
+        "working_directory_relative": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "max_output_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "environment_keys": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z_][A-Z0-9_]{0,127}$"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
