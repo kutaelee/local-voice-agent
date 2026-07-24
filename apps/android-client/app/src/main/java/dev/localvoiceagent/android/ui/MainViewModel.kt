@@ -2,6 +2,7 @@ package dev.localvoiceagent.android.ui
 
 import android.app.Application
 import android.content.Intent
+import android.net.Uri
 import android.util.Base64
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,15 +14,20 @@ import dev.localvoiceagent.android.network.GatewayConnectionState
 import dev.localvoiceagent.android.network.GatewayEvent
 import dev.localvoiceagent.android.network.PcGatewayClient
 import dev.localvoiceagent.android.network.ServerEndpoint
+import dev.localvoiceagent.android.network.VoiceProfileClient
+import dev.localvoiceagent.android.network.VoiceSettingsDto
 import dev.localvoiceagent.android.protocol.ProtocolEnvelope
 import dev.localvoiceagent.android.security.PairingTokenStore
 import dev.localvoiceagent.android.storage.LocalStateStore
 import java.util.UUID
+import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
@@ -33,6 +39,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val tokenStore = PairingTokenStore(application)
     private val localState = LocalStateStore.create(application)
     private val gateway = PcGatewayClient(viewModelScope)
+    private val voiceProfiles = VoiceProfileClient()
     private val mutableState = MutableStateFlow(
         AppUiState(
             serverUrl = tokenStore.serverUrl().orEmpty(),
@@ -122,6 +129,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             AppAction.EndConversation -> endConversation()
             AppAction.Interrupt -> interrupt()
             is AppAction.ApprovalDecision -> respondToApproval(action.approved)
+            is AppAction.Navigate -> {
+                reduce(action)
+                if (action.destination == AppDestination.SETTINGS) {
+                    refreshVoiceProfiles()
+                }
+            }
+            AppAction.RefreshVoiceProfiles -> refreshVoiceProfiles()
+            is AppAction.RegisterVoiceProfile -> registerVoiceProfile(action)
+            AppAction.SaveVoiceSettings -> saveVoiceSettings()
             else -> reduce(action)
         }
     }
@@ -147,6 +163,174 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 reduce(AppAction.ReportError("Pairing settings could not be stored"))
             }
     }
+
+    private fun refreshVoiceProfiles() {
+        val credentials = voiceCredentials() ?: return
+        reduce(AppAction.RefreshVoiceProfiles)
+        viewModelScope.launch {
+            runCatching {
+                voiceProfiles.catalog(credentials.first, credentials.second)
+            }.onSuccess(::applyVoiceCatalog)
+                .onFailure {
+                    reduce(
+                        AppAction.SetVoiceSettingsMessage(
+                            "Voice settings could not be loaded",
+                        ),
+                    )
+                }
+        }
+    }
+
+    private fun registerVoiceProfile(action: AppAction.RegisterVoiceProfile) {
+        val credentials = voiceCredentials() ?: return
+        if (
+            action.name.isBlank() ||
+            !action.rightsConfirmed ||
+            !action.localProcessingConsent
+        ) {
+            reduce(
+                AppAction.SetVoiceSettingsMessage(
+                    "Name, voice rights, and local processing consent are required",
+                ),
+            )
+            return
+        }
+        reduce(action)
+        viewModelScope.launch {
+            runCatching {
+                val wav = readReferenceWav(action.contentUri)
+                val created = voiceProfiles.create(
+                    endpoint = credentials.first,
+                    token = credentials.second,
+                    name = action.name.trim(),
+                    wav = wav,
+                    rightsConfirmed = action.rightsConfirmed,
+                    localProcessingConsent = action.localProcessingConsent,
+                )
+                voiceProfiles.updateSettings(
+                    endpoint = credentials.first,
+                    token = credentials.second,
+                    settings = currentVoiceSettings(
+                        profileId = created.profileId,
+                    ),
+                )
+                voiceProfiles.catalog(credentials.first, credentials.second)
+            }.onSuccess {
+                applyVoiceCatalog(it)
+                reduce(
+                    AppAction.SetVoiceSettingsMessage(
+                        "Reference voice registered locally",
+                    ),
+                )
+            }.onFailure {
+                reduce(
+                    AppAction.SetVoiceSettingsMessage(
+                        it.message ?: "Reference voice registration failed",
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun saveVoiceSettings() {
+        val credentials = voiceCredentials() ?: return
+        val settings = currentVoiceSettings()
+        reduce(AppAction.SaveVoiceSettings)
+        viewModelScope.launch {
+            runCatching {
+                voiceProfiles.updateSettings(
+                    credentials.first,
+                    credentials.second,
+                    settings,
+                )
+            }.onSuccess {
+                player.setPlaybackRate(it.playbackRate)
+                reduce(AppAction.SetVoiceSettingsBusy(false))
+                reduce(AppAction.SetVoiceSettingsMessage("Voice settings saved"))
+            }.onFailure {
+                reduce(
+                    AppAction.SetVoiceSettingsMessage(
+                        it.message ?: "Voice settings could not be saved",
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun currentVoiceSettings(
+        profileId: String = mutableState.value.selectedVoiceProfileId,
+    ): VoiceSettingsDto = VoiceSettingsDto(
+        profileId = profileId,
+        playbackRate = mutableState.value.voicePlaybackRate,
+        exaggeration = mutableState.value.voiceExaggeration,
+        cfgWeight = mutableState.value.voiceCfgWeight,
+        temperature = mutableState.value.voiceTemperature,
+    )
+
+    private fun applyVoiceCatalog(
+        catalog: dev.localvoiceagent.android.network.VoiceProfileCatalog,
+    ) {
+        player.setPlaybackRate(catalog.settings.playbackRate)
+        reduce(
+            AppAction.SetVoiceCatalog(
+                profiles = catalog.profiles.map {
+                    VoiceProfileOption(
+                        profileId = it.profileId,
+                        name = it.name,
+                        isDefault = it.isDefault,
+                        durationMs = it.durationMs,
+                    )
+                },
+                selectedProfileId = catalog.settings.profileId,
+                playbackRate = catalog.settings.playbackRate,
+                exaggeration = catalog.settings.exaggeration,
+                cfgWeight = catalog.settings.cfgWeight,
+                temperature = catalog.settings.temperature,
+            ),
+        )
+    }
+
+    private fun voiceCredentials(): Pair<ServerEndpoint, String>? {
+        val token = tokenStore.load()
+        val serverUrl = tokenStore.serverUrl()
+        if (token == null || serverUrl == null) {
+            reduce(
+                AppAction.SetVoiceSettingsMessage(
+                    "Pairing is required before changing voice settings",
+                ),
+            )
+            return null
+        }
+        val endpoint = runCatching { ServerEndpoint.parse(serverUrl) }.getOrNull()
+        if (endpoint == null) {
+            reduce(AppAction.SetVoiceSettingsMessage("Stored server URL is invalid"))
+            return null
+        }
+        return endpoint to token
+    }
+
+    private suspend fun readReferenceWav(contentUri: String): ByteArray =
+        withContext(Dispatchers.IO) {
+            val uri = Uri.parse(contentUri)
+            val resolver = getApplication<Application>().contentResolver
+            resolver.openInputStream(uri)?.use { input ->
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(64 * 1024)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    require(total <= VoiceProfileClient.MAX_REFERENCE_BYTES) {
+                        "Reference WAV is larger than 8 MB"
+                    }
+                    output.write(buffer, 0, count)
+                }
+                output.toByteArray().also {
+                    require(it.isNotEmpty()) { "Reference WAV is empty" }
+                }
+            } ?: throw IllegalArgumentException("Reference WAV could not be opened")
+        }
 
     private fun connect() {
         val token = tokenStore.load()

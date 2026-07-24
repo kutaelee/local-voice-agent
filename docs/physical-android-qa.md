@@ -18,12 +18,12 @@ placing a pairing token in a command line or evidence file.
 
 ```powershell
 Get-FileHash `
-  E:\Data\LocalVoiceAgent\artifacts\android\0.6.4-api37\local-voice-agent-0.6.4-debug.apk `
+  E:\Data\LocalVoiceAgent\artifacts\android\0.6.5-api37\local-voice-agent-0.6.5-debug.apk `
   -Algorithm SHA256
 ```
 
 Expected SHA-256:
-`7bf84cfbb53533deed932f0f76b25a0b1d42a27cdd80e9872db46b88463ca3ab`.
+`ce91990cbc0126084d8dfd12e668d17eff3fc4c02e0100acef7a25229cd5428b`.
 
 ## Install and pair
 
@@ -52,6 +52,7 @@ rejected without creating a session.
 
 | Case | Pass condition |
 |---|---|
+| Invalid pairing token | A wrong token is rejected without creating a usable session. |
 | Microphone permission | First-use prompt appears; denial is recoverable; grant enables capture. |
 | 20 sequential turns | Twenty Korean voice turns complete without process restart or stale audio. |
 | Speaker | Assistant audio is ordered and intelligible through the speaker route. |
@@ -64,6 +65,9 @@ rejected without creating a session.
 | Replay expiry | Stay disconnected past the replay window; the client stops automatic retries and requests a new session. |
 | Approval | Level 2 plan shows exact target/arguments/impact/rollback; denial performs no tool action. |
 | Server switch | Android displays all model-switch phases and remains connected after 12B returns. |
+| Voice profile selection | Settings lists the built-in and registered local profile; selecting and saving the reference profile survives refresh. |
+| Voice similarity | With the authorized reference selected, the supplied comparison sentence is recognizably the intended speaker without instability or appended speech. |
+| Playback speed | 0.85×, 1.0×, and 1.25× change duration while pitch and intelligibility remain acceptable. |
 
 ## Evidence
 
@@ -102,7 +106,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -Case barge_in -Outcome passed -MeasuredLatencyMs <measured-ms>
 ```
 
-Finalize only after all 13 cases have a terminal result:
+Finalize only after all 16 cases have a terminal result:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `

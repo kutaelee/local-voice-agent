@@ -1,6 +1,8 @@
 package dev.localvoiceagent.android.audio
 
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -44,6 +46,14 @@ class PlaybackGenerationTest {
                 expected = 3_200,
             ),
         )
+    }
+
+    @Test
+    fun playbackRateIsBoundedForIntelligibleSpeech() {
+        assertEquals(1.15f, validatedPlaybackRate(1.15f), 0.001f)
+        assertThrows(IllegalArgumentException::class.java) {
+            validatedPlaybackRate(1.5f)
+        }
     }
 }
 

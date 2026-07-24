@@ -1,5 +1,7 @@
 package dev.localvoiceagent.android.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,9 +15,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -93,6 +98,7 @@ fun LocalVoiceAgentApp(
                 AppDestination.PAIRING -> PairingScreen(state, onAction)
                 AppDestination.VOICE -> VoiceScreen(state, onAction)
                 AppDestination.APPROVAL -> ApprovalScreen(state, onAction)
+                AppDestination.SETTINGS -> SettingsScreen(state, onAction)
                 else -> SummaryScreen(state.destination, state, onAction)
             }
         }
@@ -191,6 +197,178 @@ private fun VoiceScreen(
 }
 
 @Composable
+private fun SettingsScreen(
+    state: AppUiState,
+    onAction: (AppAction) -> Unit,
+) {
+    var profileName by remember {
+        mutableStateOf("My Korean voice")
+    }
+    var consented by remember { mutableStateOf(false) }
+    val filePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            onAction(
+                AppAction.RegisterVoiceProfile(
+                    name = profileName,
+                    contentUri = uri.toString(),
+                    rightsConfirmed = consented,
+                    localProcessingConsent = consented,
+                ),
+            )
+        }
+    }
+
+    Text("Voice settings", style = MaterialTheme.typography.headlineSmall)
+    Spacer(Modifier.height(8.dp))
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        item {
+            Text(
+                "Reference audio stays on the paired PC and is never bundled in the APK.",
+            )
+        }
+        items(state.voiceProfiles) { profile ->
+            Card(Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    RadioButton(
+                        selected = profile.profileId == state.selectedVoiceProfileId,
+                        onClick = {
+                            onAction(AppAction.SelectVoiceProfile(profile.profileId))
+                        },
+                        enabled = !state.voiceSettingsBusy,
+                    )
+                    Column {
+                        Text(profile.name)
+                        Text(
+                            if (profile.isDefault) {
+                                "Built-in Chatterbox voice"
+                            } else {
+                                "Local reference · ${profile.durationMs ?: 0} ms"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
+        }
+        item {
+            Text("Playback speed: ${"%.2f".format(state.voicePlaybackRate)}×")
+            Slider(
+                value = state.voicePlaybackRate,
+                onValueChange = { onAction(AppAction.SetVoicePlaybackRate(it)) },
+                valueRange = 0.85f..1.25f,
+                steps = 7,
+                enabled = !state.voiceSettingsBusy,
+            )
+        }
+        item {
+            Text("Expression: ${"%.2f".format(state.voiceExaggeration)}")
+            Slider(
+                value = state.voiceExaggeration,
+                onValueChange = { onAction(AppAction.SetVoiceExaggeration(it)) },
+                valueRange = 0.25f..1.0f,
+                steps = 14,
+                enabled = !state.voiceSettingsBusy,
+            )
+        }
+        item {
+            Text("Voice adherence (CFG): ${"%.2f".format(state.voiceCfgWeight)}")
+            Slider(
+                value = state.voiceCfgWeight,
+                onValueChange = { onAction(AppAction.SetVoiceCfgWeight(it)) },
+                valueRange = 0.0f..1.0f,
+                steps = 19,
+                enabled = !state.voiceSettingsBusy,
+            )
+        }
+        item {
+            Text("Variation (temperature): ${"%.2f".format(state.voiceTemperature)}")
+            Slider(
+                value = state.voiceTemperature,
+                onValueChange = { onAction(AppAction.SetVoiceTemperature(it)) },
+                valueRange = 0.5f..1.2f,
+                steps = 13,
+                enabled = !state.voiceSettingsBusy,
+            )
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { onAction(AppAction.SaveVoiceSettings) },
+                    enabled = !state.voiceSettingsBusy,
+                ) {
+                    Text("Save voice")
+                }
+                TextButton(
+                    onClick = { onAction(AppAction.RefreshVoiceProfiles) },
+                    enabled = !state.voiceSettingsBusy,
+                ) {
+                    Text("Refresh")
+                }
+            }
+        }
+        item {
+            Text("Add a reference voice", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = profileName,
+                onValueChange = { profileName = it.take(64) },
+                label = { Text("Profile name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Checkbox(
+                    checked = consented,
+                    onCheckedChange = { consented = it },
+                )
+                Text(
+                    "I own or may use this voice and consent to local storage and processing.",
+                )
+            }
+        }
+        item {
+            Button(
+                onClick = {
+                    filePicker.launch(
+                        arrayOf("audio/wav", "audio/x-wav", "audio/wave"),
+                    )
+                },
+                enabled = (
+                    profileName.isNotBlank() &&
+                        consented &&
+                        !state.voiceSettingsBusy
+                    ),
+            ) {
+                Text("Choose 3–30 second PCM WAV")
+            }
+        }
+        state.voiceSettingsMessage?.let { message ->
+            item {
+                Text(message, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        item {
+            Text(
+                "Playback speed changes phone playback duration. Expression, CFG, and temperature change synthesis and take effect on the next reply.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+@Composable
 private fun ApprovalScreen(
     state: AppUiState,
     onAction: (AppAction) -> Unit,
@@ -248,10 +426,7 @@ private fun SummaryScreen(
             "Assistant: ${state.assistantState}",
             "Server: ${state.serverUrl.ifBlank { "not configured" }}",
         )
-        AppDestination.SETTINGS -> listOf(
-            "Pending approvals and up to 50 execution summaries stay on this device",
-            "Raw audio and full transcripts are not stored by default",
-        )
+        AppDestination.SETTINGS -> emptyList()
         else -> emptyList()
     }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -13,6 +13,10 @@ class ServerEndpointTest {
             "wss://pc.example:8765/v1/sessions/session-id/events",
             endpoint.sessionEventsUrl("session-id"),
         )
+        assertEquals(
+            "https://pc.example:8765/v1/voice/profiles",
+            endpoint.managementUrl("/v1/voice/profiles"),
+        )
     }
 
     @Test

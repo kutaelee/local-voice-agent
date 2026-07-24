@@ -16,6 +16,13 @@ class ServerEndpoint private constructor(
         return "$baseUrl/v1/sessions/$sessionId/events$query"
     }
 
+    fun managementUrl(path: String): String {
+        require(path.startsWith("/") && !path.startsWith("//")) {
+            "Management path is invalid"
+        }
+        return "https://${baseUrl.removePrefix("wss://")}$path"
+    }
+
     companion object {
         fun parse(value: String): ServerEndpoint {
             val trimmed = value.trim().trimEnd('/')

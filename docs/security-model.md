@@ -134,6 +134,17 @@ and verifies non-inherited NTFS ACLs granting access only to the current user
 and LocalSystem. The unencrypted server key is runtime-only and never enters
 Git, an APK, or logs.
 
+Reference-voice data is a separate, explicit exception to default raw-audio
+non-retention. Registration requires affirmative voice-rights and
+local-processing consent flags, accepts only a bounded 3–30 second PCM WAV,
+and stores the clip under `E:\Data\LocalVoiceAgent\voice-profiles` with a
+SHA-256 metadata record. The clip, user-supplied transcript, profile IDs, and
+voice-derived output never enter Git or the APK. The TTS worker independently
+resolves the selected file beneath the fixed profile root, rejects symlinks
+and path escape, and receives no arbitrary model-generated path. Removing a
+profile remains a separate destructive operation and is not exposed in this
+slice.
+
 ## Approval integrity
 
 Approvals bind to the exact tool, normalized arguments, target fingerprint,

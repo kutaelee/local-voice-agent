@@ -9,6 +9,7 @@ tts_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-
 vad_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/vad-silero-6.2.1/.venv"
 stt_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/stt/faster-whisper-large-v3-turbo/0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf"
 tts_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18"
+voice_profiles_root="/mnt/e/Data/LocalVoiceAgent/voice-profiles"
 stt_socket="${run_root}/stt.sock"
 tts_socket="${run_root}/tts.sock"
 vad_socket="${run_root}/vad.sock"
@@ -18,8 +19,9 @@ worker_token="${LVA_AUDIO_WORKER_TOKEN:-}"
   echo "LVA_AUDIO_WORKER_TOKEN must contain at least 32 characters." >&2
   exit 3
 }
-mkdir -p "${run_root}" "${log_root}"
+mkdir -p "${run_root}" "${log_root}" "${voice_profiles_root}/profiles"
 chmod 700 "${run_root}"
+chmod 700 "${voice_profiles_root}" "${voice_profiles_root}/profiles"
 
 assert_not_running() {
   local name="$1"
@@ -108,6 +110,7 @@ nohup env \
   "${tts_runtime}/bin/python" "${repo}/apps/pc-server/workers/tts_worker.py" \
     --socket "${tts_socket}" \
     --model "${tts_model}" \
+    --voice-profiles-root "${voice_profiles_root}" \
   >"${log_root}/tts-worker.log" 2>&1 &
 tts_pid=$!
 started_pids+=("${tts_pid}")

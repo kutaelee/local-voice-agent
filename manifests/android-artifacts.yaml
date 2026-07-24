@@ -1,38 +1,40 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T12:47:00+09:00"
+generated_at: "2026-07-24T13:44:10+09:00"
 application_id: dev.localvoiceagent.android
-version_code: 12
-version_name: "0.6.4"
+version_code: 13
+version_name: "0.6.5"
 min_sdk: 26
 compile_sdk: 37
 target_sdk: 37
 artifacts:
   - kind: debug_apk
-    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.6.4-api37\local-voice-agent-0.6.4-debug.apk'
-    size_bytes: 12756646
-    sha256: 7bf84cfbb53533deed932f0f76b25a0b1d42a27cdd80e9872db46b88463ca3ab
+    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.6.5-api37\local-voice-agent-0.6.5-debug.apk'
+    size_bytes: 12839199
+    sha256: ce91990cbc0126084d8dfd12e668d17eff3fc4c02e0100acef7a25229cd5428b
     signature: android_debug_v2_verified
     installable: true
   - kind: release_unsigned_apk
-    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.6.4-api37\local-voice-agent-0.6.4-release-unsigned.apk'
-    size_bytes: 9087245
-    sha256: 844bd81045823b24baeb0cf0fe4c75a8cfa24992318940733ca882b1125a74a9
+    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.6.5-api37\local-voice-agent-0.6.5-release-unsigned.apk'
+    size_bytes: 9120017
+    sha256: 9cb04e8b59727884b1b1636e41bd8f4a5866c319192fd3e1c6fc96c7ca47db21
     signature: unsigned_verified
     installable: false
 validation:
   gradle_command: gradlew.bat --no-daemon --non-interactive testDebugUnitTest lintDebug assembleDebug; assembleRelease
   gradle_result: passed
-  unit_tests: 21
+  unit_tests: 25
   unit_test_failures: 0
   lint_findings_after_fix: 0
   package_metadata: compile_sdk_37_target_sdk_37_verified_with_aapt2
-  device_install_test: pending_0_6_4_physical_install_previous_0_6_2_emulator_passed
+  device_install_test: pending_0_6_5_physical_install_0_6_4_user_qa_reported_working
   interruption_queue_test: prior_generation_chunks_invalidated_and_normal_drain_preserved
   reconnect_test: same_session_resume_sequence_and_expired_replay_terminal_rejection_passed
   lan_relay_test: 27_seconds_continuous_websocket_after_connect_timeout_cleared
   connected_navigation_test: pairing_connected_state_navigates_to_voice_passed
   continuous_turn_test: connect_intent_playback_completion_and_manual_interrupt_state_machine_compiled
   interrupted_write_test: stale_generation_write_failure_suppressed_current_generation_failure_preserved
+  voice_profile_test: authenticated_catalog_selection_consent_upload_and_bounded_controls_passed
+  playback_rate_test: pitch_preserving_0_85_to_1_25_range_compiled_and_bounds_unit_tested
   ui_evidence:
     initial_issue: status_bar_overlap_and_eight_item_bottom_row_clipping
     previous_emulator_qa: 'E:\Data\LocalVoiceAgent\runtime\evidence\android\android-0.6.2-emulator-qa.json'

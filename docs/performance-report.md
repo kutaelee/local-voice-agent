@@ -12,6 +12,29 @@ speedup, VRAM peak, or end-to-end voice latency until the benchmark harness
 uses fixed model revisions, prompts, sampling, context, background load, and
 GPU power conditions.
 
+## User-authorized reference voice smoke
+
+A local 8.192-second Korean reference clip was canonicalized to 24 kHz mono
+PCM16 and tested against Chatterbox Multilingual V3 with exaggeration 0.5,
+CFG weight 0.5, and temperature 0.8. No LLM endpoint was running during this
+one-shot test.
+
+| Metric | Result |
+|---|---:|
+| Model load | 16.556 s |
+| Synthesis | 3.974 s |
+| Generated audio | 7.080 s |
+| Realtime factor | 0.561 |
+| Peak allocated VRAM | 3,427,896,832 bytes |
+
+The process exited after synthesis and observed total GPU use returned to
+approximately 4.7 GiB. This proves local reference conditioning and
+faster-than-realtime synthesis for one supplied utterance; it does not prove
+speaker similarity, first-audio streaming latency, or a p50/p95
+distribution. Physical listening remains pending. Full evidence and the
+synthesized sample remain in the external application-data evidence root and
+are intentionally not committed.
+
 Planned results:
 
 - `benchmarks/results/raw-results.json`

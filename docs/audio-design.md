@@ -46,11 +46,25 @@ revision behavior are measured.
 
 ## TTS
 
-Chatterbox Multilingual V3 is the Korean quality candidate. It is not
-installed until its package PyTorch pin is reconciled in a separate
-Blackwell-compatible environment. The built-in condition data may be used for
-testing; no personal or third-party voice is cloned without explicit
-authorization and provided reference audio.
+Chatterbox Multilingual V3 is the selected Korean quality runtime. Its package
+and PyTorch pins are isolated in a Blackwell-compatible environment. The
+built-in condition data may be used for testing; no personal or third-party
+voice is cloned without explicit authorization and provided reference audio.
+
+The selected V3 revision is now installed in an isolated CUDA 13 runtime.
+Reference-voice support is consent gated: a user must confirm voice rights and
+local processing before a 3–30 second PCM WAV is accepted. The server stores
+profile data below `E:\Data\LocalVoiceAgent\voice-profiles`, stores no clip in
+Git or the APK, and passes only the selected canonical path to the
+authenticated Unix-socket worker. The worker rejects paths outside that root
+and caches active speaker conditioning across speech units. The built-in voice
+remains a virtual `default` profile.
+
+Voice controls are bounded to playback rate 0.85–1.25, exaggeration
+0.25–1.0, CFG weight 0–1, and temperature 0.5–1.2. Playback rate is applied
+on Android with pitch fixed at 1.0; it changes spoken duration but not
+synthesis first-audio latency. The initial user-authorized profile uses
+exaggeration 0.5, CFG 0.5, and temperature 0.8.
 
 The plain-conversation vLLM adapter consumes bounded UTF-8 SSE deltas. Stable
 sentence/meaning boundaries are synthesized as soon as they arrive, without
@@ -61,6 +75,12 @@ emitted stream with `cancelled` or `error`. Tool-enabled conversations keep
 the non-streaming structured-response path so the complete tool name and
 arguments can be validated before planning or execution. Physical-device
 first-audio timing remains a required measurement.
+
+For streamed plain replies, hard sentence boundaries are always eligible. A
+comma, semicolon, or colon becomes an early synthesis boundary only after at
+least 36 characters. This reduces first-audio wait without fragmenting short
+phrases. It is an orchestration optimization, not native streaming inside
+Chatterbox.
 
 ## Barge-in sequence
 

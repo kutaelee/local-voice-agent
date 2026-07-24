@@ -21,10 +21,10 @@ runtimes:
     server_key_policy: unencrypted_pkcs8_runtime_key_never_committed
     test_status: matching_signature_san_eku_encryption_overwrite_public_ip_reserved_ip_wildcard_ntfs_acl_wsl_read_tls_health_and_graceful_stop_passed
     rollback: retain generated deployment certificates; archive only the versioned isolated environment after inventory
-  - id: android-client-build-0.6.4
+  - id: android-client-build-0.6.5
     role: android_client_build
-    version: "0.6.4"
-    status: api37_debug_release_build_continuous_turn_loop_interrupt_safe_pairing_to_voice_room_state_cache_private_ca_bluetooth_and_sequence_resume_compiled
+    version: "0.6.5"
+    status: api37_debug_release_voice_profiles_playback_controls_continuous_turn_interrupt_safe_pairing_room_private_ca_bluetooth_sequence_resume_compiled
     environment: 'C:\Dev\SDK\Android'
     jdk: "17.0.20"
     android_gradle_plugin: "9.3.0"
@@ -34,9 +34,10 @@ runtimes:
     build_tools: "36.0.0"
     platform_tools: "37.0.0"
     kotlin_symbol_processing: "2.3.10"
+    kotlin_serialization_plugin: "2.3.21"
     room: "2.8.4"
     room_schema: apps/android-client/app/schemas/dev.localvoiceagent.android.storage.LocalStateDatabase/1.json
-    test_status: 15_passed_lint_zero_findings_reconnect_resume_expiry_room_ksp_bluetooth_playback_generation_build_and_0_6_2_emulator_ui_passed
+    test_status: 25_passed_lint_zero_findings_voice_profile_tls_catalog_consent_controls_reconnect_resume_room_bluetooth_playback_build_and_previous_emulator_ui_passed
     artifact_manifest: manifests/android-artifacts.yaml
     rollback: remove only isolated SDK/cache after inventory; revert tracked client changes
   - id: huggingface-hub-1.24.0
@@ -554,7 +555,22 @@ runtimes:
     numba: "0.66.0"
     model_revision: 5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18
     model_variant: v3
-    voice_cloning_enabled: false
+    voice_cloning_enabled: true
+    voice_cloning_policy: explicit_rights_and_local_processing_consent_only
+    voice_profile_root: 'E:\Data\LocalVoiceAgent\voice-profiles'
+    reference_voice_smoke:
+      status: synthesis_passed_physical_listening_pending
+      reference_audio_seconds: 8.192
+      parameters:
+        exaggeration: 0.5
+        cfg_weight: 0.5
+        temperature: 0.8
+      load_seconds: 16.556
+      synthesis_seconds: 3.974
+      audio_seconds: 7.080
+      realtime_factor: 0.561
+      peak_vram_bytes: 3427896832
+      note: external_sample_and_identity_metadata_excluded_from_git
     korean_smoke:
       text: "안녕하세요. 로컬 음성 에이전트입니다."
       audio_seconds: 3.120

@@ -632,10 +632,20 @@ class VoiceTurnService:
             await emit(event)
 
 
+_HARD_SPEECH_BOUNDARY = re.compile(
+    r"(?:(?<=[.!?\u3002\uff01\uff1f])\s+|\n{2,})"
+)
+_STREAM_SPEECH_BOUNDARY = re.compile(
+    r"(?P<hard>(?<=[.!?\u3002\uff01\uff1f])\s+|\n{2,})"
+    r"|(?P<soft>(?<=[,;:\u3001\uff0c\uff1b])\s*)"
+)
+_MIN_SOFT_SPEECH_CHARS = 36
+
+
 def _speech_units(text: str) -> tuple[str, ...]:
     units = tuple(
         part.strip()
-        for part in re.split(r"(?<=[.!?。！？])\s+|\n{2,}", text.strip())
+        for part in _HARD_SPEECH_BOUNDARY.split(text.strip())
         if part.strip()
     )
     if not units:
@@ -646,12 +656,10 @@ def _speech_units(text: str) -> tuple[str, ...]:
 def _take_complete_speech_units(text: str) -> tuple[tuple[str, ...], str]:
     units: list[str] = []
     start = 0
-    for boundary in re.finditer(
-        r"(?:(?<=[.!?。！？])\s+|\n{2,})",
-        text,
-    ):
+    for boundary in _STREAM_SPEECH_BOUNDARY.finditer(text):
         unit = text[start : boundary.start()].strip()
-        if unit:
+        is_hard = boundary.lastgroup == "hard"
+        if unit and (is_hard or len(unit) >= _MIN_SOFT_SPEECH_CHARS):
             units.append(unit)
-        start = boundary.end()
+            start = boundary.end()
     return tuple(units), text[start:]

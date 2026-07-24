@@ -6,6 +6,7 @@ import asyncio
 import base64
 import json
 from pathlib import Path
+from typing import Callable
 from uuid import UUID, uuid4
 
 from ..application.voice_turn import (
@@ -13,6 +14,7 @@ from ..application.voice_turn import (
     Transcript,
     VoiceActivityDecision,
 )
+from .voice_profiles import VoiceSynthesisOptions
 
 
 class AudioWorkerError(RuntimeError):
@@ -141,18 +143,38 @@ class VadWorkerAdapter:
 
 
 class TtsWorkerAdapter:
-    def __init__(self, client: UnixJsonWorkerClient) -> None:
+    def __init__(
+        self,
+        client: UnixJsonWorkerClient,
+        *,
+        options_provider: Callable[[], VoiceSynthesisOptions] | None = None,
+    ) -> None:
         self._client = client
+        self._options_provider = options_provider
 
     async def synthesize(self, text: str, *, language: str) -> SynthesizedAudio:
-        response = await self._client.request(
-            {
-                "operation": "synthesize",
-                "request_id": str(uuid4()),
-                "text": text,
-                "language": language,
-            }
-        )
+        payload: dict[str, object] = {
+            "operation": "synthesize",
+            "request_id": str(uuid4()),
+            "text": text,
+            "language": language,
+        }
+        if self._options_provider is not None:
+            options = self._options_provider()
+            payload.update(
+                {
+                    "voice_profile_id": options.profile_id,
+                    "audio_prompt_path": (
+                        str(options.reference_audio_path)
+                        if options.reference_audio_path is not None
+                        else None
+                    ),
+                    "exaggeration": options.exaggeration,
+                    "cfg_weight": options.cfg_weight,
+                    "temperature": options.temperature,
+                }
+            )
+        response = await self._client.request(payload)
         try:
             pcm = base64.b64decode(str(response["pcm_base64"]), validate=True)
         except ValueError as error:

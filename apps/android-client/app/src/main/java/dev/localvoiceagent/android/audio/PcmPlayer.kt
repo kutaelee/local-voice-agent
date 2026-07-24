@@ -6,6 +6,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.media.PlaybackParams
 import android.os.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,7 @@ class PcmPlayer(
     private val commands = Channel<Command>(Channel.UNLIMITED)
     private val playbackGeneration = PlaybackGeneration()
     @Volatile private var track: AudioTrack? = null
+    @Volatile private var playbackRate = 1.0f
     private var format: PlaybackFormat? = null
     private var focusRequest: AudioFocusRequest? = null
     private var writtenFrames = 0L
@@ -69,6 +71,13 @@ class PcmPlayer(
 
     fun finish() {
         commands.trySend(Command.Finish(playbackGeneration.current()))
+    }
+
+    fun setPlaybackRate(value: Float) {
+        playbackRate = validatedPlaybackRate(value)
+        track?.let { activeTrack ->
+            runCatching { activeTrack.playbackParams = playbackParameters(playbackRate) }
+        }
     }
 
     fun stop() {
@@ -173,6 +182,7 @@ class PcmPlayer(
             .setBufferSizeInBytes(maxOf(minimum, playbackFormat.sampleRateHz))
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
+        created.playbackParams = playbackParameters(playbackRate)
         created.play()
         track = created
         format = playbackFormat
@@ -234,6 +244,16 @@ internal fun shouldReportWriteFailure(
     written: Int,
     expected: Int,
 ): Boolean = isCurrent && written != expected
+
+internal fun validatedPlaybackRate(value: Float): Float {
+    require(value in 0.85f..1.25f) { "Playback rate is outside the supported range" }
+    return value
+}
+
+private fun playbackParameters(rate: Float): PlaybackParams = PlaybackParams()
+    .setSpeed(rate)
+    .setPitch(1.0f)
+    .setAudioFallbackMode(PlaybackParams.AUDIO_FALLBACK_MODE_DEFAULT)
 
 internal class PlaybackGeneration {
     private val value = AtomicLong(0)

@@ -12,9 +12,9 @@ def test_physical_android_qa_is_device_bound_and_privacy_preserving() -> None:
     )
 
     assert "C:\\Dev\\SDK\\Android\\platform-tools\\adb.exe" in source
-    assert "local-voice-agent-0.6.4-debug.apk" in source
+    assert "local-voice-agent-0.6.5-debug.apk" in source
     assert (
-        "7bf84cfbb53533deed932f0f76b25a0b1d42a27cdd80e9872db46b88463ca3ab"
+        "ce91990cbc0126084d8dfd12e668d17eff3fc4c02e0100acef7a25229cd5428b"
         in source
     )
     assert "Physical QA refuses emulator devices" in source
@@ -46,6 +46,9 @@ def test_physical_android_qa_covers_all_documented_cases() -> None:
         "replay_expiry",
         "approval_denial",
         "server_switch",
+        "voice_profile_selection",
+        "voice_similarity",
+        "playback_speed",
     ):
         assert case in source
 

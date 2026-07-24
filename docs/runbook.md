@@ -426,6 +426,42 @@ export LVA_AUDIO_WORKER_TOKEN='<random-audio-worker-token>'
 bash scripts/smoke-vad-process.sh
 ```
 
+### Reference voice profiles
+
+The Android Settings screen can upload a 3–30 second, 16-bit PCM WAV only
+after the user confirms voice rights and local-processing consent. Profiles
+are stored outside Git at `E:\Data\LocalVoiceAgent\voice-profiles` (WSL:
+`/mnt/e/Data/LocalVoiceAgent/voice-profiles`). The default may be overridden
+with the absolute `LVA_VOICE_PROFILE_ROOT` environment variable.
+
+An authorized PC-side clip can be registered without starting a GPU model:
+
+```bash
+export PYTHONPATH=/mnt/c/Dev/Repos/local-voice-agent/apps/pc-server/src
+python scripts/register-voice-profile.py \
+  --root /mnt/e/Data/LocalVoiceAgent/voice-profiles \
+  --wav /absolute/path/reference.wav \
+  --name 'My Korean voice' \
+  --playback-rate 1.0 \
+  --exaggeration 0.5 \
+  --cfg-weight 0.5 \
+  --temperature 0.8 \
+  --confirm-rights \
+  --consent-local-processing
+```
+
+For an M4A source, preserve the original and create a canonical temporary WAV
+with the registered system FFmpeg executable:
+
+```bash
+/usr/bin/ffmpeg -nostdin -i reference.m4a -vn -ac 1 -ar 24000 \
+  -codec:a pcm_s16le -f wav reference.wav
+```
+
+Do not place reference clips, transcripts, synthesized samples, profile IDs,
+or consent metadata in Git. Profile deletion is intentionally unavailable in
+this slice; treat removal as a separate destructive operation.
+
 vLLM binds only to `127.0.0.1:8766`; its first model load from the canonical
 NTFS model store can
 take several minutes. Startup waits up to 360 seconds by default and can be
@@ -710,7 +746,7 @@ Install the verified debug APK only when a device is visible in
 ```powershell
 C:\Dev\SDK\Android\platform-tools\adb.exe devices
 C:\Dev\SDK\Android\platform-tools\adb.exe install -r `
-  E:\Data\LocalVoiceAgent\artifacts\android\0.6.4-api37\local-voice-agent-0.6.4-debug.apk
+  E:\Data\LocalVoiceAgent\artifacts\android\0.6.5-api37\local-voice-agent-0.6.5-debug.apk
 ```
 
 The release APK is intentionally unsigned and cannot be installed until the

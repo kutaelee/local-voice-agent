@@ -45,6 +45,13 @@ data class PendingApproval(
     val rollback: String,
 )
 
+data class VoiceProfileOption(
+    val profileId: String,
+    val name: String,
+    val isDefault: Boolean,
+    val durationMs: Int? = null,
+)
+
 data class AppUiState(
     val destination: AppDestination = AppDestination.PAIRING,
     val connectionState: ConnectionState = ConnectionState.DISCONNECTED,
@@ -59,6 +66,16 @@ data class AppUiState(
     val activeRequestId: String? = null,
     val lastServerSequence: Int = -1,
     val lastError: String? = null,
+    val voiceProfiles: List<VoiceProfileOption> = listOf(
+        VoiceProfileOption("default", "Default Korean", true),
+    ),
+    val selectedVoiceProfileId: String = "default",
+    val voicePlaybackRate: Float = 1.0f,
+    val voiceExaggeration: Float = 0.5f,
+    val voiceCfgWeight: Float = 0.5f,
+    val voiceTemperature: Float = 0.8f,
+    val voiceSettingsBusy: Boolean = false,
+    val voiceSettingsMessage: String? = null,
 )
 
 sealed interface AppAction {
@@ -92,6 +109,29 @@ sealed interface AppAction {
     data class SetExecutionSummary(val sequence: Int, val summary: String) : AppAction
     data class ApprovalDecision(val approved: Boolean) : AppAction
     data class ReportError(val message: String) : AppAction
+    data object RefreshVoiceProfiles : AppAction
+    data class RegisterVoiceProfile(
+        val name: String,
+        val contentUri: String,
+        val rightsConfirmed: Boolean,
+        val localProcessingConsent: Boolean,
+    ) : AppAction
+    data class SelectVoiceProfile(val profileId: String) : AppAction
+    data class SetVoicePlaybackRate(val value: Float) : AppAction
+    data class SetVoiceExaggeration(val value: Float) : AppAction
+    data class SetVoiceCfgWeight(val value: Float) : AppAction
+    data class SetVoiceTemperature(val value: Float) : AppAction
+    data object SaveVoiceSettings : AppAction
+    data class SetVoiceCatalog(
+        val profiles: List<VoiceProfileOption>,
+        val selectedProfileId: String,
+        val playbackRate: Float,
+        val exaggeration: Float,
+        val cfgWeight: Float,
+        val temperature: Float,
+    ) : AppAction
+    data class SetVoiceSettingsBusy(val busy: Boolean) : AppAction
+    data class SetVoiceSettingsMessage(val message: String?) : AppAction
 }
 
 object AppReducer {
@@ -174,6 +214,51 @@ object AppReducer {
         )
         is AppAction.ReportError -> state.copy(
             lastError = action.message,
+        )
+        AppAction.RefreshVoiceProfiles -> state.copy(
+            voiceSettingsBusy = true,
+            voiceSettingsMessage = null,
+        )
+        is AppAction.RegisterVoiceProfile -> state.copy(
+            voiceSettingsBusy = true,
+            voiceSettingsMessage = null,
+        )
+        is AppAction.SelectVoiceProfile -> state.copy(
+            selectedVoiceProfileId = action.profileId,
+            voiceSettingsMessage = null,
+        )
+        is AppAction.SetVoicePlaybackRate -> state.copy(
+            voicePlaybackRate = action.value.coerceIn(0.85f, 1.25f),
+        )
+        is AppAction.SetVoiceExaggeration -> state.copy(
+            voiceExaggeration = action.value.coerceIn(0.25f, 1.0f),
+        )
+        is AppAction.SetVoiceCfgWeight -> state.copy(
+            voiceCfgWeight = action.value.coerceIn(0.0f, 1.0f),
+        )
+        is AppAction.SetVoiceTemperature -> state.copy(
+            voiceTemperature = action.value.coerceIn(0.5f, 1.2f),
+        )
+        AppAction.SaveVoiceSettings -> state.copy(
+            voiceSettingsBusy = true,
+            voiceSettingsMessage = null,
+        )
+        is AppAction.SetVoiceCatalog -> state.copy(
+            voiceProfiles = action.profiles,
+            selectedVoiceProfileId = action.selectedProfileId,
+            voicePlaybackRate = action.playbackRate,
+            voiceExaggeration = action.exaggeration,
+            voiceCfgWeight = action.cfgWeight,
+            voiceTemperature = action.temperature,
+            voiceSettingsBusy = false,
+            voiceSettingsMessage = null,
+        )
+        is AppAction.SetVoiceSettingsBusy -> state.copy(
+            voiceSettingsBusy = action.busy,
+        )
+        is AppAction.SetVoiceSettingsMessage -> state.copy(
+            voiceSettingsBusy = false,
+            voiceSettingsMessage = action.message,
         )
     }
 }

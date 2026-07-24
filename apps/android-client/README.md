@@ -30,8 +30,16 @@ the user can pause with End call or force the current turn with Send now.
 Interrupt no longer reports an expected stale `AudioTrack.write` result as a
 playback failure. It also resumes a disconnected session from the last
 accepted server sequence
-and stops automatic retries when the bounded replay window has expired. The
-The previous 0.6.2 debug APK was installed on an API 36 x86_64 emulator and passed cold
+and stops automatic retries when the bounded replay window has expired.
+Version 0.6.5 adds an authenticated Settings → Voice catalog, explicit
+rights/local-processing consent before reference-WAV upload, server-side
+profile selection, Chatterbox expression/CFG/temperature controls, and
+pitch-preserving Android playback speed from 0.85× to 1.25×. Reference audio
+is stored only under the paired PC's external application-data root and never
+inside the repository or APK. Long streamed replies may begin synthesis at a
+natural clause after 36 characters to reduce first-audio delay.
+The previous 0.6.2 debug APK was installed on an API 36 x86_64 emulator and
+passed cold
 launch, all primary destinations, portrait/landscape recreation, and
 force-stop/relaunch without a crash-buffer entry. Physical-device
 private-CA installation, microphone, Bluetooth, Room process-recovery on a

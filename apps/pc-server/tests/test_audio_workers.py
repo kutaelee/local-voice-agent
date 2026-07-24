@@ -16,6 +16,9 @@ from local_voice_agent_server.infrastructure.audio_workers import (
     UnixJsonWorkerClient,
     VadWorkerAdapter,
 )
+from local_voice_agent_server.infrastructure.voice_profiles import (
+    VoiceSynthesisOptions,
+)
 
 
 TOKEN = "test-only-audio-worker-token-32-chars"
@@ -87,6 +90,62 @@ def test_stt_and_tts_worker_adapters(tmp_path: Path) -> None:
             audio = await adapter.synthesize("안녕하세요.", language="ko")
         assert audio.sample_rate_hz == 24000
         assert len(audio.pcm_s16le) == 240
+
+    asyncio.run(scenario())
+
+
+def test_tts_adapter_sends_selected_voice_controls(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        path = tmp_path / "tts-profile.sock"
+        reference = tmp_path / "reference.wav"
+        reference.write_bytes(b"RIFF")
+        observed: dict[str, object] = {}
+
+        async def handler(
+            reader: asyncio.StreamReader,
+            writer: asyncio.StreamWriter,
+        ) -> None:
+            observed.update(json.loads(await reader.readline()))
+            writer.write(
+                json.dumps(
+                    {
+                        "status": "ok",
+                        "pcm_base64": base64.b64encode(b"\x00\x00").decode(),
+                        "sample_rate_hz": 24_000,
+                        "channels": 1,
+                    }
+                ).encode()
+                + b"\n"
+            )
+            await writer.drain()
+            writer.close()
+            await writer.wait_closed()
+
+        server = await asyncio.start_unix_server(handler, path=path)
+        async with server:
+            adapter = TtsWorkerAdapter(
+                UnixJsonWorkerClient(
+                    socket_path=path,
+                    token=TOKEN,
+                    timeout_seconds=2,
+                ),
+                options_provider=lambda: VoiceSynthesisOptions(
+                    profile_id="83c1f58c-052d-449d-a598-db0c19023b08",
+                    reference_audio_path=reference,
+                    exaggeration=0.5,
+                    cfg_weight=0.5,
+                    temperature=0.8,
+                ),
+            )
+            await adapter.synthesize("테스트", language="ko")
+
+        assert observed["voice_profile_id"] == (
+            "83c1f58c-052d-449d-a598-db0c19023b08"
+        )
+        assert observed["audio_prompt_path"] == str(reference)
+        assert observed["exaggeration"] == 0.5
+        assert observed["cfg_weight"] == 0.5
+        assert observed["temperature"] == 0.8
 
     asyncio.run(scenario())
 

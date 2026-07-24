@@ -21,7 +21,10 @@ param(
         'network_loss',
         'replay_expiry',
         'approval_denial',
-        'server_switch'
+        'server_switch',
+        'voice_profile_selection',
+        'voice_similarity',
+        'playback_speed'
     )]
     [string]$Case,
 
@@ -37,11 +40,11 @@ Set-StrictMode -Version Latest
 
 $adb = 'C:\Dev\SDK\Android\platform-tools\adb.exe'
 $apk = (
-    'E:\Data\LocalVoiceAgent\artifacts\android\0.6.4-api37\' +
-    'local-voice-agent-0.6.4-debug.apk'
+    'E:\Data\LocalVoiceAgent\artifacts\android\0.6.5-api37\' +
+    'local-voice-agent-0.6.5-debug.apk'
 )
 $expectedApkHash = (
-    '7bf84cfbb53533deed932f0f76b25a0b1d42a27cdd80e9872db46b88463ca3ab'
+    'ce91990cbc0126084d8dfd12e668d17eff3fc4c02e0100acef7a25229cd5428b'
 )
 $packageName = 'dev.localvoiceagent.android'
 $evidenceRoot = (
@@ -60,7 +63,10 @@ $caseNames = @(
     'network_loss',
     'replay_expiry',
     'approval_denial',
-    'server_switch'
+    'server_switch',
+    'voice_profile_selection',
+    'voice_similarity',
+    'playback_speed'
 )
 
 function Invoke-Adb {
@@ -257,10 +263,10 @@ switch ($Action) {
             Out-Null
         $metadata = Get-DeviceMetadata -Serial $serial
         if (
-            $metadata.app_version_code -ne 10 -or
-            $metadata.app_version_name -ne '0.6.4'
+            $metadata.app_version_code -ne 13 -or
+            $metadata.app_version_name -ne '0.6.5'
         ) {
-            throw 'Installed Android package version does not match 0.6.4.'
+            throw 'Installed Android package version does not match 0.6.5.'
         }
         [ordered]@{
             status = 'installed'
@@ -273,10 +279,10 @@ switch ($Action) {
         $hash = Get-VerifiedApkHash
         $metadata = Get-DeviceMetadata -Serial $serial
         if (
-            $metadata.app_version_code -ne 10 -or
-            $metadata.app_version_name -ne '0.6.4'
+            $metadata.app_version_code -ne 13 -or
+            $metadata.app_version_name -ne '0.6.5'
         ) {
-            throw 'Install the verified 0.6.4 debug APK before QA.'
+            throw 'Install the verified 0.6.5 debug APK before QA.'
         }
         if ([string]::IsNullOrWhiteSpace($EvidencePath)) {
             $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')

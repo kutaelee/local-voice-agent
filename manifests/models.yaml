@@ -151,9 +151,11 @@ models:
         size_bytes: 107374
         sha256: 6552d70568833628ba019c6b03459e77fe71ca197d5c560cef9411bee9d87f4e
     runtime_candidates: [chatterbox-tts-0.1.7]
-    voice_cloning_enabled: false
+    voice_cloning_enabled: true
+    voice_cloning_policy: explicit_rights_and_local_processing_consent_only
+    profile_data_root: 'E:\Data\LocalVoiceAgent\voice-profiles'
     downloaded_at: "2026-07-24T00:30:00+09:00"
-    validation_status: sha256_and_offline_local_v3_korean_synthesis_smoke_passed
+    validation_status: sha256_offline_korean_and_consented_reference_voice_smokes_passed
   - role: stt_gpu_candidate
     model_id: mobiuslabsgmbh/faster-whisper-large-v3-turbo
     repository: https://huggingface.co/mobiuslabsgmbh/faster-whisper-large-v3-turbo

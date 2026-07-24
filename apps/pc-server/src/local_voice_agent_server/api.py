@@ -52,6 +52,11 @@ from .infrastructure.tool_executor_client import (
 )
 from .infrastructure.tool_registry import ToolRegistry
 from .infrastructure.persistence import PostgresStateStore
+from .infrastructure.voice_profiles import (
+    VoiceProfileError,
+    VoiceProfileStore,
+    VoiceSettings,
+)
 from .domain.model_runtime import ModelRuntime, ModelRuntimeState
 from .protocol.client_events import (
     AudioInputEndPayload,
@@ -116,6 +121,25 @@ class ModelSwitchRequest(BaseModel):
     request_id: UUID
     idempotency_key: UUID
     target_model: Literal["gemma4-12b", "gemma4-31b"]
+
+
+class CreateVoiceProfileRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=64)
+    wav_base64: str = Field(min_length=1, max_length=12_000_000)
+    rights_confirmed: Literal[True]
+    local_processing_consent: Literal[True]
+
+
+class UpdateVoiceSettingsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    profile_id: str = Field(min_length=1, max_length=64)
+    playback_rate: float = Field(ge=0.85, le=1.25)
+    exaggeration: float = Field(ge=0.25, le=1.0)
+    cfg_weight: float = Field(ge=0.0, le=1.0)
+    temperature: float = Field(ge=0.5, le=1.2)
 
 
 @dataclass(slots=True)
@@ -183,6 +207,7 @@ def create_app(
     agent_status_provider: Callable[[], list[dict[str, object]]] | None = None,
     state_store: PostgresStateStore | None = None,
     model_switch_coordinator: ModelSwitchCoordinator | None = None,
+    voice_profile_store: VoiceProfileStore | None = None,
     reconnect_grace_seconds: float = 120,
 ) -> FastAPI:
     if not 0.01 <= reconnect_grace_seconds <= 600:
@@ -272,6 +297,86 @@ def create_app(
                 }
                 for model_id, runtime in runtimes.items()
             ],
+        }
+
+    @app.get("/v1/voice/profiles")
+    async def voice_profiles(request: Request) -> dict[str, object]:
+        if not _authorized_request(request, settings.pairing_token):
+            raise HTTPException(status_code=401, detail="invalid pairing token")
+        if voice_profile_store is None:
+            raise HTTPException(
+                status_code=503,
+                detail="voice profile store is unavailable",
+            )
+        try:
+            profiles = await asyncio.to_thread(voice_profile_store.list_profiles)
+            voice_settings = await asyncio.to_thread(
+                voice_profile_store.get_settings
+            )
+        except VoiceProfileError as error:
+            raise HTTPException(status_code=500, detail=str(error)) from error
+        return {
+            "schema_version": "1.0",
+            "profiles": [profile.to_dict() for profile in profiles],
+            "settings": voice_settings.to_dict(),
+        }
+
+    @app.post("/v1/voice/profiles", status_code=201)
+    async def create_voice_profile(
+        payload: CreateVoiceProfileRequest,
+        request: Request,
+    ) -> dict[str, object]:
+        if not _authorized_request(request, settings.pairing_token):
+            raise HTTPException(status_code=401, detail="invalid pairing token")
+        if voice_profile_store is None:
+            raise HTTPException(
+                status_code=503,
+                detail="voice profile store is unavailable",
+            )
+        try:
+            profile = await asyncio.to_thread(
+                voice_profile_store.create_profile,
+                name=payload.name,
+                wav_base64=payload.wav_base64,
+                rights_confirmed=payload.rights_confirmed,
+                local_processing_consent=payload.local_processing_consent,
+            )
+        except VoiceProfileError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        return {
+            "schema_version": "1.0",
+            "profile": profile.to_dict(),
+        }
+
+    @app.put("/v1/voice/settings")
+    async def update_voice_settings(
+        payload: UpdateVoiceSettingsRequest,
+        request: Request,
+    ) -> dict[str, object]:
+        if not _authorized_request(request, settings.pairing_token):
+            raise HTTPException(status_code=401, detail="invalid pairing token")
+        if voice_profile_store is None:
+            raise HTTPException(
+                status_code=503,
+                detail="voice profile store is unavailable",
+            )
+        try:
+            voice_settings = VoiceSettings(
+                profile_id=payload.profile_id,
+                playback_rate=payload.playback_rate,
+                exaggeration=payload.exaggeration,
+                cfg_weight=payload.cfg_weight,
+                temperature=payload.temperature,
+            )
+            updated = await asyncio.to_thread(
+                voice_profile_store.update_settings,
+                voice_settings,
+            )
+        except VoiceProfileError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        return {
+            "schema_version": "1.0",
+            "settings": updated.to_dict(),
         }
 
     @app.post("/v1/models/switch")
@@ -638,16 +743,19 @@ def create_app_from_environment() -> FastAPI:
     model_switch_coordinator = _model_switch_coordinator_from_environment(
         activity_barrier=model_activity_barrier,
     )
+    voice_profile_store = _voice_profile_store_from_environment()
     return create_app(
         ServerSettings.from_environment(),
         event_handler=_event_handler_from_environment(
             state_store=state_store,
             model_switch_coordinator=model_switch_coordinator,
             model_activity_barrier=model_activity_barrier,
+            voice_profile_store=voice_profile_store,
         ),
         agent_status_provider=_agent_status_provider_from_environment(),
         state_store=state_store,
         model_switch_coordinator=model_switch_coordinator,
+        voice_profile_store=voice_profile_store,
     )
 
 
@@ -724,11 +832,23 @@ def _agent_status_provider_from_environment(
     return observe
 
 
+def _voice_profile_store_from_environment() -> VoiceProfileStore:
+    return VoiceProfileStore(
+        Path(
+            os.environ.get(
+                "LVA_VOICE_PROFILE_ROOT",
+                "/mnt/e/Data/LocalVoiceAgent/voice-profiles",
+            )
+        )
+    )
+
+
 def _event_handler_from_environment(
     *,
     state_store: PostgresStateStore | None = None,
     model_switch_coordinator: ModelSwitchCoordinator | None = None,
     model_activity_barrier: ModelActivityBarrier | None = None,
+    voice_profile_store: VoiceProfileStore | None = None,
 ) -> SessionEventHandler:
     if os.environ.get("LVA_VOICE_ENABLED", "0") != "1":
         return UnavailableSessionEventHandler()
@@ -771,7 +891,12 @@ def _event_handler_from_environment(
             ),
             token=worker_token,
             timeout_seconds=180,
-        )
+        ),
+        options_provider=(
+            voice_profile_store.synthesis_options
+            if voice_profile_store is not None
+            else None
+        ),
     )
     base_url = os.environ.get(
         "LVA_VLLM_BASE_URL",

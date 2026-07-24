@@ -115,4 +115,45 @@ class AppReducerTest {
         assertFalse(denied.assistantState == AssistantState.EXECUTING)
         assertNull(denied.pendingApproval)
     }
+
+    @Test
+    fun voiceCatalogUpdatesSelectedProfileAndControls() {
+        val profile = VoiceProfileOption(
+            profileId = "profile-id",
+            name = "Korean reference",
+            isDefault = false,
+            durationMs = 8_192,
+        )
+
+        val updated = AppReducer.reduce(
+            AppUiState(voiceSettingsBusy = true),
+            AppAction.SetVoiceCatalog(
+                profiles = listOf(profile),
+                selectedProfileId = profile.profileId,
+                playbackRate = 1.1f,
+                exaggeration = 0.5f,
+                cfgWeight = 0.5f,
+                temperature = 0.8f,
+            ),
+        )
+
+        assertEquals(profile.profileId, updated.selectedVoiceProfileId)
+        assertEquals(1.1f, updated.voicePlaybackRate)
+        assertFalse(updated.voiceSettingsBusy)
+    }
+
+    @Test
+    fun voiceControlsAreClampedToSupportedRanges() {
+        val tooFast = AppReducer.reduce(
+            AppUiState(),
+            AppAction.SetVoicePlaybackRate(2.0f),
+        )
+        val tooExpressive = AppReducer.reduce(
+            tooFast,
+            AppAction.SetVoiceExaggeration(2.0f),
+        )
+
+        assertEquals(1.25f, tooExpressive.voicePlaybackRate)
+        assertEquals(1.0f, tooExpressive.voiceExaggeration)
+    }
 }
