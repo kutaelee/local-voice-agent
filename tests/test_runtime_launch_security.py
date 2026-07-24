@@ -40,6 +40,7 @@ def test_vllm_launcher_uses_official_environment_key() -> None:
     assert "VLLM_SMOKE_CPU_OFFLOAD_GB" in serve
     assert "exact-off)" in serve
     assert 'served_name="${served_name}-mtp-target-off"' in serve
+    assert '"${model_size}" == "31b" && "${mtp_mode}" != "off"' in serve
     assert "'exact-off', 'on'" in start_ps1
     assert "12b:exact-off)" in start
     assert '--cpu-offload-gb "${cpu_offload_gb}"' in serve

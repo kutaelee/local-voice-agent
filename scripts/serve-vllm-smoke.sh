@@ -104,7 +104,7 @@ vllm_bin="${runtime_root}/.venv/bin/vllm"
   exit 3
 }
 
-if [[ "${model_size}" == "31b" && "${mtp_mode}" == "on" ]]; then
+if [[ "${model_size}" == "31b" && "${mtp_mode}" != "off" ]]; then
   target_weight="${target}/model-00001-of-00002.safetensors"
 else
   target_weight="${target}/model.safetensors"
