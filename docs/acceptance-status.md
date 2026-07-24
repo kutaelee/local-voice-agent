@@ -14,7 +14,7 @@ live runtime or physical-device test.
 | 4 | MTP ON/OFF measurements exist | VERIFIED | Controlled exact-target ON/OFF pairs exist for vLLM 12B, SGLang 12B, and constrained vLLM 31B. |
 | 5 | vLLM/SGLang comparison exists | VERIFIED | Matching 12B comparisons completed; bounded 31B probes selected vLLM after SGLang's W4A16 repack failure and exact-target request timeout. |
 | 6 | 12B/31B switching works | VERIFIED | The actual stable-vLLM 12B-to-31B-to-12B stop/load/health sequence passed and returned to a verified 12B state. |
-| 7 | Android voice conversation works | PARTIAL | Production WebSocket PCM→STT→12B→TTS smoke passes and the user reports physical Android STT/TTS/continuous-turn QA working. The structured 20-turn collector and new 0.6.7 output-route/Qwen voice QA remain open. |
+| 7 | Android voice conversation works | PARTIAL | Production WebSocket PCM→STT→12B→TTS smoke passes and the user reports physical Android STT/TTS/continuous-turn QA working. The structured 20-turn collector and new 0.6.8 output-route/Qwen voice QA remain open. |
 | 8 | User speech interrupts TTS | PARTIAL | Server and Android cancellation paths pass unit/integration tests; physical-device barge-in timing remains open. |
 | 9 | Files and Git state can be read | VERIFIED | Live planner-to-executor file read and Windows/WSL filesystem/Git suites pass. |
 | 10 | Approved workspace file mutation works | VERIFIED | Exact Level 1 approval created a workspace file with a hash precondition. |
@@ -25,7 +25,7 @@ live runtime or physical-device test.
 | 15 | Tool calls leave audit and evidence | VERIFIED | Executor API and live read/write/browser smokes persist metadata-only audit/evidence records. |
 | 16 | Level 2+ cannot run without approval | VERIFIED | Planner, approval binding, schema, coordinate-action, and required security cases pass fail-closed. |
 | 17 | WSL failure has a diagnostic fallback | VERIFIED | Pinned native Windows llama.cpp CPU fallback passes Korean text, tool/schema, and streaming smokes. |
-| 18 | Android debug APK exists | VERIFIED | Version 0.6.7 API 37 debug APK is v2-signed and hash-recorded. |
+| 18 | Android debug APK exists | VERIFIED | Version 0.6.8 API 37 debug APK is v2-signed and hash-recorded. |
 | 19 | Install and removal are documented | VERIFIED | Runbook, installation, rollback, artifact, runtime, and model manifests are tracked. |
 | 20 | A new environment can reproduce the system from docs | VERIFIED | A fresh public clone at `734405e` with an empty Gradle cache passed prerequisites, 10 validators, 25 root tests, Android 15 tests, lint, and byte-identical debug/release builds. |
 
@@ -52,7 +52,7 @@ live runtime or physical-device test.
 - Clean-clone reproduction:
   `E:\Data\LocalVoiceAgent\runtime\evidence\reproduction\clean-clone-734405e.json`
 - Android artifacts:
-  `E:\Data\LocalVoiceAgent\artifacts\android\0.6.7-api37`
+  `E:\Data\LocalVoiceAgent\artifacts\android\0.6.8-api37`
 - Detailed executed tests: `docs/test-report.md`
 - Measured performance and caveats: `docs/performance-report.md`
 

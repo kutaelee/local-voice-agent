@@ -1,10 +1,10 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T16:10:00+09:00"
+generated_at: "2026-07-24T16:22:24+09:00"
 runtimes:
-  - id: android-client-build-0.6.7
+  - id: android-client-build-0.6.8
     role: android_client_build
-    version: "0.6.7"
-    status: api37_speaker_route_qwen_0_6b_unit_lint_debug_release_compiled
+    version: "0.6.8"
+    status: api37_legacy_endpoint_migration_speaker_route_qwen_0_6b_unit_lint_debug_release_compiled
     environment: 'C:\Dev\SDK\Android'
     jdk: "17.0.20"
     android_gradle_plugin: "9.3.0"
@@ -13,10 +13,10 @@ runtimes:
     target_sdk: 37
     build_tools: "36.0.0"
     platform_tools: "37.0.0"
-    unit_tests: 26
+    unit_tests: 28
     lint_findings: 0
     artifact_manifest: manifests/android-artifacts.yaml
-    rollback: retain 0.6.6 artifacts and install the prior hash-recorded APK
+    rollback: retain 0.6.7 artifacts and install the prior hash-recorded APK
   - id: tls-tools-49.0.0
     role: private_debug_ca_generator
     version: "49.0.0"

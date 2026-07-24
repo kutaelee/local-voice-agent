@@ -49,7 +49,7 @@ workspace Git state without assuming private APIs. An isolated Playwright
 1.61.0 browser now permits loopback-only DOM/accessibility observation and
 approved non-submit navigation/input/clicks; Microsoft UI Automation supports
 bounded window/tree/screenshot observation and approved actions only in
-registered Notepad windows. The Android 0.6.7 client records and streams PCM,
+registered Notepad windows. The Android 0.6.8 client records and streams PCM,
 plays ordered PCM output, supports client-side interruption, and keeps pairing
 tokens in Android Keystore-backed storage. Its authenticated Voice settings
 screen selects a consented local reference profile and records its exact
@@ -159,7 +159,7 @@ manifests. The Android API 37 command-line build is operational; see
 - Consented reference-voice data stays outside Git under
   `E:\Data\LocalVoiceAgent\voice-profiles`.
 - Verified Android APKs are copied to
-  `E:\Data\LocalVoiceAgent\artifacts\android\0.6.7-api37`; hashes and signing
+  `E:\Data\LocalVoiceAgent\artifacts\android\0.6.8-api37`; hashes and signing
   state are recorded in
   [manifests/android-artifacts.yaml](manifests/android-artifacts.yaml).
 

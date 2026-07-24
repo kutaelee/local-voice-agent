@@ -40,8 +40,8 @@ Set-StrictMode -Version Latest
 
 $adb = 'C:\Dev\SDK\Android\platform-tools\adb.exe'
 $apk = (
-    'E:\Data\LocalVoiceAgent\artifacts\android\0.6.7-api37\' +
-    'local-voice-agent-0.6.7-debug.apk'
+    'E:\Data\LocalVoiceAgent\artifacts\android\0.6.8-api37\' +
+    'local-voice-agent-0.6.8-debug.apk'
 )
 $expectedApkHash = (
     '7ae623d3259d6f86ba612b4ee6b098118661254403c660a6633fa220321e8066'
@@ -264,9 +264,9 @@ switch ($Action) {
         $metadata = Get-DeviceMetadata -Serial $serial
         if (
             $metadata.app_version_code -ne 13 -or
-            $metadata.app_version_name -ne '0.6.7'
+            $metadata.app_version_name -ne '0.6.8'
         ) {
-            throw 'Installed Android package version does not match 0.6.7.'
+            throw 'Installed Android package version does not match 0.6.8.'
         }
         [ordered]@{
             status = 'installed'
@@ -280,9 +280,9 @@ switch ($Action) {
         $metadata = Get-DeviceMetadata -Serial $serial
         if (
             $metadata.app_version_code -ne 13 -or
-            $metadata.app_version_name -ne '0.6.7'
+            $metadata.app_version_name -ne '0.6.8'
         ) {
-            throw 'Install the verified 0.6.7 debug APK before QA.'
+            throw 'Install the verified 0.6.8 debug APK before QA.'
         }
         if ([string]::IsNullOrWhiteSpace($EvidencePath)) {
             $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')

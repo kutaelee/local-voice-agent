@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.core.content.edit
+import java.net.URI
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -51,7 +52,14 @@ class PairingTokenStore(context: Context) {
         }.getOrNull()
     }
 
-    fun serverUrl(): String? = preferences.getString(SERVER_URL_KEY, null)
+    fun serverUrl(): String? {
+        val stored = preferences.getString(SERVER_URL_KEY, null) ?: return null
+        val migrated = migrateLegacyServerUrl(stored)
+        if (migrated != stored) {
+            preferences.edit { putString(SERVER_URL_KEY, migrated) }
+        }
+        return migrated
+    }
 
     fun clear() {
         preferences.edit {
@@ -90,4 +98,22 @@ class PairingTokenStore(context: Context) {
         const val IV_KEY = "iv"
         const val CIPHERTEXT_KEY = "ciphertext"
     }
+}
+
+internal fun migrateLegacyServerUrl(serverUrl: String): String {
+    val endpoint = runCatching { URI(serverUrl) }.getOrNull() ?: return serverUrl
+    if (endpoint.scheme != "wss" || endpoint.port != 8765 || endpoint.host == null) {
+        return serverUrl
+    }
+    return runCatching {
+        URI(
+            endpoint.scheme,
+            endpoint.userInfo,
+            endpoint.host,
+            46321,
+            endpoint.path,
+            endpoint.query,
+            endpoint.fragment,
+        ).toString()
+    }.getOrDefault(serverUrl)
 }

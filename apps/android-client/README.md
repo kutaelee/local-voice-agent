@@ -49,6 +49,9 @@ route active for each response. The server concurrently receives later LLM
 deltas while completed speech units are synthesized, and the live worker
 defaults to Qwen3-TTS 0.6B Base for lower latency and VRAM use. The 1.7B Base
 checkpoint remains selectable as the quality comparison profile.
+Version 0.6.8 migrates a previously saved secure Gateway endpoint from the
+retired port 8765 to 46321 during an in-place APK upgrade. Other schemes and
+ports remain unchanged.
 The previous 0.6.2 debug APK was installed on an API 36 x86_64 emulator and
 passed cold
 launch, all primary destinations, portrait/landscape recreation, and
