@@ -44,6 +44,10 @@ def handle_client(
     target: socket.socket | None = None
     try:
         target = socket.create_connection((target_host, target_port), timeout=10)
+        # create_connection leaves the connect timeout on the established
+        # socket. Clear it so an idle WebSocket is not disconnected every
+        # ten seconds while waiting for its next frame or ping.
+        target.settimeout(None)
         threading.Thread(
             target=pump,
             args=(client, target),

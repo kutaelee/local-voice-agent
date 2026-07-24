@@ -8,7 +8,7 @@ voice session requests the modern Android communication-device route for an
 available Bluetooth/LE/hearing-aid endpoint. Physical-device Bluetooth,
 private-CA, process-recovery, and end-to-end voice QA remain.
 
-The current 0.6.2 debug APK was installed on an API 36 x86_64 emulator using
+The previous 0.6.2 debug APK was installed on an API 36 x86_64 emulator using
 software rendering while the RTX 5090 remained assigned to another workload.
 Cold launch, the four primary destinations, rotation recreation, and
 force-stop/relaunch passed. The evidence envelope is

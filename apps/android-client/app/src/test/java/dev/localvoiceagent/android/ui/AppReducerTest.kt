@@ -8,6 +8,23 @@ import org.junit.Test
 
 class AppReducerTest {
     @Test
+    fun connectedPairingNavigatesToVoiceScreen() {
+        val pairing = AppUiState(
+            destination = AppDestination.PAIRING,
+            connectionState = ConnectionState.CONNECTING,
+            pairingConfigured = true,
+        )
+
+        val connected = AppReducer.reduce(
+            pairing,
+            AppAction.SetConnectionState(ConnectionState.CONNECTED),
+        )
+
+        assertEquals(ConnectionState.CONNECTED, connected.connectionState)
+        assertEquals(AppDestination.VOICE, connected.destination)
+    }
+
+    @Test
     fun connectFailsClosedWithoutPairing() {
         val result = AppReducer.reduce(AppUiState(), AppAction.Connect)
 

@@ -116,6 +116,11 @@ object AppReducer {
         AppAction.Interrupt -> state.copy(assistantState = AssistantState.INTERRUPTED)
         is AppAction.SetConnectionState -> state.copy(
             connectionState = action.state,
+            destination = if (action.state == ConnectionState.CONNECTED) {
+                AppDestination.VOICE
+            } else {
+                state.destination
+            },
             lastError = if (action.state == ConnectionState.CONNECTED) null else state.lastError,
         )
         is AppAction.SetAssistantState -> state.copy(assistantState = action.state)
