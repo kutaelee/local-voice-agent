@@ -1,10 +1,10 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T07:17:15+09:00"
+generated_at: "2026-07-24T16:10:00+09:00"
 runtimes:
-  - id: android-client-build-0.6.6
+  - id: android-client-build-0.6.7
     role: android_client_build
-    version: "0.6.6"
-    status: api37_qwen_transcript_style_profiles_unit_lint_debug_release_compiled
+    version: "0.6.7"
+    status: api37_speaker_route_qwen_0_6b_unit_lint_debug_release_compiled
     environment: 'C:\Dev\SDK\Android'
     jdk: "17.0.20"
     android_gradle_plugin: "9.3.0"
@@ -13,10 +13,10 @@ runtimes:
     target_sdk: 37
     build_tools: "36.0.0"
     platform_tools: "37.0.0"
-    unit_tests: 25
+    unit_tests: 26
     lint_findings: 0
     artifact_manifest: manifests/android-artifacts.yaml
-    rollback: retain 0.6.5 artifacts and install the prior hash-recorded APK
+    rollback: retain 0.6.6 artifacts and install the prior hash-recorded APK
   - id: tls-tools-49.0.0
     role: private_debug_ca_generator
     version: "49.0.0"
@@ -609,7 +609,7 @@ runtimes:
       - first_failed_system_python_environment_retained_not_selected
     rollback: rerun pinned lock sync for PyPI wheel or switch away from the versioned managed-Python environment
   - id: qwen3-tts-12hz-1.7b-base
-    role: primary_tts
+    role: quality_tts
     version: qwen-tts-0.1.1
     status: installed_offline_korean_clone_tail_and_style_routes_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/tts-qwen3-1.7b/.venv
@@ -659,6 +659,34 @@ runtimes:
       - base_variant_has_no_free_form_instruction_control
       - physical_android_listening_qa_pending
     rollback: stop the Qwen worker and restore the retained Chatterbox launcher paths
+  - id: qwen3-tts-12hz-0.6b-base
+    role: primary_low_latency_tts
+    version: qwen-tts-0.1.1
+    status: installed_offline_korean_clone_cold_warm_and_first_unit_passed
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/tts-qwen3-1.7b/.venv
+    python: "3.12.13"
+    source: https://github.com/QwenLM/Qwen3-TTS
+    package_source: https://pypi.org/project/qwen-tts/0.1.1/
+    installed_at: "2026-07-24T16:01:18+09:00"
+    model_revision: 5d83992436eae1d760afd27aff78a71d676296fc
+    model_variant: Base
+    voice_cloning_enabled: true
+    reference_transcript_required: true
+    attention: sdpa_manual_pytorch
+    flash_attention: stable_sm120_support_unavailable
+    peak_observed_total_gpu_mib: 19386
+    warm_smoke:
+      synthesis_seconds: 3.704
+      audio_seconds: 4.000
+      realtime_factor: 0.926
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\qwen3-tts-0.6b-warm.json'
+    first_unit_smoke:
+      synthesis_seconds: 1.497
+      audio_seconds: 1.520
+      realtime_factor: 0.985
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\qwen3-tts-0.6b-first-unit.json'
+    selection_basis: lower_vram_and_faster_warm_clone_with_official_korean_quality_near_1_7b
+    rollback: set LVA_QWEN3_TTS_SIZE=1.7b and restart the owned audio workers
   - id: postgresql-18.4
     role: database
     version: "18.4"
@@ -666,7 +694,7 @@ runtimes:
     installed_at: "2026-07-24T02:09:12+09:00"
     image: postgres:18.4-bookworm
     image_digest: sha256:1961f96e6029a02c3812d7cb329a3b03a3ac2bb067058dec17b0f5596aca9296
-    endpoint: "127.0.0.1:55432"
+    endpoint: "127.0.0.1:46324"
     data_path: 'E:\Data\DB\Active\LocalVoiceAgent'
     secret_path: 'E:\Data\LocalVoiceAgent\secrets\postgres-password'
     migration: 0002_approval_recovery

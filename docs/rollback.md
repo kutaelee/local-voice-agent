@@ -22,7 +22,7 @@ The Windows Tool Executor environment is
 `C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv`; Playwright
 browser assets are isolated at
 `C:\Dev\Tools\LocalVoiceAgent\browsers\playwright-1.61.0`. Stop the registered
-executor, verify port 8790 and its recorded PID are absent, inventory the
+executor, verify port 46323 and its recorded PID are absent, inventory the
 exact directory, and then move only the selected directory with
 `E:\Workspace\System\workstation-config\scripts\Move-ToWorkstationTrash.ps1`.
 Do not recursively delete `C:\Dev\Tools` or a shared browser root.
@@ -59,7 +59,7 @@ previous validated revision; it does not delete weights automatically.
 
 The Windows fallback is versioned at
 `C:\Dev\Tools\LocalVoiceAgent\runtimes\llama.cpp-b10092`. Stop it through
-`scripts\stop-fallback.ps1`, verify port 8769 and the registered PID are gone,
+`scripts\stop-fallback.ps1`, verify port 46327 and the registered PID are gone,
 then use the workstation trash helper to move only that exact runtime if a
 rollback is required. Retain the revision-addressed GGUF unless a separate
 inventory and cleanup authorization explicitly includes it.

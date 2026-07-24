@@ -1,32 +1,32 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T15:09:00+09:00"
+generated_at: "2026-07-24T16:10:00+09:00"
 application_id: dev.localvoiceagent.android
-version_code: 14
-version_name: "0.6.6"
+version_code: 15
+version_name: "0.6.7"
 min_sdk: 26
 compile_sdk: 37
 target_sdk: 37
 artifacts:
   - kind: debug_apk
-    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.6.6-api37\local-voice-agent-0.6.6-debug.apk'
-    size_bytes: 12910679
-    sha256: 7ae623d3259d6f86ba612b4ee6b098118661254403c660a6633fa220321e8066
+    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.6.7-api37\local-voice-agent-0.6.7-debug.apk'
+    size_bytes: 12805798
+    sha256: 3c65d64bee9ad52b78a3be6d3a513d46e14e9145604e17378a31a71c50bfe1f2
     signature: android_debug_v2_verified
     installable: true
   - kind: release_unsigned_apk
-    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.6.6-api37\local-voice-agent-0.6.6-release-unsigned.apk'
+    path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.6.7-api37\local-voice-agent-0.6.7-release-unsigned.apk'
     size_bytes: 9120013
-    sha256: 76efa787096cfd4ebef1e7783329a8cc1c8658a0bb79cdacee0e0c4c5d502e34
+    sha256: 13c9611e8b0b92e48d3884fcdd0b3af651416bd8852425bf7d6954a1d65bbcf3
     signature: unsigned_verified
     installable: false
 validation:
   gradle_command: gradlew.bat --no-daemon --non-interactive testDebugUnitTest lintDebug assembleDebug; assembleRelease
   gradle_result: passed
-  unit_tests: 25
+  unit_tests: 26
   unit_test_failures: 0
   lint_findings_after_fix: 0
   package_metadata: compile_sdk_37_target_sdk_37_verified_with_aapt2
-  device_install_test: pending_0_6_6_physical_install_0_6_4_user_qa_reported_working
+  device_install_test: pending_0_6_7_physical_install_0_6_6_user_qa_reported_working
   interruption_queue_test: prior_generation_chunks_invalidated_and_normal_drain_preserved
   reconnect_test: same_session_resume_sequence_and_expired_replay_terminal_rejection_passed
   lan_relay_test: 27_seconds_continuous_websocket_after_connect_timeout_cleared
@@ -37,6 +37,8 @@ validation:
   qwen_profile_test: exact_transcript_private_style_metadata_and_sentence_route_passed
   qwen_worker_test: offline_neutral_happy_dark_clone_and_160ms_tail_passed
   playback_rate_test: pitch_preserving_0_85_to_1_25_range_compiled_and_bounds_unit_tested
+  audio_output_route_test: speaker_default_earpiece_bluetooth_selector_compiled_physical_qa_pending
+  llm_tts_overlap_test: bounded_queue_consumes_later_deltas_while_tts_runs
   ui_evidence:
     initial_issue: status_bar_overlap_and_eight_item_bottom_row_clipping
     previous_emulator_qa: 'E:\Data\LocalVoiceAgent\runtime\evidence\android\android-0.6.2-emulator-qa.json'

@@ -18,12 +18,12 @@ placing a pairing token in a command line or evidence file.
 
 ```powershell
 Get-FileHash `
-  E:\Data\LocalVoiceAgent\artifacts\android\0.6.6-api37\local-voice-agent-0.6.6-debug.apk `
+  E:\Data\LocalVoiceAgent\artifacts\android\0.6.7-api37\local-voice-agent-0.6.7-debug.apk `
   -Algorithm SHA256
 ```
 
 Expected SHA-256:
-`7ae623d3259d6f86ba612b4ee6b098118661254403c660a6633fa220321e8066`.
+`3c65d64bee9ad52b78a3be6d3a513d46e14e9145604e17378a31a71c50bfe1f2`.
 
 ## Install and pair
 

@@ -126,7 +126,7 @@ render enters the queue, the wrapper stops only the owned SGLang process group
 and records the run as `yielded`; it does not create a partial benchmark
 result. The 2026-07-24
 live guard test yielded during target loading when one ComfyUI render arrived,
-then verified that port 8768, the SGLang PID file, and the incomplete result
+then verified that port 46325, the SGLang PID file, and the incomplete result
 were absent.
 
 The equivalent vLLM exact-target comparison runs a functional gate before its
@@ -178,7 +178,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 
 $env:LVA_RUNTIME_API_KEY = $env:LVA_FALLBACK_API_KEY
 python .\scripts\smoke-openai-api.py `
-  --base-url http://127.0.0.1:8769 `
+  --base-url http://127.0.0.1:46327 `
   --model gemma4-12b-fallback `
   --skip-thinking --disable-thinking
 
@@ -225,7 +225,7 @@ these process variables before `start-server.ps1`:
 
 ```powershell
 $env:LVA_RUNTIME_SWITCH_ENABLED = '1'
-$env:LVA_VLLM_RUNTIME_URL = 'http://127.0.0.1:8766'
+$env:LVA_VLLM_RUNTIME_URL = 'http://127.0.0.1:46322'
 ```
 
 An authenticated management request is:
@@ -239,7 +239,7 @@ $body = @{
 } | ConvertTo-Json
 Invoke-RestMethod `
   -Method Post `
-  -Uri 'http://127.0.0.1:8765/v1/models/switch' `
+  -Uri 'http://127.0.0.1:46321/v1/models/switch' `
   -Headers $headers `
   -ContentType 'application/json' `
   -Body $body
@@ -358,7 +358,7 @@ $env:LVA_RUNTIME_API_KEY = '<runtime-api-key-at-least-32-characters>'
 .\scripts\benchmark.ps1 `
   -Runtime vllm `
   -Condition 12b-mtp-off `
-  -BaseUrl http://127.0.0.1:8766 `
+  -BaseUrl http://127.0.0.1:46322 `
   -Model gemma4-12b `
   -ModelRevision '<exact-40-character-revision>' `
   -Samples 10 `
@@ -479,7 +479,7 @@ export LVA_TTS_ENGINE=chatterbox
 bash scripts/start-audio-workers.sh
 ```
 
-vLLM binds only to `127.0.0.1:8766`; its first model load from the canonical
+vLLM binds only to `127.0.0.1:46322`; its first model load from the canonical
 NTFS model store can
 take several minutes. Startup waits up to 360 seconds by default and can be
 bounded from 60 through 900 seconds with
@@ -491,7 +491,7 @@ Run the production composition through an in-process authenticated WebSocket:
 export LVA_PAIRING_TOKEN='<random-pairing-token>'
 export LVA_VOICE_ENABLED=1
 export LVA_VLLM_MODEL=gemma4-12b
-export LVA_VLLM_BASE_URL=http://127.0.0.1:8766/v1
+export LVA_VLLM_BASE_URL=http://127.0.0.1:46322/v1
 python scripts/smoke-voice-websocket.py \
   --input-wav /mnt/e/Data/LocalVoiceAgent/runtime/evidence/audio/chatterbox-v3-ko-smoke.wav \
   --evidence /mnt/e/Data/LocalVoiceAgent/runtime/evidence/audio/voice-websocket-e2e.json
@@ -507,7 +507,7 @@ $env:LVA_PAIRING_TOKEN = '<at-least-32-random-characters>'
 $env:LVA_VOICE_ENABLED = '0' # Set to 1 only after workers and vLLM are healthy.
 $env:LVA_TOOLS_ENABLED = '0' # Set to 1 only with an authenticated executor.
 .\scripts\start-server.ps1
-Invoke-RestMethod http://127.0.0.1:8765/health
+Invoke-RestMethod http://127.0.0.1:46321/health
 .\scripts\stop-server.ps1
 ```
 
@@ -604,9 +604,9 @@ $env:LVA_PAIRING_TOKEN = '<at-least-32-random-characters>'
 
 python .\scripts\private-network-tcp-relay.py `
   --listen-host 192.168.1.20 `
-  --listen-port 8765 `
+  --listen-port 46321 `
   --target-host $wslAddress `
-  --target-port 8765
+  --target-port 46321
 ```
 
 Run the relay through the normal supervised process mechanism in persistent
@@ -617,7 +617,7 @@ before changing the firewall.
 
 The private key and certificate are runtime data, not repository files. For a
 debug APK test, import the private CA on the Android device using the
-device-owner flow, then pair the app with `wss://192.168.1.20:8765` and the
+device-owner flow, then pair the app with `wss://192.168.1.20:46321` and the
 pairing token. A release candidate instead needs a system-trusted certificate
 (for example, from an approved private-network solution). For an Android
 Emulator, prefer the loopback-only listener through `adb reverse` rather than
@@ -633,7 +633,7 @@ credential-store integration, never in Git:
 $env:LVA_TOOL_EXECUTOR_TOKEN = '<at-least-32-random-characters>'
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 .\scripts\start-tool-executor.ps1
-Invoke-RestMethod http://127.0.0.1:8790/health
+Invoke-RestMethod http://127.0.0.1:46323/health
 .\scripts\stop-tool-executor.ps1
 ```
 
@@ -646,7 +646,7 @@ Get-Content E:\Data\LocalVoiceAgent\runtime\status\tool-executor.json
 ```
 
 ```bash
-export LVA_TOOL_EXECUTOR_URL=http://172.18.0.1:8790
+export LVA_TOOL_EXECUTOR_URL=http://172.18.0.1:46323
 export LVA_WINDOWS_HOST_IP=172.18.0.1
 ```
 
@@ -696,7 +696,7 @@ the server must not reissue it automatically.
 ## PostgreSQL
 
 The database uses the existing Docker Desktop backend and binds only to
-`127.0.0.1:55432`. The start script creates a random external secret on first
+`127.0.0.1:46324`. The start script creates a random external secret on first
 use, refuses a non-empty unregistered data directory, starts the exact pinned
 image, waits for health, and writes a secret-free status record:
 
@@ -763,7 +763,7 @@ Install the verified debug APK only when a device is visible in
 ```powershell
 C:\Dev\SDK\Android\platform-tools\adb.exe devices
 C:\Dev\SDK\Android\platform-tools\adb.exe install -r `
-  E:\Data\LocalVoiceAgent\artifacts\android\0.6.6-api37\local-voice-agent-0.6.6-debug.apk
+  E:\Data\LocalVoiceAgent\artifacts\android\0.6.7-api37\local-voice-agent-0.6.7-debug.apk
 ```
 
 The release APK is intentionally unsigned and cannot be installed until the

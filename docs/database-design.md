@@ -2,7 +2,7 @@
 
 PostgreSQL 18.4 is the authoritative state store. It runs in the existing
 Docker Desktop backend from an exact digest, publishes only
-`127.0.0.1:55432`, and does not install a Windows service or change PATH,
+`127.0.0.1:46324`, and does not install a Windows service or change PATH,
 firewall, or Windows features. Active cluster data belongs only at
 `E:\Data\DB\Active\LocalVoiceAgent`; logical dumps belong under
 `E:\Data\DB\Dumps`. The generated database password is outside Git at

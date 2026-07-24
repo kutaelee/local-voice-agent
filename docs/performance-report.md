@@ -412,3 +412,32 @@ With 4 GiB of official CPU weight offload, the same pair became healthy:
 The full 10-sample latency run was interrupted when a separately managed
 ComfyUI render acquired the shared GPU. Only the owned SGLang process group
 was stopped. No p50/p95 or speedup is claimed for this interrupted run.
+
+## Interactive voice optimization snapshot (2026-07-24)
+
+This snapshot was taken with Gemma 4 12B, faster-whisper, Silero VAD, and the
+Qwen3-TTS worker running together. It is a bounded smoke comparison, not a
+p50/p95 benchmark.
+
+| Item | Before | Selected configuration |
+|---|---:|---:|
+| Total observed GPU memory | about 25.7 GiB | 19,208 MiB used / 12,980 MiB free |
+| vLLM observed GPU memory | 20,170 MiB | 13,377 MiB |
+| vLLM context / sequences | larger dynamic reservation | 4,096 tokens / 1 sequence |
+| vLLM explicit KV cache | dynamic | 1,610,612,736 bytes / 5,381 tokens |
+| TTS checkpoint | Qwen3-TTS 1.7B Base | Qwen3-TTS 0.6B Base |
+| TTS warm synthesis | 4.033 s for 4.08 s audio, RTF 0.988 | 3.704 s for 4.00 s audio, RTF 0.926 |
+| First short speech unit | not separately measured | 1.497 s for 1.52 s audio, RTF 0.985 |
+| Gemma streaming smoke | not comparable | 34.713 ms TTFT / 505.588 ms total |
+
+The 0.6B checkpoint saved about 1.7 GiB relative to the 1.7B worker in the
+observed live composition. The response pipeline now consumes model deltas
+and synthesizes complete speech units concurrently through a bounded queue,
+so one TTS request no longer pauses reception of later LLM deltas. The
+installed high-level Qwen API still returns a complete waveform for each
+speech unit; therefore this change reduces pipeline serialization but does
+not claim true codec-frame streaming or sub-100 ms first audio.
+
+Evidence is stored outside Git under
+`E:\Data\LocalVoiceAgent\runtime\evidence\vllm-12b-interactive-optimized.json`,
+`qwen3-tts-0.6b-warm.json`, and `qwen3-tts-0.6b-first-unit.json`.

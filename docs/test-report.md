@@ -147,6 +147,7 @@ product acceptance and physical Android QA are not complete.
 | Android 0.6.3 artifacts | Passed | Debug APK 12,740,262 bytes SHA-256 `4a6df7829047b0e126fd860498ecb4301f91935fd7a45382737d23d82177cf8c`; unsigned release APK 9,070,861 bytes SHA-256 `7d2badf924327dc94309adc53056f077f1bdcda8541d17e3b7cdfd3372d9ce85`; AAPT2 confirmed version code 11/name 0.6.3 and API 37. Debug signature scheme v2 passed and the release artifact remained unsigned as intended. |
 | Android 0.6.5 artifacts | Passed | Debug APK 12,839,199 bytes SHA-256 `ce91990cbc0126084d8dfd12e668d17eff3fc4c02e0100acef7a25229cd5428b`; unsigned release APK 9,120,017 bytes SHA-256 `9cb04e8b59727884b1b1636e41bd8f4a5866c319192fd3e1c6fc96c7ca47db21`; AAPT2 confirmed version code 13/name 0.6.5 and API 37. Debug signature scheme v2 passed and the release artifact remained unsigned as intended. |
 | Android 0.6.6 artifacts | Passed | Debug APK 12,910,679 bytes SHA-256 `7ae623d3259d6f86ba612b4ee6b098118661254403c660a6633fa220321e8066`; unsigned release APK 9,120,013 bytes SHA-256 `76efa787096cfd4ebef1e7783329a8cc1c8658a0bb79cdacee0e0c4c5d502e34`; AAPT2 confirmed version code 14/name 0.6.6 and API 37. Debug signature v2 passed and release remained unsigned. |
+| Android 0.6.7 artifacts | Passed | Debug APK 12,805,798 bytes SHA-256 `3c65d64bee9ad52b78a3be6d3a513d46e14e9145604e17378a31a71c50bfe1f2`; unsigned release APK 9,120,013 bytes SHA-256 `13c9611e8b0b92e48d3884fcdd0b3af651416bd8852425bf7d6954a1d65bbcf3`; AAPT2 confirmed version code 15/name 0.6.7 and API 37. Debug signature v2 passed and release remained unsigned as intended. |
 | Fresh public-clone reproduction | Passed | Public revision `734405e` was cloned into an explicitly temporary `C:\Dev\Current` worktree. With an empty 1,409,905,248-byte final Gradle cache, it passed prerequisite detection, 10 repository validators, 25 root tests, 15 Android unit tests, zero lint findings, and clean debug/release builds. Both APKs were byte-identical to the recorded 0.6.2 artifacts. Evidence SHA-256 `2e7bbf0a537afb5b3965593a555c7e49048e008f033b3c9e90d4c7d6f39f15d4` |
 | faster-whisper small download integrity | Passed | Official pinned revision `536b0662742c02347bc0e980a01041f333bce120`; 483,546,902-byte `model.bin` matched SHA-256 `3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671`; runtime loading remains pending |
 | faster-whisper isolated runtime | Passed | Python 3.12.13, faster-whisper 1.2.1, CTranslate2 4.8.1, cuBLAS 12.9.2.10 and cuDNN 9.25.0.15 installed from a hash-locked dependency set; CPU and RTX 5090 CUDA paths passed |
@@ -179,3 +180,19 @@ physical private-CA/LAN/voice testing, and product acceptance tests remain
 passed, but its simulated/static cases are not substitutes for those live
 tests. The TLS private-LAN launcher was gate-tested, but no LAN listener or
 firewall change was made.
+
+## 2026-07-24 interactive optimization regression
+
+| Check | Result | Evidence |
+|---|---|---|
+| Repository root suite | Passed | 30/30 tests passed using the isolated PC-server runner plus the isolated TLS dependency path |
+| PC-server full suite | Passed | 173 collected: 171 passed and two environment-dependent cases skipped |
+| Tool Executor full Windows suite | Passed | 87 collected: 86 passed and one environment-dependent case skipped; Playwright 1.61.0 used the registered Chrome 149 runtime |
+| Android unit tests and debug assembly | Passed | Gradle `testDebugUnitTest assembleDebug`; version 0.6.7 |
+| Repository and security validators | Passed | 10/10 validators; 75 tool contracts, 24 events, 160 benchmark cases |
+| Live Level 0 tool loop | Passed | `read_file` completed through the real executor; evidence ID `89f0c068-4ad7-4f48-adb4-451b41cc177f` |
+| Dedicated service ports | Passed | Gateway 46321, vLLM 46322, Tool Executor 46323, PostgreSQL 46324; prior project ports are closed |
+| Live service health | Passed | Gateway, vLLM, and Tool Executor returned HTTP 200 |
+| Gemma 4 12B interactive API | Passed | Korean text, tool call, strict JSON, and streaming; 34.713 ms TTFT |
+| Integrated GPU headroom | Passed | 19,208 MiB used / 12,980 MiB free with the interactive voice stack loaded |
+| Android physical speaker/earpiece/Bluetooth QA | Not run | 0.6.7 exposes an explicit output selector; physical-device confirmation is required |

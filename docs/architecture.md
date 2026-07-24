@@ -43,7 +43,7 @@ and mask opt-in command lines. Delete, Git mutation, process mutation, coordinat
 external browser submission, and shell adapters remain unavailable.
 
 The current transport boundary is an authenticated HTTP API bound by default
-to `127.0.0.1:8790`. In WSL NAT mode the launcher can instead bind only the
+to `127.0.0.1:46323`. In WSL NAT mode the launcher can instead bind only the
 detected RFC1918 address of the Windows `vEthernet (WSL ...)` Hyper-V adapter;
 the client accepts that address only when the same canonical IP is explicitly
 configured. LAN addresses, hostnames, and wildcard binds remain rejected. The

@@ -43,6 +43,12 @@ on the paired PC and is not returned by the profile API. Comma-based early
 splitting was removed to avoid audible mid-phrase joins; synthesis starts at
 completed sentence boundaries and the worker adds a measured 160 ms terminal
 tail.
+Version 0.6.7 adds an explicit speaker, earpiece, or Bluetooth playback
+selector, makes speaker output the default, and keeps a selected communication
+route active for each response. The server concurrently receives later LLM
+deltas while completed speech units are synthesized, and the live worker
+defaults to Qwen3-TTS 0.6B Base for lower latency and VRAM use. The 1.7B Base
+checkpoint remains selectable as the quality comparison profile.
 The previous 0.6.2 debug APK was installed on an API 36 x86_64 emulator and
 passed cold
 launch, all primary destinations, portrait/landscape recreation, and
