@@ -3,7 +3,10 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
-from local_voice_agent_server.application.salon_calls import SalonCallCoordinator
+from local_voice_agent_server.application.salon_calls import (
+    SalonCallCoordinator,
+    SalonFaqDecision,
+)
 from local_voice_agent_server.domain.salon_booking import SalonReservationService
 from local_voice_agent_server.infrastructure.file_reservations import (
     FileReservationStore,
@@ -15,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 POLICY_PATH = REPO_ROOT / "configs" / "salon-booking.json"
 
 
-def _coordinator(tmp_path: Path) -> SalonCallCoordinator:
+def _coordinator(tmp_path: Path, *, faq_responder=None) -> SalonCallCoordinator:
     policy = load_salon_policy(POLICY_PATH)
     now = lambda: datetime(2026, 7, 25, 9, 0, tzinfo=policy.timezone)
     service = SalonReservationService(
@@ -26,7 +29,11 @@ def _coordinator(tmp_path: Path) -> SalonCallCoordinator:
         ),
         now=now,
     )
-    return SalonCallCoordinator(reservations=service, now=now)
+    return SalonCallCoordinator(
+        reservations=service,
+        now=now,
+        faq_responder=faq_responder,
+    )
 
 
 def _texts(events) -> list[str]:
@@ -74,6 +81,37 @@ def test_scope_guard_answers_salon_questions_and_refuses_unrelated_topics(
         assert "커트 25,000원" in _texts(price)[0]
         assert "미용실 예약" in _texts(weather)[0]
         assert "날씨" not in _texts(weather)[0]
+
+    asyncio.run(scenario())
+
+
+def test_optional_model_answers_only_scoped_unknown_faq(tmp_path: Path) -> None:
+    class FaqResponder:
+        async def answer(self, question: str) -> SalonFaqDecision:
+            if "두 명" in question:
+                return SalonFaqDecision(
+                    in_scope=True,
+                    answer="동시간대 담당자 여유가 있으면 두 분 모두 예약할 수 있습니다.",
+                )
+            return SalonFaqDecision(in_scope=False, answer="")
+
+    async def scenario() -> None:
+        coordinator = _coordinator(tmp_path, faq_responder=FaqResponder())
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        party = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="친구와 두 명이 같이 받을 수 있나요?",
+        )
+        weather = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="내일 날씨는 어떤가요?",
+        )
+
+        assert "두 분 모두" in _texts(party)[0]
+        assert "미용실 예약" in _texts(weather)[0]
 
     asyncio.run(scenario())
 

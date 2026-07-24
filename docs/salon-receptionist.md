@@ -31,9 +31,12 @@ state. An affirmative response atomically updates the file and emits both
 `salon.reservation.updated` and `salon.owner.notification`. A rejection clears
 the proposal without writing. `salon.call.end` closes the simulated call.
 
-The current engine is deterministic and does not reserve GPU memory. A local
-LLM may later rewrite or answer a supported FAQ, but it never receives
-authority to write the schedule. The domain service remains the source of
+The transaction engine is deterministic and does not reserve GPU memory. An
+optional Gemma 4 adapter answers otherwise-unmatched salon FAQs through a
+strict two-field JSON schema. It receives only the committed policy and the
+question, and it never receives authority to write the schedule. If the
+runtime is unavailable or its output fails validation, the text workflow
+continues with a bounded fallback. The domain service remains the source of
 truth for:
 
 - past dates and the 90-day booking horizon;
@@ -90,3 +93,25 @@ out-of-scope requests.
 
 Physical user QA and TTS listening QA are intentionally performed only after
 the text path, model smoke, and automated regressions pass.
+
+## Optional model and TTS adapters
+
+`LVA_SALON_LLM_ENABLED=1` enables the loopback-only structured FAQ adapter.
+The production reservation parser still handles every mutation. On
+2026-07-25, a `gpuq`-managed Gemma 4 12B run classified four supported salon
+questions and two unrelated questions correctly (6/6). The cold first
+request took 2,435.599 ms; the following requests took 206.110–471.006 ms.
+The scheduler observed 14,682 MiB peak total GPU use and the wrapper stopped
+the owned vLLM process after the evidence was written.
+
+`LVA_SALON_TTS_ENABLED=1` attaches the existing Qwen3-TTS 1.7B worker to each
+completed salon text response. One assistant response is synthesized as one
+unit to avoid sentence-boundary voice changes. The gateway applies a 24 ms
+release and a 200 ms final pause, then emits the existing ordered
+`audio.output.*` events. A TTS failure does not invalidate a successful text
+or reservation result.
+
+The live two-sample TTS smoke passed, but full synthesis completed in
+8,460.720 ms for the greeting and 5,096.497 ms for the confirmation. These
+are measured limitations, not first-audio streaming measurements. Subjective
+voice quality and telephone responsiveness remain user QA.

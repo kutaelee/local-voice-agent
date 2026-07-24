@@ -577,6 +577,38 @@ pre-mutation fast-recovery copies to
 D: recovery manifest is the current local recovery point. Off-machine backup
 is not configured for this feature; do not report one.
 
+The optional language and speech projections are independently gated:
+
+```powershell
+$env:LVA_SALON_LLM_ENABLED = '1' # Requires the registered vLLM endpoint.
+$env:LVA_SALON_TTS_ENABLED = '1' # Requires the registered TTS worker.
+$env:LVA_SALON_TTS_FINAL_SILENCE_MS = '200'
+```
+
+Keep either GPU worker inside its `gpuq` reservation for its entire lifetime.
+The bounded validation wrappers start, test, and stop only their owned model:
+
+```powershell
+gpuq run --vram 14500 --eta 420 --priority 60 `
+  --max-runtime 900 --agent codex:local-voice-agent `
+  --workload salon-gemma4-text-scope-v1 `
+  --cwd C:\Dev\Repos\local-voice-agent -- `
+  powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File C:\Dev\Repos\local-voice-agent\scripts\run-salon-llm-smoke.ps1
+
+gpuq run --vram 9000 --eta 300 --priority 60 `
+  --max-runtime 900 --agent codex:local-voice-agent `
+  --workload salon-qwen3-tts-integration-v1 `
+  --cwd C:\Dev\Repos\local-voice-agent -- `
+  wsl.exe -d Ubuntu -- bash `
+  /mnt/c/Dev/Repos/local-voice-agent/scripts/run-salon-tts-smoke.sh
+```
+
+The TTS-only wrapper does not load STT or an LLM. Both wrappers write
+metadata-only evidence below
+`E:\Data\LocalVoiceAgent\runtime\evidence\salon` and unload their owned model
+before the scheduler job completes.
+
 Restore procedure:
 
 1. Stop both registered gateway instances and verify their listeners are

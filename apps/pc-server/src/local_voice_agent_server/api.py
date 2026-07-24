@@ -38,6 +38,7 @@ from .application.model_switch import (
     ModelSwitchEvent,
 )
 from .application.salon_calls import SalonCallCoordinator
+from .application.salon_speech import SalonSpeechService
 from .application.tool_execution_lifecycle import DurableToolExecutionLifecycle
 from .application.tool_planner import ToolPlanner
 from .application.voice_turn import VoiceTurnService
@@ -62,6 +63,7 @@ from .infrastructure.tool_registry import ToolRegistry
 from .infrastructure.persistence import PostgresStateStore
 from .infrastructure.file_reservations import FileReservationStore
 from .infrastructure.salon_config import load_salon_policy
+from .infrastructure.salon_vllm_faq import SalonVllmFaqAdapter
 from .infrastructure.voice_profiles import (
     VOICE_STYLES,
     VoiceProfileError,
@@ -436,6 +438,7 @@ def create_app(
         Callable[[], dict[str, object]] | None
     ) = None,
     salon_call_coordinator: SalonCallCoordinator | None = None,
+    salon_speech_service: SalonSpeechService | None = None,
     reconnect_grace_seconds: float = 120,
 ) -> FastAPI:
     if not 0.01 <= reconnect_grace_seconds <= 600:
@@ -1041,6 +1044,41 @@ def create_app(
                 for item in outbound:
                     if item.type != "salon.owner.notification":
                         await emit(item)
+                        if (
+                            item.type == "salon.assistant.message"
+                            and salon_speech_service is not None
+                        ):
+                            resume_state = (
+                                "idle"
+                                if any(
+                                    event.type == "salon.call.ended"
+                                    for event in outbound
+                                )
+                                else "listening"
+                            )
+                            try:
+                                speech_events = (
+                                    await salon_speech_service.synthesize(
+                                        str(item.payload["text"]),
+                                        resume_state=resume_state,
+                                    )
+                                )
+                            except Exception:
+                                LOGGER.exception(
+                                    "salon TTS failed session_id=%s request_id=%s",
+                                    session_id,
+                                    request_id,
+                                )
+                                await send_error(
+                                    request_id=request_id,
+                                    error_code="SALON_TTS_FAILED",
+                                    message=(
+                                        "The text reply succeeded but speech synthesis failed."
+                                    ),
+                                )
+                            else:
+                                for speech_event in speech_events:
+                                    await emit(speech_event)
                         continue
                     async with salon_notification_subscribers_lock:
                         subscribers = tuple(salon_notification_subscribers)
@@ -1195,6 +1233,9 @@ def create_app_from_environment() -> FastAPI:
     )
     voice_profile_store = _voice_profile_store_from_environment()
     salon_call_coordinator = _salon_call_coordinator_from_environment()
+    salon_speech_service = _salon_speech_service_from_environment(
+        voice_profile_store=voice_profile_store,
+    )
     return create_app(
         ServerSettings.from_environment(),
         event_handler=_event_handler_from_environment(
@@ -1209,6 +1250,7 @@ def create_app_from_environment() -> FastAPI:
         voice_profile_store=voice_profile_store,
         qa_runtime_status_provider=_qa_runtime_status_provider_from_environment(),
         salon_call_coordinator=salon_call_coordinator,
+        salon_speech_service=salon_speech_service,
     )
 
 
@@ -1360,11 +1402,59 @@ def _salon_call_coordinator_from_environment() -> SalonCallCoordinator | None:
         backup_root=backup_root,
     )
     store.initialize()
+    faq_responder = None
+    if os.environ.get("LVA_SALON_LLM_ENABLED", "0") == "1":
+        faq_responder = SalonVllmFaqAdapter(
+            policy=policy,
+            base_url=os.environ.get(
+                "LVA_VLLM_BASE_URL",
+                "http://127.0.0.1:46322/v1",
+            ),
+            model=os.environ.get("LVA_VLLM_MODEL", "gemma4-12b"),
+            api_key=os.environ.get("LVA_VLLM_API_KEY", ""),
+            timeout_seconds=float(
+                os.environ.get("LVA_SALON_LLM_TIMEOUT_SECONDS", "30")
+            ),
+        )
     return SalonCallCoordinator(
         reservations=SalonReservationService(
             policy=policy,
             repository=store,
-        )
+        ),
+        faq_responder=faq_responder,
+    )
+
+
+def _salon_speech_service_from_environment(
+    *,
+    voice_profile_store: VoiceProfileStore,
+) -> SalonSpeechService | None:
+    if os.environ.get("LVA_SALON_TTS_ENABLED", "0") != "1":
+        return None
+    worker_token = os.environ.get("LVA_AUDIO_WORKER_TOKEN", "")
+    if len(worker_token) < 32:
+        raise RuntimeError("audio worker credentials are required for salon TTS")
+    tts = TtsWorkerAdapter(
+        UnixJsonWorkerClient(
+            socket_path=Path(
+                os.environ.get(
+                    "LVA_TTS_SOCKET",
+                    "/home/kutae/.local/share/local-voice-agent/run/tts.sock",
+                )
+            ),
+            token=worker_token,
+            timeout_seconds=180,
+        ),
+        options_provider=voice_profile_store.synthesis_options,
+    )
+    return SalonSpeechService(
+        tts=tts,
+        release_fade_ms=int(
+            os.environ.get("LVA_TTS_OUTPUT_RELEASE_FADE_MS", "24")
+        ),
+        final_silence_ms=int(
+            os.environ.get("LVA_SALON_TTS_FINAL_SILENCE_MS", "200")
+        ),
     )
 
 

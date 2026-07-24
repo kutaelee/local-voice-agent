@@ -153,7 +153,7 @@ profile remains a separate destructive operation and is not exposed in this
 slice.
 
 Salon reservation handling has a separate deterministic authority boundary.
-The receptionist and any future LLM wording adapter cannot write files
+The receptionist and the optional structured LLM FAQ adapter cannot write files
 directly. Only the reservation domain service may mutate the fixed active
 JSON path, and only after an explicit caller confirmation. It validates
 hours, horizon, slot alignment, staff capability and overlap. Change and
@@ -163,6 +163,13 @@ writes atomically, and creates a checksummed append-only pre-mutation recovery
 copy on D:. Browser snapshots, WebSocket owner notifications, and Android
 notification text mask the customer phone number. Full phone numbers never
 enter Git, application logs, or protocol evidence.
+
+The FAQ adapter connects only to an authenticated loopback vLLM URL, disables
+thinking, requests a strict `in_scope`/`answer` JSON object, and bounds both
+question and response. Invalid, oversized, unavailable, or out-of-scope
+outputs fail closed to the deterministic scope message. The optional TTS
+adapter receives only the already-approved assistant text and selected local
+voice profile; a TTS failure cannot roll back or alter a reservation result.
 
 ## Approval integrity
 

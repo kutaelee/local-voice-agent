@@ -164,6 +164,8 @@ the committed hours/services policy, confirmation-bound reservation changes,
 the masked file-backed schedule, and connected-app owner notifications
 without starting VAD, STT, an LLM, or TTS. See
 [docs/salon-receptionist.md](docs/salon-receptionist.md).
+Optional, independently gated Gemma FAQ and Qwen3-TTS projections can then be
+enabled for final QA; neither model receives reservation mutation authority.
 
 After setting an untracked `LVA_TOOL_EXECUTOR_TOKEN` with at least 32 random
 characters, the isolated executor can be started and stopped with

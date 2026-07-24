@@ -22,7 +22,9 @@ from local_voice_agent_server.application.model_switch import (
     RuntimeActionReceipt,
 )
 from local_voice_agent_server.application.salon_calls import SalonCallCoordinator
+from local_voice_agent_server.application.salon_speech import SalonSpeechService
 from local_voice_agent_server.application.session_events import OutboundEvent
+from local_voice_agent_server.application.voice_turn import SynthesizedAudio
 from local_voice_agent_server.domain.model_runtime import (
     ModelRuntime,
     ModelRuntimeState,
@@ -859,6 +861,70 @@ def test_websocket_runs_salon_text_call_without_voice_or_model(
     )
     assert table.status_code == 200
     assert table.json() == {"schema_version": "1.0", "reservations": []}
+
+
+def test_websocket_can_attach_tts_to_salon_text_reply(tmp_path: Path) -> None:
+    class FakeTts:
+        async def synthesize(
+            self,
+            text: str,
+            *,
+            language: str,
+        ) -> SynthesizedAudio:
+            assert "윤슬 헤어" in text
+            assert language == "ko"
+            return SynthesizedAudio(
+                pcm_s16le=b"\x01\x00" * 480,
+                sample_rate_hz=24_000,
+                channels=1,
+            )
+
+    policy = load_salon_policy(REPO_ROOT / "configs" / "salon-booking.json")
+    now = lambda: datetime(2026, 7, 25, 9, 0, tzinfo=policy.timezone)
+    coordinator = SalonCallCoordinator(
+        reservations=SalonReservationService(
+            policy=policy,
+            repository=FileReservationStore(
+                data_path=tmp_path / "reservations.json",
+                backup_root=tmp_path / "backup",
+            ),
+            now=now,
+        ),
+        now=now,
+    )
+    session_id = uuid4()
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        salon_call_coordinator=coordinator,
+        salon_speech_service=SalonSpeechService(tts=FakeTts()),
+    )
+
+    with TestClient(app).websocket_connect(
+        f"/v1/sessions/{session_id}/events",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+    ) as websocket:
+        websocket.receive_json()
+        websocket.send_json(
+            client_event(
+                event_type="salon.call.start",
+                session_id=str(session_id),
+                request_id=str(uuid4()),
+                sequence=0,
+                payload={"channel": "web_qa"},
+            )
+        )
+        received = []
+        while not any(item["type"] == "audio.output.end" for item in received):
+            received.append(websocket.receive_json())
+
+    types = [item["type"] for item in received]
+    assert types[:3] == [
+        "salon.call.started",
+        "salon.assistant.message",
+        "assistant.state",
+    ]
+    assert "audio.output.chunk" in types
+    assert types[-1] == "audio.output.end"
 
 
 def test_salon_reservation_notification_is_broadcast_to_another_app_session(

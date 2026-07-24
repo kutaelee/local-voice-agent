@@ -170,6 +170,9 @@ Android UDF state, audio interruption, pairing, reconnection, and device-test
 boundaries are detailed in [`android-design.md`](android-design.md).
 The scoped salon call and notification flow is detailed in
 [`salon-receptionist.md`](salon-receptionist.md).
+Its optional Gemma adapter is a read-only structured FAQ port, while the
+Qwen3-TTS adapter projects an already-final text response onto the existing
+ordered PCM protocol. Neither adapter participates in reservation mutation.
 VAD, STT/TTS isolation, streaming boundaries, and barge-in measurements are
 detailed in [`audio-design.md`](audio-design.md).
 

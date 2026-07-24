@@ -210,9 +210,12 @@ firewall change was made.
 
 | Check | Result | Evidence |
 |---|---|---|
-| PC-server full suite | Passed | 214 collected: 212 passed and two environment-dependent cases skipped |
+| PC-server full suite | Passed | 223 collected: 221 passed and two environment-dependent cases skipped |
 | Salon conversation catalog | Passed | 22 GPU-free cases cover greeting, FAQs, scope refusal, availability, missing fields, confirmation, booking, closed/outside/misaligned slots, change and cancellation |
 | Protocol and API | Passed | Closed client payloads, authenticated reservation snapshot, WebSocket call lifecycle, and cross-session masked owner notification |
 | Reservation integrity | Passed | Atomic file store, append-only pre-mutation recovery manifest, duplicate prevention, overlap/staff assignment, hours/horizon/alignment, code+phone change/cancel verification |
 | Android unit tests and lint | Passed | 29/29 debug unit tests and lint completed successfully with the project-isolated Android SDK |
-| User listening and physical notification QA | Not run | Deliberately deferred until the text model smoke and final TTS attachment are complete |
+| Gemma 4 12B scoped FAQ smoke | Passed | `gpuq` job `263152cf-76b3-4871-9d0c-347936796af7`: 4/4 salon questions accepted and 2/2 unrelated questions rejected; 2,435.599 ms cold then 206.110–471.006 ms; 14,682 MiB peak total GPU use; model stopped |
+| Qwen3-TTS 1.7B salon projection | Passed with latency limitation | `gpuq` job `9a098b73-fc84-4486-a29e-08deb76f6ee0`: two ordered 24 kHz PCM streams passed with 24 ms release and 200 ms final pause; full synthesis took 8,460.720 ms and 5,096.497 ms; 7,677 MiB peak total GPU use; worker stopped |
+| Repository validators | Passed | 10/10 validators; 32 protocol events and 75 tool contracts |
+| User listening and physical notification QA | Not run | Deliberately deferred until all automated regressions and deployment startup are complete |

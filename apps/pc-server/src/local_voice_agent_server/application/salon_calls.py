@@ -6,7 +6,7 @@ import asyncio
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 import re
-from typing import Callable, Literal
+from typing import Callable, Literal, Protocol
 from uuid import UUID, uuid4
 
 from ..domain.salon_booking import (
@@ -20,6 +20,20 @@ from ..domain.salon_booking import (
 
 
 SalonAction = Literal["availability", "book", "cancel", "modify"]
+
+
+class SalonFaqResponderError(RuntimeError):
+    """A bounded language adapter could not return a validated FAQ decision."""
+
+
+@dataclass(frozen=True, slots=True)
+class SalonFaqDecision:
+    in_scope: bool
+    answer: str
+
+
+class SalonFaqResponder(Protocol):
+    async def answer(self, question: str) -> SalonFaqDecision: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,10 +72,12 @@ class SalonCallCoordinator:
         *,
         reservations: SalonReservationService,
         now: Callable[[], datetime] | None = None,
+        faq_responder: SalonFaqResponder | None = None,
     ) -> None:
         self._reservations = reservations
         self.policy = reservations.policy
         self._now = now or (lambda: datetime.now(self.policy.timezone))
+        self._faq_responder = faq_responder
         self._calls: dict[UUID, SalonCallState] = {}
         self._lock = asyncio.Lock()
 
@@ -78,7 +94,7 @@ class SalonCallCoordinator:
             if event_type == "salon.call.message":
                 if text is None:
                     raise ValueError("salon call text is required")
-                return self._message(session_id, text)
+                return await self._message(session_id, text)
             if event_type == "salon.call.end":
                 return self._end(session_id)
             raise ValueError("unsupported salon call event")
@@ -129,7 +145,7 @@ class SalonCallCoordinator:
             ),
         ]
 
-    def _message(self, session_id: UUID, text: str) -> list[SalonEvent]:
+    async def _message(self, session_id: UUID, text: str) -> list[SalonEvent]:
         state = self._calls.get(session_id)
         if state is None:
             raise ValueError("salon call is not active")
@@ -153,6 +169,24 @@ class SalonCallCoordinator:
         if state.action is None:
             if _is_greeting(normalized):
                 return self._reply("네, 편하게 말씀해 주세요. 어떤 예약을 도와드릴까요?")
+            if self._faq_responder is not None:
+                try:
+                    decision = await self._faq_responder.answer(normalized)
+                except SalonFaqResponderError:
+                    return [
+                        SalonEvent(
+                            "salon.assistant.message",
+                            {
+                                "text": (
+                                    "지금은 추가 상담 답변을 준비하지 못했습니다. "
+                                    "예약, 변경, 취소, 가격과 영업시간은 바로 도와드릴 수 있어요."
+                                ),
+                                "fallback": "faq_model_unavailable",
+                            },
+                        )
+                    ]
+                if decision.in_scope:
+                    return self._reply(decision.answer)
             return self._reply(
                 "저는 미용실 예약, 변경, 취소와 시술·가격·영업시간 안내만 도와드릴 수 있어요."
             )
