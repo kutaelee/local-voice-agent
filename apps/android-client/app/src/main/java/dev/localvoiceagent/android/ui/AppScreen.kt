@@ -204,6 +204,8 @@ private fun SettingsScreen(
     var profileName by remember {
         mutableStateOf("My Korean voice")
     }
+    var referenceText by remember { mutableStateOf("") }
+    var style by remember { mutableStateOf("neutral") }
     var consented by remember { mutableStateOf(false) }
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -213,6 +215,8 @@ private fun SettingsScreen(
                 AppAction.RegisterVoiceProfile(
                     name = profileName,
                     contentUri = uri.toString(),
+                    referenceText = referenceText,
+                    style = style,
                     rightsConfirmed = consented,
                     localProcessingConsent = consented,
                 ),
@@ -250,9 +254,14 @@ private fun SettingsScreen(
                         Text(profile.name)
                         Text(
                             if (profile.isDefault) {
-                                "Built-in Chatterbox voice"
+                                "Legacy fallback voice"
                             } else {
-                                "Local reference · ${profile.durationMs ?: 0} ms"
+                                "Local ${profile.style} reference · ${profile.durationMs ?: 0} ms" +
+                                    if (profile.hasReferenceText) {
+                                        " · Qwen ready"
+                                    } else {
+                                        " · legacy only"
+                                    }
                             },
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -271,7 +280,7 @@ private fun SettingsScreen(
             )
         }
         item {
-            Text("Expression: ${"%.2f".format(state.voiceExaggeration)}")
+            Text("Fallback expression: ${"%.2f".format(state.voiceExaggeration)}")
             Slider(
                 value = state.voiceExaggeration,
                 onValueChange = { onAction(AppAction.SetVoiceExaggeration(it)) },
@@ -281,7 +290,7 @@ private fun SettingsScreen(
             )
         }
         item {
-            Text("Voice adherence (CFG): ${"%.2f".format(state.voiceCfgWeight)}")
+            Text("Fallback voice adherence (CFG): ${"%.2f".format(state.voiceCfgWeight)}")
             Slider(
                 value = state.voiceCfgWeight,
                 onValueChange = { onAction(AppAction.SetVoiceCfgWeight(it)) },
@@ -326,6 +335,39 @@ private fun SettingsScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = referenceText,
+                onValueChange = { referenceText = it.take(1_000) },
+                label = { Text("Exact spoken transcript (required by Qwen3)") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+            )
+        }
+        item {
+            Text("Reference tone")
+            Column {
+                listOf(
+                    "neutral" to "Neutral",
+                    "happy" to "Happy",
+                    "dark" to "Dark",
+                    "advert" to "Advert",
+                ).chunked(2).forEach { choices ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        choices.forEach { (value, label) ->
+                            TextButton(onClick = { style = value }) {
+                                Text(
+                                    if (style == value) {
+                                        "● $label"
+                                    } else {
+                                        "○ $label"
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -347,6 +389,7 @@ private fun SettingsScreen(
                 },
                 enabled = (
                     profileName.isNotBlank() &&
+                        referenceText.isNotBlank() &&
                         consented &&
                         !state.voiceSettingsBusy
                     ),
@@ -361,7 +404,7 @@ private fun SettingsScreen(
         }
         item {
             Text(
-                "Playback speed changes phone playback duration. Expression, CFG, and temperature change synthesis and take effect on the next reply.",
+                "Qwen3 uses the exact transcript and temperature. Expression and CFG remain available only for the Chatterbox fallback.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }

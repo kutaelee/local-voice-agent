@@ -24,6 +24,8 @@ data class VoiceProfileSummary(
     @SerialName("duration_ms") val durationMs: Int? = null,
     @SerialName("sample_rate_hz") val sampleRateHz: Int? = null,
     val channels: Int? = null,
+    val style: String = "neutral",
+    @SerialName("has_reference_text") val hasReferenceText: Boolean = false,
 )
 
 @Serializable
@@ -48,6 +50,8 @@ private data class CreateVoiceProfilePayload(
     @SerialName("wav_base64") val wavBase64: String,
     @SerialName("rights_confirmed") val rightsConfirmed: Boolean,
     @SerialName("local_processing_consent") val localProcessingConsent: Boolean,
+    @SerialName("reference_text") val referenceText: String,
+    val style: String,
 )
 
 @Serializable
@@ -93,15 +97,23 @@ class VoiceProfileClient(
         wav: ByteArray,
         rightsConfirmed: Boolean,
         localProcessingConsent: Boolean,
+        referenceText: String,
+        style: String,
     ): VoiceProfileSummary {
         require(wav.isNotEmpty() && wav.size <= MAX_REFERENCE_BYTES) {
             "Reference WAV size is invalid"
         }
+        require(referenceText.isNotBlank() && referenceText.length <= 1_000) {
+            "Reference transcript is invalid"
+        }
+        require(style in SUPPORTED_STYLES) { "Reference style is invalid" }
         val payload = CreateVoiceProfilePayload(
             name = name,
             wavBase64 = Base64.getEncoder().encodeToString(wav),
             rightsConfirmed = rightsConfirmed,
             localProcessingConsent = localProcessingConsent,
+            referenceText = referenceText.trim(),
+            style = style,
         )
         return request<CreateVoiceProfileResponse>(
             Request.Builder()
@@ -149,6 +161,7 @@ class VoiceProfileClient(
 
     companion object {
         const val MAX_REFERENCE_BYTES = 8 * 1024 * 1024
+        val SUPPORTED_STYLES = setOf("neutral", "happy", "dark", "advert")
         private val JSON_MEDIA_TYPE = "application/json".toMediaType()
     }
 }

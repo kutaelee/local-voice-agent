@@ -36,8 +36,13 @@ rights/local-processing consent before reference-WAV upload, server-side
 profile selection, Chatterbox expression/CFG/temperature controls, and
 pitch-preserving Android playback speed from 0.85× to 1.25×. Reference audio
 is stored only under the paired PC's external application-data root and never
-inside the repository or APK. Long streamed replies may begin synthesis at a
-natural clause after 36 characters to reduce first-audio delay.
+inside the repository or APK. Version 0.6.6 switches the production voice
+worker to Qwen3-TTS 1.7B Base. Reference upload now requires the exact spoken
+transcript and a neutral, happy, dark, or advert tone. The transcript remains
+on the paired PC and is not returned by the profile API. Comma-based early
+splitting was removed to avoid audible mid-phrase joins; synthesis starts at
+completed sentence boundaries and the worker adds a measured 160 ms terminal
+tail.
 The previous 0.6.2 debug APK was installed on an API 36 x86_64 emulator and
 passed cold
 launch, all primary destinations, portrait/landscape recreation, and

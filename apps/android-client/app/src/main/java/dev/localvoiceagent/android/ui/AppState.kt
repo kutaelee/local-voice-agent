@@ -50,6 +50,8 @@ data class VoiceProfileOption(
     val name: String,
     val isDefault: Boolean,
     val durationMs: Int? = null,
+    val style: String = "neutral",
+    val hasReferenceText: Boolean = false,
 )
 
 data class AppUiState(
@@ -113,6 +115,8 @@ sealed interface AppAction {
     data class RegisterVoiceProfile(
         val name: String,
         val contentUri: String,
+        val referenceText: String,
+        val style: String,
         val rightsConfirmed: Boolean,
         val localProcessingConsent: Boolean,
     ) : AppAction

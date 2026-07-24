@@ -185,12 +185,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val credentials = voiceCredentials() ?: return
         if (
             action.name.isBlank() ||
+            action.referenceText.isBlank() ||
             !action.rightsConfirmed ||
             !action.localProcessingConsent
         ) {
             reduce(
                 AppAction.SetVoiceSettingsMessage(
-                    "Name, voice rights, and local processing consent are required",
+                    "Name, exact transcript, voice rights, and local processing consent are required",
                 ),
             )
             return
@@ -206,6 +207,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     wav = wav,
                     rightsConfirmed = action.rightsConfirmed,
                     localProcessingConsent = action.localProcessingConsent,
+                    referenceText = action.referenceText,
+                    style = action.style,
                 )
                 voiceProfiles.updateSettings(
                     endpoint = credentials.first,
@@ -279,6 +282,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         name = it.name,
                         isDefault = it.isDefault,
                         durationMs = it.durationMs,
+                        style = it.style,
+                        hasReferenceText = it.hasReferenceText,
                     )
                 },
                 selectedProfileId = catalog.settings.profileId,

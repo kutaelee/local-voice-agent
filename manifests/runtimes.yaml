@@ -1,6 +1,22 @@
 schema_version: "1.0"
 generated_at: "2026-07-24T07:17:15+09:00"
 runtimes:
+  - id: android-client-build-0.6.6
+    role: android_client_build
+    version: "0.6.6"
+    status: api37_qwen_transcript_style_profiles_unit_lint_debug_release_compiled
+    environment: 'C:\Dev\SDK\Android'
+    jdk: "17.0.20"
+    android_gradle_plugin: "9.3.0"
+    gradle: "9.6.1"
+    compile_sdk: 37
+    target_sdk: 37
+    build_tools: "36.0.0"
+    platform_tools: "37.0.0"
+    unit_tests: 25
+    lint_findings: 0
+    artifact_manifest: manifests/android-artifacts.yaml
+    rollback: retain 0.6.5 artifacts and install the prior hash-recorded APK
   - id: tls-tools-49.0.0
     role: private_debug_ca_generator
     version: "49.0.0"
@@ -533,7 +549,7 @@ runtimes:
       note: single_process_smoke_not_a_benchmark
     rollback: stop the VAD worker and retain or archive only this versioned environment
   - id: chatterbox-multilingual-v3
-    role: tts_candidate
+    role: tts_fallback
     version: chatterbox-tts-0.1.7
     status: installed_offline_local_v3_korean_smoke_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-v3-py3146
@@ -592,6 +608,57 @@ runtimes:
       - tokenizer_initialization_downloads_spacy_ontonotes_auxiliary_cache
       - first_failed_system_python_environment_retained_not_selected
     rollback: rerun pinned lock sync for PyPI wheel or switch away from the versioned managed-Python environment
+  - id: qwen3-tts-12hz-1.7b-base
+    role: primary_tts
+    version: qwen-tts-0.1.1
+    status: installed_offline_korean_clone_tail_and_style_routes_passed
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/tts-qwen3-1.7b/.venv
+    python: "3.12.13"
+    source: https://github.com/QwenLM/Qwen3-TTS
+    package_source: https://pypi.org/project/qwen-tts/0.1.1/
+    installed_at: "2026-07-24T14:29:00+09:00"
+    lock_file: scripts/requirements/qwen3-tts.lock
+    lock_sha256: e27b80fd4d4cdc1fc19d8e01f1a7b4c5d82656df42f693714a9a842ed2f847e0
+    torch: 2.11.0+cu130
+    torchaudio: 2.11.0+cu130
+    transformers: "4.57.3"
+    cuda: "13.0"
+    attention: sdpa_manual_pytorch
+    flash_attention: not_installed_not_required
+    model_revision: fd4b254389122332181a7c3db7f27e918eec64e3
+    model_variant: Base
+    voice_cloning_enabled: true
+    reference_transcript_required: true
+    voice_profile_root: 'E:\Data\LocalVoiceAgent\voice-profiles'
+    prompt_cache_entries: 4
+    tail_silence_ms: 160
+    load_seconds: 26.148
+    peak_allocated_vram_bytes: 4750705664
+    neutral_tail_smoke:
+      synthesis_seconds: 7.914
+      audio_seconds: 5.680
+      realtime_factor: 1.393
+      trailing_zero_ms: 160.0
+      output_sha256: 9cd2573bf7823686b2931e1be5b8be7ab747e39ddd6caf151bc82655b0c6134e
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\qwen3-tts-neutral-tail-v2.json'
+      evidence_sha256: be8170c02b056516fba3f04b744fe74bc010142639003476b75711c3bade3e44
+    happy_route_smoke:
+      synthesis_seconds: 4.339
+      audio_seconds: 4.160
+      realtime_factor: 1.043
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\qwen3-tts-happy-route-v2.json'
+      evidence_sha256: 6accc463231e830d026bf45f1a9c1cc397e9f58349d4db446d05e0398706b79e
+    dark_route_smoke:
+      synthesis_seconds: 4.978
+      audio_seconds: 4.960
+      realtime_factor: 1.004
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\qwen3-tts-dark-route-v2.json'
+      evidence_sha256: e3bdf9d835b999de1c6a7e82d7410c1bf691de58cad6afa0d58190f971100bbb
+    known_issues:
+      - sox_executable_warning_non_blocking_for_soundfile_voice_clone_path
+      - base_variant_has_no_free_form_instruction_control
+      - physical_android_listening_qa_pending
+    rollback: stop the Qwen worker and restore the retained Chatterbox launcher paths
   - id: postgresql-18.4
     role: database
     version: "18.4"

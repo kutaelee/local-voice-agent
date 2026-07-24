@@ -42,7 +42,9 @@ class VoiceProfileClientTest {
                           "size_bytes":null,
                           "duration_ms":null,
                           "sample_rate_hz":null,
-                          "channels":null
+                          "channels":null,
+                          "style":"neutral",
+                          "has_reference_text":false
                         }
                       ],
                       "settings":{

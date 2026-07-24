@@ -15,8 +15,8 @@ android {
         applicationId = "dev.localvoiceagent.android"
         minSdk = 26
         targetSdk = 37
-        versionCode = 13
-        versionName = "0.6.5"
+        versionCode = 14
+        versionName = "0.6.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
