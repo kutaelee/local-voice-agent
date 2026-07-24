@@ -58,9 +58,9 @@ engine; the 0.6B Base checkpoint remains a lower-VRAM comparison option. The
 worker caches four local tone prompts but production keeps one selected
 speaker reference stable across sentences. Talker and sub-talker use the same
 temperature and a profile-bound deterministic seed. Streaming coalesces short
-sentences with the following sentence, overlaps longer boundaries with a
-40 ms PCM crossfade, and appends one 200 ms terminal tail after the complete
-response. Chatterbox V3 is retained as rollback fallback. Reference audio stays under external
+sentences into 32-character-or-longer semantic speech units, prefers natural
+clause boundaries after 40 characters, and appends one 200 ms terminal tail
+after the complete response. Chatterbox V3 is retained as rollback fallback. Reference audio stays under external
 application data and never enters Git or the APK. The
 installed SGLang 0.5.15.post1
 runtime now passes the 12B base text, tool/schema, streaming, image, thinking,

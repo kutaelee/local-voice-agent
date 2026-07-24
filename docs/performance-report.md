@@ -512,10 +512,11 @@ different peak/RMS levels, confirming stochastic output variation.
 
 Production now:
 
-- coalesces a hard-boundary unit shorter than 18 characters with the next unit;
+- coalesces hard-boundary units until a natural speech unit reaches at least
+  32 characters;
+- permits an earlier split only at a natural comma/colon boundary after 40
+  characters and bounds unpunctuated units at 96 characters;
 - continues synthesizing the next eligible unit while prior audio plays;
-- holds 60 ms at each independent unit boundary and applies a 40 ms PCM16
-  crossfade when the next unit is ready;
 - fixes the Qwen sampling seed per selected voice profile while retaining
   sampling and the user-selected temperature.
 
@@ -527,3 +528,9 @@ follow-up produced 2.800 seconds of audio in 2.775–2.971 seconds and was also
 byte-identical across two requests. These timings are bounded regression
 samples, not p50/p95 measurements; subjective speaker similarity still
 requires listening QA.
+
+The initial 60/40 ms hold/crossfade experiment passed byte-level ordering
+tests but failed listening QA because adjacent phonemes perceptibly overlapped.
+It was removed rather than tuned further. Production now leaves each Qwen
+waveform untouched and reduces seams by asking the model to produce a larger
+multi-sentence semantic unit in one generation.
