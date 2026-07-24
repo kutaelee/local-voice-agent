@@ -103,7 +103,8 @@ def test_31b_mtp_probe_is_bounded_and_yields_to_comfyui() -> None:
     assert "VLLM_SMOKE_MAX_MODEL_LEN=\"256\"" in start
     assert "VLLM_SMOKE_GPU_MEMORY_UTILIZATION=\"0.90\"" in start
     assert "VLLM_SMOKE_KV_CACHE_MEMORY_BYTES=\"268435456\"" in start
-    assert "serve-vllm-smoke.sh\" 31b on" in start
+    assert 'serve-vllm-smoke.sh" 31b "${mtp_mode}"' in start
+    assert "LVA_VLLM_PROBE_MTP_MODE" in start
     assert "--api-key" not in start
     assert "Get-ComfyUiQueueState" in shared
     assert "Get-FreeGpuMemoryMiB" in shared
@@ -119,6 +120,11 @@ def test_31b_mtp_probe_is_bounded_and_yields_to_comfyui() -> None:
     assert "LVA_VLLM_API_KEY = $apiKey" in shared
     assert "Bearer " not in shared
     assert "/free" not in shared
+    assert "[ValidateSet('on', 'off')]" in shared
+    assert "[switch]$RunBenchmark" in shared
+    assert "31b-exact-mtp-off" in shared
+    assert "Functional gate passed; running bounded 31B samples." in shared
+    assert "LVA_VLLM_PROBE_MTP_MODE" in shared
 
 
 def test_shared_vllm_mtp_benchmark_is_functionally_gated_and_yields() -> None:

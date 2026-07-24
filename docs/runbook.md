@@ -314,6 +314,20 @@ strict-schema, and streaming evidence before the production 31B MTP gate can
 be changed. A load failure or impractical latency remains a measured
 unsupported result, not a reason to enable the profile.
 
+After functional compatibility passes, bounded exact-target ON/OFF samples
+can be collected without changing the production route:
+
+```powershell
+.\scripts\run-shared-vllm-31b-mtp-probe.ps1 `
+  -MtpMode off -RunBenchmark -Samples 3 -MaxTokens 16
+
+.\scripts\run-shared-vllm-31b-mtp-probe.ps1 `
+  -MtpMode on -RunBenchmark -Samples 3 -MaxTokens 16
+```
+
+These are small feasibility samples, not a throughput benchmark. Both modes
+use the same exact target, CPU-offload budget, context, prompts, and cap.
+
 Do not run MTP API smoke until `/health` returns success. Preserve server
 stdout/stderr under the external runtime log root. On startup failure, stop
 only that runtime process, retain logs/evidence, verify VRAM returned, and

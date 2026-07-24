@@ -1,10 +1,21 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('on', 'off')]
+    [string]$MtpMode = 'on',
+
     [ValidateRange(28, 48)]
     [int]$CpuOffloadGiB = 36,
 
     [ValidateRange(1024, 65535)]
     [int]$Port = 8767,
+
+    [switch]$RunBenchmark,
+
+    [ValidateRange(1, 10)]
+    [int]$Samples = 3,
+
+    [ValidateRange(8, 64)]
+    [int]$MaxTokens = 16,
 
     [ValidatePattern('^http://(localhost|127\.0\.0\.1|\[::1\]):[0-9]+/$')]
     [string]$ComfyUiBaseUrl = 'http://127.0.0.1:8188/'
@@ -20,6 +31,7 @@ $startScript = (
 )
 $stopScript = Join-Path $repoRoot 'scripts\stop-vllm.ps1'
 $smokeScript = Join-Path $repoRoot 'scripts\smoke-openai-api.py'
+$benchmarkScript = Join-Path $repoRoot 'scripts\benchmark.ps1'
 $python = (
     'C:\Dev\Tools\LocalVoiceAgent\runtimes\' +
     'tool-executor\.venv\Scripts\python.exe'
@@ -27,11 +39,39 @@ $python = (
 $statusRoot = 'E:\Data\LocalVoiceAgent\runtime\status'
 $logRoot = 'E:\Data\LocalVoiceAgent\runtime\logs'
 $evidenceRoot = 'E:\Data\LocalVoiceAgent\runtime\evidence'
+$benchmarkRoot = 'E:\Data\LocalVoiceAgent\benchmarks\results'
 $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
 $runStatus = Join-Path $statusRoot "vllm-31b-mtp-probe-$stamp.json"
-$evidence = Join-Path $evidenceRoot "vllm-31b-mtp-probe-$stamp.json"
+$condition = if ($MtpMode -eq 'on') {
+    '31b-exact-mtp-on-s1'
+}
+else {
+    '31b-exact-mtp-off'
+}
+$launcherMode = if ($MtpMode -eq 'on') { 'on' } else { 'exact-off' }
+$servedModel = if ($MtpMode -eq 'on') {
+    'gemma4-31b-mtp'
+}
+else {
+    'gemma4-31b-mtp-target-off'
+}
+$mtpConfig = if ($MtpMode -eq 'on') {
+    "tokens=1,cpu_offload_gib=$CpuOffloadGiB"
+}
+else {
+    "disabled,cpu_offload_gib=$CpuOffloadGiB"
+}
+$evidence = Join-Path $evidenceRoot "vllm-$condition-functional-$stamp.json"
+$benchmarkEvidence = Join-Path (
+    $benchmarkRoot
+) "vllm-$condition-$stamp.json"
 
-foreach ($path in @($stopScript, $smokeScript, $python)) {
+foreach ($path in @(
+    $stopScript,
+    $smokeScript,
+    $benchmarkScript,
+    $python
+)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Registered probe dependency is unavailable: $path"
     }
@@ -55,8 +95,15 @@ function Write-ProbeStatus {
         phase = $Phase
         result = $Result
         detail = $Detail
+        mtp_mode = $MtpMode
         cpu_offload_gib = $CpuOffloadGiB
         evidence = $evidence
+        benchmark_evidence = if ($RunBenchmark) {
+            $benchmarkEvidence
+        }
+        else {
+            $null
+        }
         updated_at = [DateTimeOffset]::Now.ToString('o')
     }
     $temporary = "$runStatus.tmp"
@@ -197,6 +244,7 @@ $previousVllmKey = $env:LVA_VLLM_API_KEY
 $previousRuntimeKey = $env:LVA_RUNTIME_API_KEY
 $previousProbePort = $env:LVA_VLLM_PROBE_PORT
 $previousOffload = $env:LVA_VLLM_PROBE_CPU_OFFLOAD_GB
+$previousMtpMode = $env:LVA_VLLM_PROBE_MTP_MODE
 $previousTimeout = $env:LVA_VLLM_PROBE_STARTUP_TIMEOUT_SECONDS
 $previousWslEnv = $env:WSLENV
 $apiKey = (
@@ -229,11 +277,13 @@ try {
     $env:LVA_RUNTIME_API_KEY = $apiKey
     $env:LVA_VLLM_PROBE_PORT = [string]$Port
     $env:LVA_VLLM_PROBE_CPU_OFFLOAD_GB = [string]$CpuOffloadGiB
+    $env:LVA_VLLM_PROBE_MTP_MODE = $launcherMode
     $env:LVA_VLLM_PROBE_STARTUP_TIMEOUT_SECONDS = '1200'
     $bridgeNames = @(
         'LVA_VLLM_API_KEY',
         'LVA_VLLM_PROBE_PORT',
         'LVA_VLLM_PROBE_CPU_OFFLOAD_GB',
+        'LVA_VLLM_PROBE_MTP_MODE',
         'LVA_VLLM_PROBE_STARTUP_TIMEOUT_SECONDS'
     )
     $existingBridge = @(
@@ -247,7 +297,7 @@ try {
     Write-ProbeStatus `
         -Phase 'starting' `
         -Result 'running' `
-        -Detail 'Starting exact 31B target/assistant feasibility probe.'
+        -Detail "Starting exact 31B MTP=$MtpMode feasibility probe."
     $startOutput = Join-Path $logRoot "vllm-31b-probe-$stamp.stdout.log"
     $startError = Join-Path $logRoot "vllm-31b-probe-$stamp.stderr.log"
     $start = Start-Process `
@@ -272,13 +322,13 @@ try {
         }
         catch {
             throw (
-                '31B MTP launcher exit code was unavailable and the ' +
+                '31B exact launcher exit code was unavailable and the ' +
                 'independent health probe failed.'
             )
         }
     }
     if ($startExitCode -ne 0) {
-        throw "31B MTP startup exited $startExitCode."
+        throw "31B exact startup exited $startExitCode."
     }
 
     Write-ProbeStatus `
@@ -290,7 +340,7 @@ try {
     $smokeArguments = @(
         $smokeScript,
         '--base-url', "http://127.0.0.1:$Port",
-        '--model', 'gemma4-31b-mtp',
+        '--model', $servedModel,
         '--timeout', '600',
         '--skip-thinking',
         '--disable-thinking',
@@ -316,7 +366,59 @@ try {
         $smokeExitCode = 0
     }
     if ($smokeExitCode -ne 0) {
-        throw "31B MTP smoke exited $smokeExitCode."
+        throw "31B exact smoke exited $smokeExitCode."
+    }
+
+    if ($RunBenchmark) {
+        Write-ProbeStatus `
+            -Phase 'benchmarking' `
+            -Result 'running' `
+            -Detail 'Functional gate passed; running bounded 31B samples.'
+        $benchmarkArguments = @(
+            '-NoProfile',
+            '-ExecutionPolicy', 'Bypass',
+            '-File', $benchmarkScript,
+            '-Runtime', 'vllm',
+            '-Condition', $condition,
+            '-BaseUrl', "http://127.0.0.1:$Port/",
+            '-Model', $servedModel,
+            '-ModelRevision', '1e4d8beecacb8b7590c1d8bedd7335f687bf311f',
+            '-Samples', [string]$Samples,
+            '-MaxTokens', [string]$MaxTokens,
+            '-MtpConfig',
+            $mtpConfig,
+            '-OutputPath', $benchmarkEvidence
+        )
+        if ($MtpMode -eq 'on') {
+            $benchmarkArguments += '-MtpEnabled'
+        }
+        $benchmark = Start-Process `
+            -FilePath 'powershell.exe' `
+            -ArgumentList $benchmarkArguments `
+            -WindowStyle Hidden `
+            -PassThru `
+            -RedirectStandardOutput (
+                Join-Path $logRoot "vllm-31b-bench-$stamp.stdout.log"
+            ) `
+            -RedirectStandardError (
+                Join-Path $logRoot "vllm-31b-bench-$stamp.stderr.log"
+            )
+        if (-not (
+            Wait-ChildOrYield -Process $benchmark -Phase 'benchmark'
+        )) {
+            exit 23
+        }
+        $benchmark.WaitForExit()
+        $benchmarkExitCode = $benchmark.ExitCode
+        if (
+            $null -eq $benchmarkExitCode -and
+            (Test-Path -LiteralPath $benchmarkEvidence -PathType Leaf)
+        ) {
+            $benchmarkExitCode = 0
+        }
+        if ($benchmarkExitCode -ne 0) {
+            throw "31B benchmark exited $benchmarkExitCode."
+        }
     }
 
     Stop-OwnedProbe
@@ -326,10 +428,17 @@ try {
     Write-ProbeStatus `
         -Phase 'completed' `
         -Result 'passed' `
-        -Detail "31B MTP probe completed; sha256=$hash"
+        -Detail "31B exact probe completed; sha256=$hash"
     Write-Output "probe_status=$runStatus"
     Write-Output "probe_evidence=$evidence"
     Write-Output "probe_evidence_sha256=$hash"
+    if ($RunBenchmark) {
+        $benchmarkHash = (
+            Get-FileHash -LiteralPath $benchmarkEvidence -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        Write-Output "benchmark_evidence=$benchmarkEvidence"
+        Write-Output "benchmark_evidence_sha256=$benchmarkHash"
+    }
 }
 catch {
     try {
@@ -349,6 +458,7 @@ finally {
     $env:LVA_RUNTIME_API_KEY = $previousRuntimeKey
     $env:LVA_VLLM_PROBE_PORT = $previousProbePort
     $env:LVA_VLLM_PROBE_CPU_OFFLOAD_GB = $previousOffload
+    $env:LVA_VLLM_PROBE_MTP_MODE = $previousMtpMode
     $env:LVA_VLLM_PROBE_STARTUP_TIMEOUT_SECONDS = $previousTimeout
     $env:WSLENV = $previousWslEnv
 }

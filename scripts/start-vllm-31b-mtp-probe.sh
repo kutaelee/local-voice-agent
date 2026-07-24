@@ -10,6 +10,7 @@ status_file="${status_root}/vllm.json"
 port="${LVA_VLLM_PROBE_PORT:-8767}"
 cpu_offload_gb="${LVA_VLLM_PROBE_CPU_OFFLOAD_GB:-36}"
 startup_timeout="${LVA_VLLM_PROBE_STARTUP_TIMEOUT_SECONDS:-900}"
+mtp_mode="${LVA_VLLM_PROBE_MTP_MODE:-on}"
 api_key="${LVA_VLLM_API_KEY:-}"
 
 [[ "${#api_key}" -ge 32 ]] || {
@@ -23,6 +24,10 @@ api_key="${LVA_VLLM_API_KEY:-}"
 [[ "${cpu_offload_gb}" =~ ^(2[8-9]|3[0-9]|4[0-8])$ ]] || {
   echo "31B MTP probe CPU offload must be an integer from 28 to 48 GiB." >&2
   exit 5
+}
+[[ "${mtp_mode}" == "on" || "${mtp_mode}" == "exact-off" ]] || {
+  echo "LVA_VLLM_PROBE_MTP_MODE must be on or exact-off." >&2
+  exit 13
 }
 [[ "${startup_timeout}" =~ ^[0-9]+$ ]] \
   && ((startup_timeout >= 300 && startup_timeout <= 1800)) || {
@@ -87,7 +92,7 @@ export \
   VLLM_SMOKE_SPECULATIVE_TOKENS="1" \
   VLLM_USE_V2_MODEL_RUNNER="0"
 
-nohup setsid bash "${repo}/scripts/serve-vllm-smoke.sh" 31b on \
+nohup setsid bash "${repo}/scripts/serve-vllm-smoke.sh" 31b "${mtp_mode}" \
   >"${log_file}" 2>&1 &
 pid=$!
 echo "${pid}" >"${pid_file}"
@@ -104,18 +109,25 @@ for ((elapsed = 0; elapsed < startup_timeout; elapsed += 1)); do
     --fail \
     --max-time 2 \
     "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then
+    if [[ "${mtp_mode}" == "on" ]]; then
+      served_model="gemma4-31b-mtp"
+    else
+      served_model="gemma4-31b-mtp-target-off"
+    fi
     status_tmp="${status_file}.tmp.${pid}"
     printf \
-      '{"schema_version":"1.0","component":"vllm","state":"ready","pid":%s,"port":%s,"model_size":"31b","model_id":"gemma4-31b-mtp","mtp_mode":"on","cpu_offload_gib":%s,"log_path":"%s","updated_at":"%s"}\n' \
+      '{"schema_version":"1.0","component":"vllm","state":"ready","pid":%s,"port":%s,"model_size":"31b","model_id":"%s","mtp_mode":"%s","cpu_offload_gib":%s,"log_path":"%s","updated_at":"%s"}\n' \
       "${pid}" \
       "${port}" \
+      "${served_model}" \
+      "${mtp_mode}" \
       "${cpu_offload_gb}" \
       "${log_file}" \
       "$(date --utc +%Y-%m-%dT%H:%M:%SZ)" \
       >"${status_tmp}"
     mv -f -- "${status_tmp}" "${status_file}"
     echo \
-      "31B MTP probe ready: pid=${pid} port=${port} offload=${cpu_offload_gb}"
+      "31B exact probe ready: pid=${pid} port=${port} mtp=${mtp_mode} offload=${cpu_offload_gb}"
     exit 0
   fi
   sleep 1
