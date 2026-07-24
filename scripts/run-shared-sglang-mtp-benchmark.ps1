@@ -1,12 +1,15 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('12b', '31b')]
+    [string]$ModelSize = '12b',
+
     [ValidateSet('on', 'off')]
     [string]$MtpMode = 'on',
 
     [ValidateRange(1, 5)]
     [int]$SpeculativeSteps = 1,
 
-    [ValidateRange(0, 16)]
+    [ValidateRange(0, 48)]
     [int]$MtpCpuOffloadGiB = 4,
 
     [ValidateRange(1, 100)]
@@ -33,19 +36,36 @@ $statusRoot = 'E:\Data\LocalVoiceAgent\runtime\status'
 $logRoot = 'E:\Data\LocalVoiceAgent\runtime\logs'
 $evidenceRoot = 'E:\Data\LocalVoiceAgent\benchmarks\results'
 $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
-$condition = if ($MtpMode -eq 'on') {
+$condition = if ($ModelSize -eq '31b' -and $MtpMode -eq 'on') {
+    "31b-exact-mtp-on-s$SpeculativeSteps"
+}
+elseif ($ModelSize -eq '31b') {
+    '31b-exact-mtp-off'
+}
+elseif ($MtpMode -eq 'on') {
     "12b-mtp-on-s$SpeculativeSteps"
 }
 else {
     '12b-exact-mtp-off'
 }
-$servedModel = if ($MtpMode -eq 'on') {
+$servedModel = if ($ModelSize -eq '31b' -and $MtpMode -eq 'on') {
+    'gemma4-31b-mtp'
+}
+elseif ($ModelSize -eq '31b') {
+    'gemma4-31b-mtp-target-off'
+}
+elseif ($MtpMode -eq 'on') {
     'gemma4-12b-mtp'
 }
 else {
     'gemma4-12b-mtp-target-off'
 }
-$launcherMode = if ($MtpMode -eq 'on') { 'mtp' } else { 'mtp-target-off' }
+$launcherMode = if ($MtpMode -eq 'on') {
+    'mtp'
+}
+else {
+    'mtp-target-off'
+}
 $mtpConfig = if ($MtpMode -eq 'on') {
     "steps=$SpeculativeSteps,cpu_offload_gib=$MtpCpuOffloadGiB"
 }
@@ -89,6 +109,7 @@ function Write-RunStatus {
         phase = $Phase
         result = $Result
         detail = $Detail
+        model_size = $ModelSize
         mtp_mode = $MtpMode
         evidence = $evidencePath
         updated_at = [DateTimeOffset]::Now.ToString('o')
@@ -232,11 +253,12 @@ try {
         '-NoProfile',
         '-ExecutionPolicy', 'Bypass',
         '-File', $startScript,
+        '-ModelSize', $ModelSize,
         '-Mode', $launcherMode,
         '-SpeculativeSteps', [string]$SpeculativeSteps,
         '-MtpCpuOffloadGiB', [string]$MtpCpuOffloadGiB,
         '-Port', [string]$Port,
-        '-StartupTimeoutSeconds', '600'
+        '-StartupTimeoutSeconds', '900'
     )
     $startProcess = Start-Process `
         -FilePath 'powershell.exe' `
@@ -252,8 +274,27 @@ try {
     $startExitCode = $startProcess.ExitCode
     if ($null -eq $startExitCode) {
         try {
+            $readinessUri = if ($ModelSize -eq '31b') {
+                "http://127.0.0.1:$Port/model_info"
+            }
+            else {
+                "http://127.0.0.1:$Port/health"
+            }
+            $readinessHeaders = if ($ModelSize -eq '31b') {
+                @{
+                    Authorization = [string]::Concat(
+                        'Bear',
+                        'er ',
+                        $apiKey
+                    )
+                }
+            }
+            else {
+                @{}
+            }
             Invoke-RestMethod `
-                -Uri "http://127.0.0.1:$Port/health" `
+                -Uri $readinessUri `
+                -Headers $readinessHeaders `
                 -TimeoutSec 3 |
                 Out-Null
             $startExitCode = 0
@@ -276,6 +317,12 @@ try {
 
     $benchmarkOutput = Join-Path $logRoot "sglang-bench-$stamp.stdout.log"
     $benchmarkError = Join-Path $logRoot "sglang-bench-$stamp.stderr.log"
+    $modelRevision = if ($ModelSize -eq '31b') {
+        '1e4d8beecacb8b7590c1d8bedd7335f687bf311f'
+    }
+    else {
+        'b6ed86275a6a5735884e208bfed95b445a684ca2'
+    }
     $benchmarkArguments = @(
         '-NoProfile',
         '-ExecutionPolicy', 'Bypass',
@@ -284,7 +331,7 @@ try {
         '-Condition', $condition,
         '-BaseUrl', "http://127.0.0.1:$Port/",
         '-Model', $servedModel,
-        '-ModelRevision', 'b6ed86275a6a5735884e208bfed95b445a684ca2',
+        '-ModelRevision', $modelRevision,
         '-Samples', [string]$Samples,
         '-MaxTokens', [string]$MaxTokens,
         '-MtpConfig',
@@ -314,9 +361,21 @@ try {
     ) {
         $benchmarkExitCode = 0
     }
+    if ($null -eq $benchmarkExitCode) {
+        $benchmarkExitCode = -1
+    }
     if ($benchmarkExitCode -ne 0) {
+        $failureDetail = ''
+        if (Test-Path -LiteralPath $benchmarkError -PathType Leaf) {
+            $failureDetail = (
+                Get-Content -LiteralPath $benchmarkError -Tail 1
+            ).Trim()
+        }
+        if ([string]::IsNullOrWhiteSpace($failureDetail)) {
+            $failureDetail = 'See the registered benchmark stderr log.'
+        }
         throw (
-            "Registered benchmark exited $benchmarkExitCode."
+            "Registered benchmark exited $benchmarkExitCode. $failureDetail"
         )
     }
 

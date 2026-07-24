@@ -4,12 +4,16 @@ set -euo pipefail
 runtime="/home/kutae/.local/share/local-voice-agent/runtimes/sglang-0.5.15.post1/.venv"
 launcher="/mnt/c/Dev/Repos/local-voice-agent/scripts/launch-sglang-secure.py"
 base_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4/12b/target/1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee"
+base_model_31b="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4/31b/target/52f3f65bc7a02d555763bc923bd1d9094898219d"
 mtp_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4/12b/mtp-target/b6ed86275a6a5735884e208bfed95b445a684ca2"
 mtp_assistant="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4/12b/mtp-assistant/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd"
+mtp_model_31b="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4/31b/mtp-target/1e4d8beecacb8b7590c1d8bedd7335f687bf311f"
+mtp_assistant_31b="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4/31b/mtp-assistant/96d4c8ca3cb38c107a8478587878124895d1e844"
 run_root="/home/kutae/.local/share/local-voice-agent/run"
 log_root="/mnt/e/Data/LocalVoiceAgent/runtime/logs"
 pid_file="${run_root}/sglang.pid"
 port="${LVA_SGLANG_PORT:-8768}"
+model_size="${LVA_SGLANG_MODEL_SIZE:-12b}"
 mode="${LVA_SGLANG_MODE:-base}"
 speculative_steps="${LVA_SGLANG_SPECULATIVE_STEPS:-1}"
 mtp_cpu_offload_gib="${LVA_SGLANG_MTP_CPU_OFFLOAD_GIB:-4}"
@@ -20,6 +24,7 @@ api_key_for_validation="${LVA_SGLANG_API_KEY:-}"
   echo "LVA_SGLANG_API_KEY must contain at least 32 characters." >&2
   exit 3
 }
+api_key_for_readiness="${api_key_for_validation}"
 unset api_key_for_validation
 [[ "${port}" =~ ^[0-9]+$ ]] && ((port >= 1024 && port <= 65535)) || {
   echo "LVA_SGLANG_PORT is invalid." >&2
@@ -34,12 +39,22 @@ unset api_key_for_validation
   echo "LVA_SGLANG_MODE must be base, mtp, or mtp-target-off." >&2
   exit 6
 }
+[[ "${model_size}" == "12b" || "${model_size}" == "31b" ]] || {
+  echo "LVA_SGLANG_MODEL_SIZE must be 12b or 31b." >&2
+  exit 17
+}
+if [[ "${model_size}" == "31b" && "${mode}" == "base" ]]; then
+  echo \
+    "SGLang 0.5.15.post1 cannot repack the pinned Gemma 4 31B W4A16 checkpoint: output width 8608 is not divisible by Marlin tile width 64. Use the registered vLLM 31B profile." \
+    >&2
+  exit 18
+fi
 [[ "${speculative_steps}" =~ ^[1-5]$ ]] || {
   echo "LVA_SGLANG_SPECULATIVE_STEPS must be between 1 and 5." >&2
   exit 7
 }
-[[ "${mtp_cpu_offload_gib}" =~ ^([0-9]|1[0-6])$ ]] || {
-  echo "LVA_SGLANG_MTP_CPU_OFFLOAD_GIB must be between 0 and 16." >&2
+[[ "${mtp_cpu_offload_gib}" =~ ^([0-9]|[1-3][0-9]|4[0-8])$ ]] || {
+  echo "LVA_SGLANG_MTP_CPU_OFFLOAD_GIB must be between 0 and 48." >&2
   exit 8
 }
 [[ -x "${runtime}/bin/python" && -f "${launcher}" ]] || {
@@ -47,6 +62,52 @@ unset api_key_for_validation
   exit 9
 }
 
+if [[ "${model_size}" == "31b" ]]; then
+  case "${mode}" in
+  base)
+    model="${base_model_31b}"
+    served_model="gemma4-31b"
+    context_length=512
+    mem_fraction=0.90
+    minimum_free_mib=28500
+    log_file="${log_root}/sglang-31b-base.log"
+    speculative_args=(
+      --cpu-offload-gb "${mtp_cpu_offload_gib}"
+      --skip-server-warmup
+    )
+    ;;
+  mtp-target-off)
+    model="${mtp_model_31b}"
+    served_model="gemma4-31b-mtp-target-off"
+    context_length=512
+    mem_fraction=0.82
+    minimum_free_mib=28500
+    log_file="${log_root}/sglang-31b-mtp-target-off.log"
+    speculative_args=(
+      --cpu-offload-gb "${mtp_cpu_offload_gib}"
+      --skip-server-warmup
+    )
+    ;;
+  mtp)
+    model="${mtp_model_31b}"
+    mtp_assistant="${mtp_assistant_31b}"
+    served_model="gemma4-31b-mtp"
+    context_length=512
+    mem_fraction=0.82
+    minimum_free_mib=28500
+    log_file="${log_root}/sglang-31b-mtp-s${speculative_steps}.log"
+    speculative_args=(
+      --speculative-algorithm NEXTN
+      --speculative-draft-model-path "${mtp_assistant}"
+      --speculative-num-steps "${speculative_steps}"
+      --speculative-num-draft-tokens "$((speculative_steps + 1))"
+      --speculative-eagle-topk 1
+      --cpu-offload-gb "${mtp_cpu_offload_gib}"
+      --skip-server-warmup
+    )
+    ;;
+  esac
+else
 case "${mode}" in
   base)
     model="${base_model}"
@@ -83,6 +144,7 @@ case "${mode}" in
     )
     ;;
 esac
+fi
 
 [[ -d "${model}" ]] || {
   echo "The pinned SGLang runtime or Gemma model is unavailable." >&2
@@ -154,11 +216,27 @@ for ((elapsed = 0; elapsed < startup_timeout_seconds; elapsed += 1)); do
     echo "SGLang exited during startup; see ${log_file}" >&2
     exit 16
   fi
-  if curl \
-    --silent \
-    --fail \
-    --max-time 5 \
-    "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then
+  ready=1
+  if [[ "${model_size}" == "31b" ]]; then
+    if printf '%s\n' \
+      "header = \"Authorization: Bearer ${api_key_for_readiness}\"" |
+      curl \
+        --config - \
+        --silent \
+        --fail \
+        --max-time 5 \
+        "http://127.0.0.1:${port}/model_info" >/dev/null 2>&1; then
+      ready=0
+    fi
+  elif curl \
+      --silent \
+      --fail \
+      --max-time 5 \
+      "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then
+    ready=0
+  fi
+  if ((ready == 0)); then
+    unset api_key_for_readiness
     echo "SGLang ready: pid=${pid} port=${port} model=${served_model} mode=${mode}"
     exit 0
   fi
@@ -166,5 +244,6 @@ for ((elapsed = 0; elapsed < startup_timeout_seconds; elapsed += 1)); do
 done
 
 kill -TERM -- "-${pid}" 2>/dev/null || true
+unset api_key_for_readiness
 echo "SGLang did not become healthy within ${startup_timeout_seconds} seconds." >&2
 exit 9

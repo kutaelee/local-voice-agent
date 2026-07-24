@@ -17,7 +17,8 @@ if ! kill -0 "${pid}" 2>/dev/null; then
   exit 0
 fi
 command="$(tr '\0' ' ' <"/proc/${pid}/cmdline")"
-[[ "${command}" == *"launch-sglang-secure.py"*"/gemma4/12b/"* ]] || {
+[[ "${command}" == *"launch-sglang-secure.py"* ]] \
+  && [[ "${command}" == *"/gemma4/12b/"* || "${command}" == *"/gemma4/31b/"* ]] || {
   echo "PID ${pid} is not the owned SGLang process; refusing to signal." >&2
   exit 4
 }

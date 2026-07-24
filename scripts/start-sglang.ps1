@@ -1,12 +1,15 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('12b', '31b')]
+    [string]$ModelSize = '12b',
+
     [ValidateSet('base', 'mtp', 'mtp-target-off')]
     [string]$Mode = 'base',
 
     [ValidateRange(1, 5)]
     [int]$SpeculativeSteps = 1,
 
-    [ValidateRange(0, 16)]
+    [ValidateRange(0, 48)]
     [int]$MtpCpuOffloadGiB = 4,
 
     [ValidateRange(1024, 65535)]
@@ -20,6 +23,13 @@ $ErrorActionPreference = 'Stop'
 
 if (-not $env:LVA_SGLANG_API_KEY -or $env:LVA_SGLANG_API_KEY.Length -lt 32) {
     throw 'Set LVA_SGLANG_API_KEY to a secret of at least 32 characters.'
+}
+if ($ModelSize -eq '31b' -and $Mode -eq 'base') {
+    throw (
+        'SGLang 0.5.15.post1 cannot repack the pinned Gemma 4 31B W4A16 ' +
+        'checkpoint: output width 8608 is not divisible by the Marlin tile ' +
+        'width 64. Use the registered vLLM 31B profile.'
+    )
 }
 
 $scriptPath = 'C:\Dev\Repos\local-voice-agent\scripts\start-sglang.sh'
@@ -37,7 +47,12 @@ $freeMemory = 0
 if (-not [int]::TryParse($freeMemoryText, [ref]$freeMemory)) {
     throw 'Unable to measure free GPU memory.'
 }
-$minimumFreeMemory = if ($Mode -eq 'base') { 22000 } else { 28500 }
+$minimumFreeMemory = if ($ModelSize -eq '31b' -or $Mode -ne 'base') {
+    28500
+}
+else {
+    22000
+}
 if ($freeMemory -lt $minimumFreeMemory) {
     throw (
         "GPU reservation declined: mode=$Mode requires $minimumFreeMemory MiB free; " +
@@ -47,6 +62,7 @@ if ($freeMemory -lt $minimumFreeMemory) {
 
 $bridgeNames = @(
     'LVA_SGLANG_API_KEY',
+    'LVA_SGLANG_MODEL_SIZE',
     'LVA_SGLANG_MODE',
     'LVA_SGLANG_SPECULATIVE_STEPS',
     'LVA_SGLANG_MTP_CPU_OFFLOAD_GIB',
@@ -60,6 +76,7 @@ foreach ($name in $bridgeNames) {
 $previousWslEnv = $env:WSLENV
 
 try {
+    $env:LVA_SGLANG_MODEL_SIZE = $ModelSize
     $env:LVA_SGLANG_MODE = $Mode
     $env:LVA_SGLANG_SPECULATIVE_STEPS = [string]$SpeculativeSteps
     $env:LVA_SGLANG_MTP_CPU_OFFLOAD_GIB = [string]$MtpCpuOffloadGiB
