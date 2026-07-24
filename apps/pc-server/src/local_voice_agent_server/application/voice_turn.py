@@ -115,15 +115,19 @@ class VoiceTurnService:
         vad: VoiceActivityPort | None = None,
         max_input_bytes: int = 8 * 1024 * 1024,
         output_chunk_bytes: int = 32 * 1024,
+        output_tail_silence_ms: int = 0,
     ) -> None:
         if output_chunk_bytes < 1 or output_chunk_bytes > 384 * 1024:
             raise ValueError("output chunk size is invalid")
+        if not 0 <= output_tail_silence_ms <= 500:
+            raise ValueError("output tail silence is invalid")
         self._stream = AudioStream(max_bytes=max_input_bytes)
         self._stt = stt
         self._conversation = conversation
         self._tts = tts
         self._vad = vad
         self._output_chunk_bytes = output_chunk_bytes
+        self._output_tail_silence_ms = output_tail_silence_ms
         self._pending_language: str | None = None
         self._pending_approval_id: UUID | None = None
 
@@ -549,6 +553,24 @@ class VoiceTurnService:
             speech_unit,
             language=language,
         )
+        await self._emit_synthesized_audio(
+            events,
+            state=state,
+            speech_unit=speech_unit,
+            output=output,
+            emit=emit,
+        )
+
+    async def _emit_synthesized_audio(
+        self,
+        events: list[VoiceEvent],
+        speech_unit: str,
+        output: SynthesizedAudio,
+        *,
+        state: _AudioOutputState,
+        emit: VoiceEventEmitter | None,
+    ) -> None:
+        del speech_unit
         current_format = (output.sample_rate_hz, output.channels)
         if state.output_format is None:
             state.output_format = current_format
@@ -603,6 +625,33 @@ class VoiceTurnService:
         reason: str,
         emit: VoiceEventEmitter | None,
     ) -> None:
+        if (
+            state.started
+            and state.output_format is not None
+            and self._output_tail_silence_ms > 0
+        ):
+            sample_rate_hz, channels = state.output_format
+            frames = round(
+                sample_rate_hz * self._output_tail_silence_ms / 1_000
+            )
+            tail = b"\x00\x00" * frames * channels
+            await self._deliver(
+                events,
+                VoiceEvent(
+                    "audio.output.chunk",
+                    {
+                        "audio_stream_id": str(state.stream_id),
+                        "chunk_index": state.chunk_index,
+                        "encoding": "pcm_s16le",
+                        "sample_rate_hz": sample_rate_hz,
+                        "channels": channels,
+                        "duration_ms": self._output_tail_silence_ms,
+                        "data_base64": base64.b64encode(tail).decode("ascii"),
+                    },
+                ),
+                emit=emit,
+            )
+            state.chunk_index += 1
         await self._deliver(
             events,
             VoiceEvent(
@@ -657,6 +706,7 @@ _STREAM_SPEECH_BOUNDARY = _HARD_SPEECH_BOUNDARY
 _CLAUSE_SPEECH_BOUNDARY = re.compile(r"[,，、;；:：]\s*")
 _WORD_SPEECH_BOUNDARY = re.compile(r"\s+")
 _MIN_STREAM_UNIT_CHARACTERS = 18
+_MIN_HARD_STREAM_UNIT_CHARACTERS = 6
 _MAX_STREAM_UNIT_CHARACTERS = 52
 
 
@@ -676,7 +726,7 @@ def _take_complete_speech_units(text: str) -> tuple[tuple[str, ...], str]:
     start = 0
     for boundary in _STREAM_SPEECH_BOUNDARY.finditer(text):
         unit = text[start : boundary.start()].strip()
-        if unit:
+        if unit and len(unit) >= _MIN_HARD_STREAM_UNIT_CHARACTERS:
             units.append(unit)
             start = boundary.end()
     pending = text[start:]

@@ -441,3 +441,37 @@ not claim true codec-frame streaming or sub-100 ms first audio.
 Evidence is stored outside Git under
 `E:\Data\LocalVoiceAgent\runtime\evidence\vllm-12b-interactive-optimized.json`,
 `qwen3-tts-0.6b-warm.json`, and `qwen3-tts-0.6b-first-unit.json`.
+
+## Web QA TTS latency investigation (2026-07-24)
+
+The Web QA portal measures STT final latency, LLM TTFT, TTS first audio, and
+predicted playback underrun separately. The tests below used the production
+WebSocket pipeline and the consented local Qwen3-TTS voice profile. They are
+bounded regression samples rather than p50/p95 results.
+
+| Configuration | TTS first audio after text | Largest predicted playback gap | Result |
+|---|---:|---:|---|
+| Previous unbounded generation | 155,411.9 ms | Not meaningful; generated about 179 s of audio | Rejected |
+| One worker with dynamic token cap | 5,130.8 ms | 3,832.2 ms | Selected |
+| Two-worker prefetch, warm sample | 5,683.6 ms | 3,193.6 ms | Rejected |
+
+The previous worker could miss the codec end token and continue until the
+generic 2,048-token limit. The production worker now bounds codec generation
+to the smaller of 256 tokens or a length-derived limit. It also removes the
+guaranteed 160 ms silence that had been appended to every speech unit and
+adds only one 80 ms tail after the complete response.
+
+The two-worker experiment reduced one measured inter-sentence gap by about
+0.64 seconds but made first audio slower and raised total GPU use from about
+18.3 GiB to about 21.0 GiB. It is not selected. The installed official
+high-level Qwen3-TTS API returns a complete waveform per speech unit rather
+than online codec frames, so the remaining roughly five-second first-audio
+delay is a runtime limitation, not reported as solved. The portal exposes
+this value directly so a future official online-serving path can be compared
+under the same protocol.
+
+External evidence:
+
+- `E:\Data\LocalVoiceAgent\runtime\evidence\web-qa\voice-warm.json`
+- `E:\Data\LocalVoiceAgent\runtime\evidence\web-qa\voice-bounded-cold.json`
+- `E:\Data\LocalVoiceAgent\runtime\evidence\web-qa\voice-dual-warm.json`

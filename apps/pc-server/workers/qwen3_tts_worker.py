@@ -17,6 +17,12 @@ from worker_protocol import require_token, serve
 SUPPORTED_STYLES = frozenset({"neutral", "happy", "dark", "advert"})
 
 
+def bounded_max_new_tokens(text: str, configured_limit: int) -> int:
+    if not text or not 96 <= configured_limit <= 512:
+        raise ValueError("code token bound input is invalid")
+    return min(configured_limit, max(96, len(text) * 4 + 48))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--socket", type=Path, required=True)
@@ -24,6 +30,7 @@ def main() -> int:
     parser.add_argument("--voice-profiles-root", type=Path, required=True)
     parser.add_argument("--tail-silence-ms", type=int, default=160)
     parser.add_argument("--max-cached-prompts", type=int, default=4)
+    parser.add_argument("--max-code-tokens", type=int, default=256)
     args = parser.parse_args()
     if not args.model.is_dir():
         parser.error("model directory does not exist")
@@ -33,6 +40,8 @@ def main() -> int:
         parser.error("tail silence must be between 0 and 500 ms")
     if not 1 <= args.max_cached_prompts <= 16:
         parser.error("prompt cache size must be between 1 and 16")
+    if not 96 <= args.max_code_tokens <= 512:
+        parser.error("max code tokens must be between 96 and 512")
 
     import numpy as np
     from qwen_tts import Qwen3TTSModel
@@ -133,6 +142,7 @@ def main() -> int:
         else:
             prompt_cache.move_to_end(cache_key)
 
+        max_new_tokens = bounded_max_new_tokens(text, args.max_code_tokens)
         with torch.inference_mode():
             wavs, sample_rate = model.generate_voice_clone(
                 text=text,
@@ -140,7 +150,7 @@ def main() -> int:
                 voice_clone_prompt=prompt,
                 non_streaming_mode=False,
                 temperature=temperature,
-                max_new_tokens=2_048,
+                max_new_tokens=max_new_tokens,
             )
         if len(wavs) != 1:
             raise RuntimeError("Qwen3-TTS returned an invalid batch")
@@ -161,6 +171,7 @@ def main() -> int:
             "engine": engine_name,
             "style": style,
             "tail_silence_ms": args.tail_silence_ms,
+            "max_new_tokens": max_new_tokens,
         }
 
     asyncio.run(
@@ -177,6 +188,7 @@ def main() -> int:
                 "reference_transcript_required": True,
                 "prompt_cache_entries": args.max_cached_prompts,
                 "tail_silence_ms": args.tail_silence_ms,
+                "max_code_tokens": args.max_code_tokens,
                 "dual_track_input": True,
                 "device": "cuda",
             },

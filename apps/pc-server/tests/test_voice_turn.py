@@ -29,6 +29,17 @@ def test_short_comma_does_not_fragment_streaming_speech() -> None:
     assert pending == "네, 바로 확인하겠습니다"
 
 
+def test_short_first_sentence_is_coalesced_to_avoid_playback_gap() -> None:
+    ready, pending = _take_complete_speech_units(
+        "Okay. The next sentence has enough audio to cover synthesis. "
+    )
+
+    assert ready == (
+        "Okay. The next sentence has enough audio to cover synthesis.",
+    )
+    assert pending == ""
+
+
 class FakeStt:
     async def transcribe(
         self,

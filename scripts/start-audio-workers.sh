@@ -43,7 +43,13 @@ case "${tts_engine}" in
         ;;
     esac
     tts_worker="${repo}/apps/pc-server/workers/qwen3_tts_worker.py"
-    tts_extra_args=(--tail-silence-ms 160 --max-cached-prompts 4)
+    # Inter-unit silence is added once by the gateway after the whole response.
+    # Adding it here would create a guaranteed pause after every sentence unit.
+    tts_extra_args=(
+      --tail-silence-ms 0
+      --max-cached-prompts 4
+      --max-code-tokens 256
+    )
     ;;
   chatterbox)
     tts_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-v3-py3146/.venv"

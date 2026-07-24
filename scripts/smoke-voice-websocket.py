@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 import wave
 from uuid import uuid4
 
@@ -68,6 +69,7 @@ def main() -> int:
     stream_id = uuid4()
     sequence = 0
     received: list[dict[str, object]] = []
+    received_at_ms: list[float] = []
     output = bytearray()
     app = create_app_from_environment()
     headers = {
@@ -78,6 +80,7 @@ def main() -> int:
         headers=headers,
     ) as socket:
         received.append(socket.receive_json())
+        received_at_ms.append(0.0)
         sequence += 1
         socket.send_json(
             _event(
@@ -94,6 +97,7 @@ def main() -> int:
             )
         )
         received.append(socket.receive_json())
+        received_at_ms.append(0.0)
         bytes_per_millisecond = sample_rate_hz * channels * 2 / 1000
         for chunk_index, offset in enumerate(range(0, len(pcm), 32 * 1024)):
             chunk = pcm[offset : offset + 32 * 1024]
@@ -129,9 +133,13 @@ def main() -> int:
                 },
             )
         )
+        turn_started_at = time.perf_counter()
         while True:
             message = socket.receive_json()
             received.append(message)
+            received_at_ms.append(
+                (time.perf_counter() - turn_started_at) * 1_000
+            )
             if message["type"] == "audio.output.chunk":
                 output.extend(
                     base64.b64decode(
@@ -141,6 +149,45 @@ def main() -> int:
                 )
             if message["type"] in {"audio.output.end", "error"}:
                 break
+
+    event_timing = list(zip(received, received_at_ms, strict=True))
+    transcript_at = next(
+        (
+            elapsed
+            for message, elapsed in event_timing
+            if message["type"] == "transcript.user.final"
+        ),
+        None,
+    )
+    first_text_at = next(
+        (
+            elapsed
+            for message, elapsed in event_timing
+            if message["type"] == "assistant.text.delta"
+        ),
+        None,
+    )
+    audio_events = [
+        (elapsed, int(message["payload"]["duration_ms"]))
+        for message, elapsed in event_timing
+        if message["type"] == "audio.output.chunk"
+    ]
+    audio_arrivals = [elapsed for elapsed, _ in audio_events]
+    audio_arrival_gaps = [
+        current - previous
+        for previous, current in zip(audio_arrivals, audio_arrivals[1:])
+    ]
+    playback_underruns: list[float] = []
+    predicted_playback_end = None
+    for arrival, duration in audio_events:
+        if predicted_playback_end is None:
+            predicted_playback_end = arrival + duration
+            continue
+        playback_underruns.append(max(0.0, arrival - predicted_playback_end))
+        predicted_playback_end = max(
+            arrival,
+            predicted_playback_end,
+        ) + duration
 
     final_type = received[-1]["type"]
     result = {
@@ -177,6 +224,44 @@ def main() -> int:
             ),
             "pcm_bytes": len(output),
             "sha256": hashlib.sha256(output).hexdigest(),
+        },
+        "latency_ms": {
+            "stt_final": (
+                round(transcript_at, 1)
+                if transcript_at is not None
+                else None
+            ),
+            "llm_ttft_after_stt": (
+                round(first_text_at - transcript_at, 1)
+                if first_text_at is not None and transcript_at is not None
+                else None
+            ),
+            "tts_first_audio_after_text": (
+                round(audio_arrivals[0] - first_text_at, 1)
+                if audio_arrivals and first_text_at is not None
+                else None
+            ),
+            "first_audio_after_input_end": (
+                round(audio_arrivals[0], 1)
+                if audio_arrivals
+                else None
+            ),
+            "max_audio_chunk_arrival_gap": (
+                round(max(audio_arrival_gaps), 1)
+                if audio_arrival_gaps
+                else 0.0
+            ),
+            "max_predicted_playback_underrun": (
+                round(max(playback_underruns), 1)
+                if playback_underruns
+                else 0.0
+            ),
+            "predicted_playback_end": (
+                round(predicted_playback_end, 1)
+                if predicted_playback_end is not None
+                else None
+            ),
+            "turn_until_audio_end": round(received_at_ms[-1], 1),
         },
         "event_types": [
             message["type"]
