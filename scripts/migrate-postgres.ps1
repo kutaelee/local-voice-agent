@@ -17,7 +17,7 @@ if ($password.Length -lt 48) {
 }
 $encodedPassword = [Uri]::EscapeDataString($password)
 $env:LVA_DATABASE_URL = (
-    "postgresql+asyncpg://local_voice_agent:{0}@127.0.0.1:55432/local_voice_agent" `
+    "postgresql+asyncpg://local_voice_agent:{0}@127.0.0.1:46324/local_voice_agent" `
         -f $encodedPassword
 )
 $previousWslEnv = $env:WSLENV

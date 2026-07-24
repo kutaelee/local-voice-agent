@@ -26,7 +26,7 @@ def settings(tmp_path: Path) -> RegisteredVllmSettings:
     stop.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
     return RegisteredVllmSettings(
         api_key=API_KEY,
-        base_url="http://127.0.0.1:8766",
+        base_url="http://127.0.0.1:46322",
         start_script=start,
         stop_script=stop,
         status_path=tmp_path / "status" / "vllm.json",
@@ -79,7 +79,7 @@ def test_health_matches_status_pid_and_exact_api_model(tmp_path: Path) -> None:
             {
                 "state": "ready",
                 "pid": os.getpid(),
-                "port": 8766,
+                "port": 46322,
                 "model_size": "12b",
                 "model_id": "gemma4-12b",
             }
@@ -103,8 +103,8 @@ def test_health_matches_status_pid_and_exact_api_model(tmp_path: Path) -> None:
     receipt = asyncio.run(adapter.health_check(ModelId.GEMMA4_12B))
 
     assert requested == [
-        ("http://127.0.0.1:8766/health", None),
-        ("http://127.0.0.1:8766/v1/models", API_KEY),
+        ("http://127.0.0.1:46322/health", None),
+        ("http://127.0.0.1:46322/v1/models", API_KEY),
     ]
     assert receipt.action == "health"
     evidence = json.loads(Path(receipt.evidence_path).read_text(encoding="utf-8"))
@@ -123,7 +123,7 @@ def test_health_rejects_wrong_served_model_and_records_failure(
             {
                 "state": "ready",
                 "pid": os.getpid(),
-                "port": 8766,
+                "port": 46322,
                 "model_size": "31b",
                 "model_id": "gemma4-31b",
             }
@@ -205,7 +205,7 @@ def test_settings_reject_external_runtime_url(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="loopback"):
         RegisteredVllmSettings(
             api_key=API_KEY,
-            base_url="http://example.com:8766",
+            base_url="http://example.com:46322",
             start_script=start,
             stop_script=stop,
             status_path=tmp_path / "status.json",

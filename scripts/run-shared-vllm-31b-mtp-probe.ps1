@@ -7,7 +7,7 @@ param(
     [int]$CpuOffloadGiB = 36,
 
     [ValidateRange(1024, 65535)]
-    [int]$Port = 8767,
+    [int]$Port = 46326,
 
     [switch]$RunBenchmark,
 

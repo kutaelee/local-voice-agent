@@ -7,14 +7,14 @@ import org.junit.Test
 class ServerEndpointTest {
     @Test
     fun secureOriginBuildsSessionPath() {
-        val endpoint = ServerEndpoint.parse("wss://pc.example:8765/")
+        val endpoint = ServerEndpoint.parse("wss://pc.example:46321/")
 
         assertEquals(
-            "wss://pc.example:8765/v1/sessions/session-id/events",
+            "wss://pc.example:46321/v1/sessions/session-id/events",
             endpoint.sessionEventsUrl("session-id"),
         )
         assertEquals(
-            "https://pc.example:8765/v1/voice/profiles",
+            "https://pc.example:46321/v1/voice/profiles",
             endpoint.managementUrl("/v1/voice/profiles"),
         )
     }
@@ -22,17 +22,17 @@ class ServerEndpointTest {
     @Test
     fun cleartextEndpointIsRejected() {
         assertThrows(IllegalArgumentException::class.java) {
-            ServerEndpoint.parse("ws://192.168.1.2:8765")
+            ServerEndpoint.parse("ws://192.168.1.2:46321")
         }
     }
 
     @Test
     fun credentialsAndApiPathsAreRejected() {
         assertThrows(IllegalArgumentException::class.java) {
-            ServerEndpoint.parse("wss://token@pc.example:8765")
+            ServerEndpoint.parse("wss://token@pc.example:46321")
         }
         assertThrows(IllegalArgumentException::class.java) {
-            ServerEndpoint.parse("wss://pc.example:8765/v1")
+            ServerEndpoint.parse("wss://pc.example:46321/v1")
         }
     }
 }

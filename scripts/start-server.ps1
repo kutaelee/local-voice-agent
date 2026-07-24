@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1024, 65535)]
-    [int]$Port = 8765,
+    [int]$Port = 46321,
 
     [string]$ListenAddress = '127.0.0.1',
 
@@ -9,7 +9,9 @@ param(
 
     [string]$TlsPrivateKeyPath,
 
-    [switch]$EnablePrivateNetwork
+    [switch]$EnablePrivateNetwork,
+
+    [switch]$EnableTools
 )
 
 $ErrorActionPreference = 'Stop'
@@ -19,6 +21,11 @@ $runtimeRoot = 'E:\Data\LocalVoiceAgent\runtime'
 $statusPath = Join-Path $runtimeRoot 'status\pc-server.json'
 $logDirectory = Join-Path $runtimeRoot 'logs'
 $passwordFile = 'E:\Data\LocalVoiceAgent\secrets\postgres-password'
+$pairingTokenFile = 'E:\Data\LocalVoiceAgent\secrets\pairing-token'
+$audioTokenFile = 'E:\Data\LocalVoiceAgent\secrets\audio-worker-token'
+$vllmKeyFile = 'E:\Data\LocalVoiceAgent\secrets\vllm-api-key'
+$toolTokenFile = 'E:\Data\LocalVoiceAgent\secrets\tool-executor-token'
+$toolStatusPath = Join-Path $runtimeRoot 'status\tool-executor.json'
 $wslPython = '/home/kutae/.local/share/local-voice-agent/runtimes/pc-server/.venv/bin/python'
 $wslAppRoot = '/mnt/c/Dev/Repos/local-voice-agent/apps/pc-server'
 
@@ -94,6 +101,15 @@ if ($tlsEnabled) {
     $TlsCertificatePath = (Resolve-Path -LiteralPath $TlsCertificatePath).Path
     $TlsPrivateKeyPath = (Resolve-Path -LiteralPath $TlsPrivateKeyPath).Path
 }
+if (-not $env:LVA_PAIRING_TOKEN -and (Test-Path -LiteralPath $pairingTokenFile -PathType Leaf)) {
+    $env:LVA_PAIRING_TOKEN = [System.IO.File]::ReadAllText($pairingTokenFile).Trim()
+}
+if (-not $env:LVA_AUDIO_WORKER_TOKEN -and (Test-Path -LiteralPath $audioTokenFile -PathType Leaf)) {
+    $env:LVA_AUDIO_WORKER_TOKEN = [System.IO.File]::ReadAllText($audioTokenFile).Trim()
+}
+if (-not $env:LVA_VLLM_API_KEY -and (Test-Path -LiteralPath $vllmKeyFile -PathType Leaf)) {
+    $env:LVA_VLLM_API_KEY = [System.IO.File]::ReadAllText($vllmKeyFile).Trim()
+}
 if (-not $env:LVA_PAIRING_TOKEN -or $env:LVA_PAIRING_TOKEN.Length -lt 32 -or $env:LVA_PAIRING_TOKEN -eq 'CHANGE_ME') {
     throw 'Set LVA_PAIRING_TOKEN to a non-placeholder secret of at least 32 characters.'
 }
@@ -150,9 +166,41 @@ if ($taskPassword.Length -lt 48) {
     throw 'PostgreSQL password file has an invalid size.'
 }
 $env:LVA_DATABASE_URL = (
-    'postgresql+asyncpg://local_voice_agent:{0}@127.0.0.1:55432/local_voice_agent' -f
+    'postgresql+asyncpg://local_voice_agent:{0}@127.0.0.1:46324/local_voice_agent' -f
         [Uri]::EscapeDataString($taskPassword)
 )
+if ($EnableTools) {
+    if (-not (Test-Path -LiteralPath $toolTokenFile -PathType Leaf)) {
+        throw 'Tool Executor token is unavailable. Start the Tool Executor first.'
+    }
+    if (-not (Test-Path -LiteralPath $toolStatusPath -PathType Leaf)) {
+        throw 'Tool Executor status is unavailable. Start the Tool Executor first.'
+    }
+    $toolStatus = Get-Content -LiteralPath $toolStatusPath -Raw | ConvertFrom-Json
+    if (
+        $toolStatus.state -ne 'running' -or
+        -not $toolStatus.host -or
+        -not $toolStatus.port
+    ) {
+        throw 'Tool Executor is not registered as running.'
+    }
+    $toolToken = [System.IO.File]::ReadAllText($toolTokenFile).Trim()
+    if ($toolToken.Length -lt 32) {
+        throw 'Tool Executor token file is invalid.'
+    }
+    $toolHealth = Invoke-RestMethod `
+        -Uri "http://$($toolStatus.host):$($toolStatus.port)/health" `
+        -TimeoutSec 2
+    if ($toolHealth.status -ne 'ok' -or $toolHealth.component -ne 'tool-executor') {
+        throw 'Tool Executor health check failed.'
+    }
+    $env:LVA_TOOLS_ENABLED = '1'
+    $env:LVA_TOOL_EXECUTOR_TOKEN = $toolToken
+    $env:LVA_TOOL_EXECUTOR_URL = "http://$($toolStatus.host):$($toolStatus.port)"
+    $env:LVA_WINDOWS_HOST_IP = [string]$toolStatus.host
+    $env:LVA_REPO_ROOT = '/mnt/c/Dev/Repos/local-voice-agent'
+    $env:LVA_WORKSPACE_ROOT = '/mnt/c/Dev/Repos/local-voice-agent'
+}
 
 $bridgeNames = @(
     'LVA_PAIRING_TOKEN',

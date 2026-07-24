@@ -155,7 +155,7 @@ $models = @($modelDefinitions | ForEach-Object {
 
 $server = [ordered]@{
     host = '127.0.0.1'
-    port = 8765
+    port = 46321
     listening = $false
     health = 'not_running'
 }

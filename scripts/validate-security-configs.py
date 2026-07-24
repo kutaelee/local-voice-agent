@@ -62,7 +62,7 @@ def main() -> int:
 
     cleartext = deepcopy(pairing)
     cleartext["allow_cleartext"] = True
-    cleartext["server_url"] = "ws://127.0.0.1:8765"
+    cleartext["server_url"] = "ws://127.0.0.1:46321"
     must_reject(pairing_validator, cleartext, "cleartext pairing")
 
     plaintext_token = deepcopy(pairing)

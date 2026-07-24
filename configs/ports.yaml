@@ -1,0 +1,11 @@
+schema_version: "1.0"
+# Dedicated static ports below the Windows dynamic range (49152-65535).
+# Keep this block exclusive to Local Voice Agent.
+pc_gateway: 46321
+vllm: 46322
+tool_executor: 46323
+postgres: 46324
+sglang: 46325
+vllm_probe: 46326
+windows_fallback: 46327
+benchmark_runtime: 46328

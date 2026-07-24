@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1024, 65535)]
-    [int]$Port = 8766,
+    [int]$Port = 46322,
 
     [ValidatePattern('^http://(localhost|127\.0\.0\.1|\[::1\]):[0-9]+/$')]
     [string]$ComfyUiBaseUrl = 'http://127.0.0.1:8188/'

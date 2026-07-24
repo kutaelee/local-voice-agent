@@ -13,7 +13,7 @@ param(
     [int]$MtpCpuOffloadGiB = 4,
 
     [ValidateRange(1024, 65535)]
-    [int]$Port = 8768,
+    [int]$Port = 46325,
 
     [ValidateRange(60, 900)]
     [int]$StartupTimeoutSeconds = 600

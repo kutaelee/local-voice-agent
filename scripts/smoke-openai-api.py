@@ -18,7 +18,7 @@ import zlib
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base-url", default="http://127.0.0.1:8000")
+    parser.add_argument("--base-url", default="http://127.0.0.1:46322")
     parser.add_argument("--model", required=True)
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument("--include-image", action="store_true")

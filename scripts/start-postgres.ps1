@@ -91,7 +91,7 @@ New-Item -ItemType Directory -Path (Split-Path -Parent $statusPath) -Force |
     container_id = $containerId
     image = $image
     host = '127.0.0.1'
-    port = 55432
+    port = 46324
     database = 'local_voice_agent'
     user = 'local_voice_agent'
     data_directory = $dataDirectory

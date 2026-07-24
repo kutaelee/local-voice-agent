@@ -17,13 +17,13 @@ from local_voice_agent_tool_executor.errors import ToolArgumentsInvalid
 
 
 def test_browser_url_policy_is_explicit_loopback_only() -> None:
-    assert is_allowed_browser_url("http://127.0.0.1:8765/app")
+    assert is_allowed_browser_url("http://127.0.0.1:46321/app")
     assert is_allowed_browser_url("https://localhost:9443/app")
     assert not is_allowed_browser_url("https://example.com/app")
     assert not is_allowed_browser_url("http://localhost/app")
-    assert not is_allowed_browser_url("http://user@127.0.0.1:8765/app")
-    assert not is_allowed_browser_url("http://127.0.0.1:8765/app#fragment")
-    assert is_allowed_websocket_url("ws://127.0.0.1:8765/socket")
+    assert not is_allowed_browser_url("http://user@127.0.0.1:46321/app")
+    assert not is_allowed_browser_url("http://127.0.0.1:46321/app#fragment")
+    assert is_allowed_websocket_url("ws://127.0.0.1:46321/socket")
     assert not is_allowed_websocket_url("wss://example.com/socket")
 
 

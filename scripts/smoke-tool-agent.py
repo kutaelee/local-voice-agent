@@ -32,7 +32,7 @@ def main() -> int:
         raise RuntimeError("LVA_TOOL_EXECUTOR_TOKEN is required")
     executor_url = os.environ.get(
         "LVA_TOOL_EXECUTOR_URL",
-        "http://127.0.0.1:8790",
+        "http://127.0.0.1:46323",
     )
     windows_host_ip = os.environ.get("LVA_WINDOWS_HOST_IP") or None
     registry = ToolRegistry.load(
@@ -68,7 +68,7 @@ def main() -> int:
         },
     ]
     conversation = ToolAgentConversation(
-        base_url="http://127.0.0.1:8766/v1",
+        base_url="http://127.0.0.1:46322/v1",
         model="gemma4-12b",
         api_key="smoke-model-key-with-at-least-32-characters",
         session_id=uuid4(),

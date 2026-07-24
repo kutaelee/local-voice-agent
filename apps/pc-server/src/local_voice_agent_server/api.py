@@ -782,7 +782,7 @@ def _model_switch_coordinator_from_environment(
         api_key=api_key,
         base_url=os.environ.get(
             "LVA_VLLM_RUNTIME_URL",
-            "http://127.0.0.1:8766",
+            "http://127.0.0.1:46322",
         ),
         start_script=Path(
             "/mnt/c/Dev/Repos/local-voice-agent/scripts/start-vllm.sh"
@@ -912,7 +912,7 @@ def _event_handler_from_environment(
     )
     base_url = os.environ.get(
         "LVA_VLLM_BASE_URL",
-        "http://127.0.0.1:8000/v1",
+        "http://127.0.0.1:46322/v1",
     )
     tools_enabled = os.environ.get("LVA_TOOLS_ENABLED", "0") == "1"
     registry: ToolRegistry | None = None
@@ -943,7 +943,7 @@ def _event_handler_from_environment(
                 ToolExecutorClientSettings(
                     base_url=os.environ.get(
                         "LVA_TOOL_EXECUTOR_URL",
-                        "http://127.0.0.1:8790",
+                        "http://127.0.0.1:46323",
                     ),
                     ipc_token=executor_token,
                     allowed_wsl_gateway=(

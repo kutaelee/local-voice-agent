@@ -19,7 +19,7 @@ param(
     [int]$MaxTokens = 128,
 
     [ValidateRange(1024, 65535)]
-    [int]$Port = 8768,
+    [int]$Port = 46325,
 
     [ValidatePattern('^http://(localhost|127\.0\.0\.1|\[::1\]):[0-9]+/$')]
     [string]$ComfyUiBaseUrl = 'http://127.0.0.1:8188/'

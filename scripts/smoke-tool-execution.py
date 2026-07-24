@@ -47,7 +47,7 @@ def main() -> int:
     )
     adapter = HttpToolExecutionAdapter(
         ToolExecutorClientSettings(
-            base_url="http://127.0.0.1:8790",
+            base_url="http://127.0.0.1:46323",
             ipc_token=token,
         )
     )

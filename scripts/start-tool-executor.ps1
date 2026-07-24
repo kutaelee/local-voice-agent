@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1024, 65535)]
-    [int]$Port = 8790,
+    [int]$Port = 46323,
 
     [switch]$EnableWslNatBinding
 )
@@ -17,6 +17,8 @@ else {
     $defaultPython
 }
 $runtimeRoot = 'E:\Data\LocalVoiceAgent\runtime'
+$secretDirectory = 'E:\Data\LocalVoiceAgent\secrets'
+$tokenFile = Join-Path $secretDirectory 'tool-executor-token'
 $statusPath = Join-Path $runtimeRoot 'status\tool-executor.json'
 $auditPath = Join-Path $runtimeRoot 'audit\tool-executor.jsonl'
 $evidencePath = Join-Path $runtimeRoot 'evidence\tool-executor'
@@ -24,14 +26,57 @@ $backupPath = Join-Path $runtimeRoot 'backups\tool-executor'
 $logDirectory = Join-Path $runtimeRoot 'logs'
 $playwrightBrowsers = 'C:\Dev\Tools\LocalVoiceAgent\browsers\playwright-1.61.0'
 
+function Set-RestrictedSecretAcl {
+    param([Parameter(Mandatory)][string]$LiteralPath)
+
+    $userSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+    $systemSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
+    $acl = Get-Acl -LiteralPath $LiteralPath
+    $acl.SetAccessRuleProtection($true, $false)
+    foreach ($rule in @($acl.Access)) {
+        [void]$acl.RemoveAccessRuleSpecific($rule)
+    }
+    foreach ($sid in @($userSid, $systemSid)) {
+        [void]$acl.AddAccessRule(
+            [System.Security.AccessControl.FileSystemAccessRule]::new(
+                $sid,
+                [System.Security.AccessControl.FileSystemRights]::FullControl,
+                [System.Security.AccessControl.InheritanceFlags]::None,
+                [System.Security.AccessControl.PropagationFlags]::None,
+                [System.Security.AccessControl.AccessControlType]::Allow
+            )
+        )
+    }
+    Set-Acl -LiteralPath $LiteralPath -AclObject $acl
+}
+
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
     throw "Tool Executor Python is unavailable: $python"
 }
 if (-not (Test-Path -LiteralPath $repoRoot -PathType Container)) {
     throw "Repository is unavailable: $repoRoot"
 }
-if (-not $env:LVA_TOOL_EXECUTOR_TOKEN -or $env:LVA_TOOL_EXECUTOR_TOKEN.Length -lt 32) {
-    throw 'Set LVA_TOOL_EXECUTOR_TOKEN to a secret containing at least 32 characters.'
+New-Item -ItemType Directory -Path $secretDirectory -Force | Out-Null
+if (-not (Test-Path -LiteralPath $tokenFile -PathType Leaf)) {
+    $random = [byte[]]::new(48)
+    $generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $generator.GetBytes($random)
+        [System.IO.File]::WriteAllText(
+            $tokenFile,
+            [Convert]::ToBase64String($random).TrimEnd('='),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+    }
+    finally {
+        $generator.Dispose()
+        [Array]::Clear($random, 0, $random.Length)
+    }
+}
+Set-RestrictedSecretAcl -LiteralPath $tokenFile
+$env:LVA_TOOL_EXECUTOR_TOKEN = [System.IO.File]::ReadAllText($tokenFile).Trim()
+if ($env:LVA_TOOL_EXECUTOR_TOKEN.Length -lt 32) {
+    throw 'The Tool Executor token file is invalid.'
 }
 if (-not (Test-Path -LiteralPath $playwrightBrowsers -PathType Container)) {
     throw "Playwright browser runtime is unavailable: $playwrightBrowsers"
@@ -196,6 +241,7 @@ try {
         started_at = (Get-Date).ToUniversalTime().ToString('o')
         stdout_path = $stdoutPath
         stderr_path = $stderrPath
+        token_file = $tokenFile
     } | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding utf8
 }
 catch {

@@ -117,7 +117,7 @@ def test_adapter_binds_exact_running_plan_and_token() -> None:
 
     adapter = HttpToolExecutionAdapter(
         ToolExecutorClientSettings(
-            base_url="http://127.0.0.1:8790",
+            base_url="http://127.0.0.1:46323",
             ipc_token=TOKEN,
         ),
         transport=transport,
@@ -128,7 +128,7 @@ def test_adapter_binds_exact_running_plan_and_token() -> None:
     )
 
     assert receipt.result == {"content": "safe"}
-    assert captured["url"] == "http://127.0.0.1:8790/v1/executions"
+    assert captured["url"] == "http://127.0.0.1:46323/v1/executions"
     assert captured["headers"]["Authorization"] == f"Bearer {TOKEN}"
     assert captured["payload"]["arguments"] == dict(plan.normalized_arguments)
     assert (
@@ -146,10 +146,10 @@ def test_adapter_binds_exact_running_plan_and_token() -> None:
 @pytest.mark.parametrize(
     "base_url",
     [
-        "http://0.0.0.0:8790",
-        "http://localhost:8790",
-        "https://127.0.0.1:8790",
-        "http://127.0.0.1:8790/unexpected",
+        "http://0.0.0.0:46323",
+        "http://localhost:46323",
+        "https://127.0.0.1:46323",
+        "http://127.0.0.1:46323/unexpected",
     ],
 )
 def test_settings_reject_non_loopback_or_ambiguous_url(base_url: str) -> None:
@@ -159,7 +159,7 @@ def test_settings_reject_non_loopback_or_ambiguous_url(base_url: str) -> None:
 
 def test_settings_allow_only_exact_private_wsl_gateway() -> None:
     settings = ToolExecutorClientSettings(
-        base_url="http://172.18.0.1:8790",
+        base_url="http://172.18.0.1:46323",
         ipc_token=TOKEN,
         allowed_wsl_gateway="172.18.0.1",
     )
@@ -167,7 +167,7 @@ def test_settings_allow_only_exact_private_wsl_gateway() -> None:
 
     with pytest.raises(ValueError):
         ToolExecutorClientSettings(
-            base_url="http://172.18.0.2:8790",
+            base_url="http://172.18.0.2:46323",
             ipc_token=TOKEN,
             allowed_wsl_gateway="172.18.0.1",
         )
@@ -187,7 +187,7 @@ def test_settings_allow_only_exact_private_wsl_gateway() -> None:
 def test_settings_reject_unsafe_wsl_gateway(gateway: str) -> None:
     with pytest.raises(ValueError):
         ToolExecutorClientSettings(
-            base_url="http://172.18.0.1:8790",
+            base_url="http://172.18.0.1:46323",
             ipc_token=TOKEN,
             allowed_wsl_gateway=gateway,
         )
@@ -203,7 +203,7 @@ def test_adapter_rejects_non_level_zero_plan_before_transport() -> None:
 
     adapter = HttpToolExecutionAdapter(
         ToolExecutorClientSettings(
-            base_url="http://127.0.0.1:8790",
+            base_url="http://127.0.0.1:46323",
             ipc_token=TOKEN,
         ),
         transport=transport,
@@ -223,7 +223,7 @@ def test_adapter_sends_exact_level_one_approval_binding() -> None:
 
     adapter = HttpToolExecutionAdapter(
         ToolExecutorClientSettings(
-            base_url="http://127.0.0.1:8790",
+            base_url="http://127.0.0.1:46323",
             ipc_token=TOKEN,
         ),
         transport=transport,
@@ -248,7 +248,7 @@ def test_adapter_sends_exact_level_one_approval_binding() -> None:
 def test_adapter_rejects_response_for_other_execution() -> None:
     adapter = HttpToolExecutionAdapter(
         ToolExecutorClientSettings(
-            base_url="http://127.0.0.1:8790",
+            base_url="http://127.0.0.1:46323",
             ipc_token=TOKEN,
         ),
         transport=lambda *_args: success_response(str(uuid4())),
@@ -263,7 +263,7 @@ def test_adapter_rejects_response_with_unknown_fields() -> None:
     value["unexpected"] = True
     adapter = HttpToolExecutionAdapter(
         ToolExecutorClientSettings(
-            base_url="http://127.0.0.1:8790",
+            base_url="http://127.0.0.1:46323",
             ipc_token=TOKEN,
         ),
         transport=lambda *_args: json.dumps(value).encode(),

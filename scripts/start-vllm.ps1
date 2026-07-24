@@ -7,7 +7,7 @@ param(
     [string]$MtpMode = 'off',
 
     [ValidateRange(1024, 65535)]
-    [int]$Port = 8766,
+    [int]$Port = 46322,
 
     [ValidateRange(60, 900)]
     [int]$StartupTimeoutSeconds = 600
@@ -15,6 +15,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+if (-not $env:LVA_VLLM_API_KEY) {
+    $keyFile = 'E:\Data\LocalVoiceAgent\secrets\vllm-api-key'
+    if (Test-Path -LiteralPath $keyFile -PathType Leaf) {
+        $env:LVA_VLLM_API_KEY = [System.IO.File]::ReadAllText($keyFile).Trim()
+    }
+}
 if (-not $env:LVA_VLLM_API_KEY -or $env:LVA_VLLM_API_KEY.Length -lt 32) {
     throw 'Set LVA_VLLM_API_KEY to a secret of at least 32 characters.'
 }

@@ -6,7 +6,7 @@ services:
     pull_policy: never
     restart: unless-stopped
     ports:
-      - "127.0.0.1:55432:5432"
+      - "127.0.0.1:46324:5432"
     environment:
       POSTGRES_DB: local_voice_agent
       POSTGRES_USER: local_voice_agent
