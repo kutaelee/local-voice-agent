@@ -24,9 +24,12 @@ with microphone capture and selects an available modern communication device
 for the foreground voice session. Version 0.6.1 separates normal playback
 drain from interruption: barge-in immediately flushes the active track and
 invalidates all queued chunks from the prior response generation. Version
-0.6.3 moves authenticated pairing directly to the voice screen and fixes the
-WSL NAT relay's inherited 10-second connect timeout. It also resumes a
-disconnected session from the last accepted server sequence
+0.6.4 starts one continuous call after Connect: server VAD ends each user
+turn, completed playback automatically starts the next listening turn, and
+the user can pause with End call or force the current turn with Send now.
+Interrupt no longer reports an expected stale `AudioTrack.write` result as a
+playback failure. It also resumes a disconnected session from the last
+accepted server sequence
 and stops automatic retries when the bounded replay window has expired. The
 The previous 0.6.2 debug APK was installed on an API 36 x86_64 emulator and passed cold
 launch, all primary destinations, portrait/landscape recreation, and

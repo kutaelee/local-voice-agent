@@ -12,9 +12,9 @@ def test_physical_android_qa_is_device_bound_and_privacy_preserving() -> None:
     )
 
     assert "C:\\Dev\\SDK\\Android\\platform-tools\\adb.exe" in source
-    assert "local-voice-agent-0.6.3-debug.apk" in source
+    assert "local-voice-agent-0.6.4-debug.apk" in source
     assert (
-        "4a6df7829047b0e126fd860498ecb4301f91935fd7a45382737d23d82177cf8c"
+        "7bf84cfbb53533deed932f0f76b25a0b1d42a27cdd80e9872db46b88463ca3ab"
         in source
     )
     assert "Physical QA refuses emulator devices" in source

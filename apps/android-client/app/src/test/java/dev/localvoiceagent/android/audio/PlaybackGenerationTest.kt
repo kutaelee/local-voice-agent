@@ -23,4 +23,30 @@ class PlaybackGenerationTest {
 
         assertTrue(generations.isCurrent(queuedChunk))
     }
+
+    @Test
+    fun interruptedBlockingWriteDoesNotReportPlaybackFailure() {
+        assertFalse(
+            shouldReportWriteFailure(
+                isCurrent = false,
+                written = AudioWriteResult.ERROR_DEAD_OBJECT,
+                expected = 3_200,
+            ),
+        )
+    }
+
+    @Test
+    fun shortWriteInCurrentGenerationReportsPlaybackFailure() {
+        assertTrue(
+            shouldReportWriteFailure(
+                isCurrent = true,
+                written = 1_600,
+                expected = 3_200,
+            ),
+        )
+    }
+}
+
+private object AudioWriteResult {
+    const val ERROR_DEAD_OBJECT = -6
 }

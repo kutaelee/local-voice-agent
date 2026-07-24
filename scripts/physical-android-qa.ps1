@@ -37,11 +37,11 @@ Set-StrictMode -Version Latest
 
 $adb = 'C:\Dev\SDK\Android\platform-tools\adb.exe'
 $apk = (
-    'E:\Data\LocalVoiceAgent\artifacts\android\0.6.3-api37\' +
-    'local-voice-agent-0.6.3-debug.apk'
+    'E:\Data\LocalVoiceAgent\artifacts\android\0.6.4-api37\' +
+    'local-voice-agent-0.6.4-debug.apk'
 )
 $expectedApkHash = (
-    '4a6df7829047b0e126fd860498ecb4301f91935fd7a45382737d23d82177cf8c'
+    '7bf84cfbb53533deed932f0f76b25a0b1d42a27cdd80e9872db46b88463ca3ab'
 )
 $packageName = 'dev.localvoiceagent.android'
 $evidenceRoot = (
@@ -258,9 +258,9 @@ switch ($Action) {
         $metadata = Get-DeviceMetadata -Serial $serial
         if (
             $metadata.app_version_code -ne 10 -or
-            $metadata.app_version_name -ne '0.6.3'
+            $metadata.app_version_name -ne '0.6.4'
         ) {
-            throw 'Installed Android package version does not match 0.6.3.'
+            throw 'Installed Android package version does not match 0.6.4.'
         }
         [ordered]@{
             status = 'installed'
@@ -274,9 +274,9 @@ switch ($Action) {
         $metadata = Get-DeviceMetadata -Serial $serial
         if (
             $metadata.app_version_code -ne 10 -or
-            $metadata.app_version_name -ne '0.6.3'
+            $metadata.app_version_name -ne '0.6.4'
         ) {
-            throw 'Install the verified 0.6.3 debug APK before QA.'
+            throw 'Install the verified 0.6.4 debug APK before QA.'
         }
         if ([string]::IsNullOrWhiteSpace($EvidencePath)) {
             $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')

@@ -25,7 +25,7 @@ live runtime or physical-device test.
 | 15 | Tool calls leave audit and evidence | VERIFIED | Executor API and live read/write/browser smokes persist metadata-only audit/evidence records. |
 | 16 | Level 2+ cannot run without approval | VERIFIED | Planner, approval binding, schema, coordinate-action, and required security cases pass fail-closed. |
 | 17 | WSL failure has a diagnostic fallback | VERIFIED | Pinned native Windows llama.cpp CPU fallback passes Korean text, tool/schema, and streaming smokes. |
-| 18 | Android debug APK exists | VERIFIED | Version 0.6.3 API 37 debug APK is v2-signed and hash-recorded. |
+| 18 | Android debug APK exists | VERIFIED | Version 0.6.4 API 37 debug APK is v2-signed and hash-recorded. |
 | 19 | Install and removal are documented | VERIFIED | Runbook, installation, rollback, artifact, runtime, and model manifests are tracked. |
 | 20 | A new environment can reproduce the system from docs | VERIFIED | A fresh public clone at `734405e` with an empty Gradle cache passed prerequisites, 10 validators, 25 root tests, Android 15 tests, lint, and byte-identical debug/release builds. |
 
@@ -52,7 +52,7 @@ live runtime or physical-device test.
 - Clean-clone reproduction:
   `E:\Data\LocalVoiceAgent\runtime\evidence\reproduction\clean-clone-734405e.json`
 - Android artifacts:
-  `E:\Data\LocalVoiceAgent\artifacts\android\0.6.3-api37`
+  `E:\Data\LocalVoiceAgent\artifacts\android\0.6.4-api37`
 - Detailed executed tests: `docs/test-report.md`
 - Measured performance and caveats: `docs/performance-report.md`
 

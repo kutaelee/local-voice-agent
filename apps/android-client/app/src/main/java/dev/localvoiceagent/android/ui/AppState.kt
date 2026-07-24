@@ -51,6 +51,7 @@ data class AppUiState(
     val assistantState: AssistantState = AssistantState.IDLE,
     val serverUrl: String = "",
     val pairingConfigured: Boolean = false,
+    val conversationActive: Boolean = false,
     val userTranscript: String = "",
     val assistantTranscript: String = "",
     val pendingApproval: PendingApproval? = null,
@@ -67,6 +68,8 @@ sealed interface AppAction {
     data object Disconnect : AppAction
     data object StartListening : AppAction
     data object StopListening : AppAction
+    data object StartConversation : AppAction
+    data object EndConversation : AppAction
     data object Interrupt : AppAction
     data class SetConnectionState(val state: ConnectionState) : AppAction
     data class SetAssistantState(val state: AssistantState) : AppAction
@@ -100,19 +103,34 @@ object AppReducer {
             lastError = null,
         )
         AppAction.Connect -> if (state.pairingConfigured) {
-            state.copy(connectionState = ConnectionState.CONNECTING, lastError = null)
+            state.copy(
+                connectionState = ConnectionState.CONNECTING,
+                conversationActive = true,
+                lastError = null,
+            )
         } else {
             state.copy(lastError = "Pairing is not configured")
         }
         AppAction.Disconnect -> state.copy(
             connectionState = ConnectionState.DISCONNECTED,
             assistantState = AssistantState.IDLE,
+            conversationActive = false,
         )
         AppAction.StartListening -> state.copy(
             assistantState = AssistantState.LISTENING,
             destination = AppDestination.VOICE,
+            conversationActive = true,
         )
         AppAction.StopListening -> state.copy(assistantState = AssistantState.RECOGNIZING)
+        AppAction.StartConversation -> state.copy(
+            conversationActive = true,
+            destination = AppDestination.VOICE,
+            lastError = null,
+        )
+        AppAction.EndConversation -> state.copy(
+            conversationActive = false,
+            assistantState = AssistantState.IDLE,
+        )
         AppAction.Interrupt -> state.copy(assistantState = AssistantState.INTERRUPTED)
         is AppAction.SetConnectionState -> state.copy(
             connectionState = action.state,
@@ -155,7 +173,6 @@ object AppReducer {
             pendingApproval = null,
         )
         is AppAction.ReportError -> state.copy(
-            connectionState = ConnectionState.ERROR,
             lastError = action.message,
         )
     }

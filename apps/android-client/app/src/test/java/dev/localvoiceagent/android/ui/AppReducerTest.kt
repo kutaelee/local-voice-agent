@@ -25,6 +25,45 @@ class AppReducerTest {
     }
 
     @Test
+    fun connectStartsContinuousConversationIntent() {
+        val paired = AppUiState(pairingConfigured = true)
+
+        val connecting = AppReducer.reduce(paired, AppAction.Connect)
+
+        assertTrue(connecting.conversationActive)
+    }
+
+    @Test
+    fun ordinaryVoiceErrorDoesNotCorruptTransportState() {
+        val connected = AppUiState(
+            connectionState = ConnectionState.CONNECTED,
+            conversationActive = true,
+        )
+
+        val reported = AppReducer.reduce(
+            connected,
+            AppAction.ReportError("Audio playback write failed"),
+        )
+
+        assertEquals(ConnectionState.CONNECTED, reported.connectionState)
+        assertEquals("Audio playback write failed", reported.lastError)
+    }
+
+    @Test
+    fun endConversationStopsAutomaticTurnLoop() {
+        val active = AppUiState(
+            connectionState = ConnectionState.CONNECTED,
+            conversationActive = true,
+            assistantState = AssistantState.LISTENING,
+        )
+
+        val ended = AppReducer.reduce(active, AppAction.EndConversation)
+
+        assertFalse(ended.conversationActive)
+        assertEquals(AssistantState.IDLE, ended.assistantState)
+    }
+
+    @Test
     fun connectFailsClosedWithoutPairing() {
         val result = AppReducer.reduce(AppUiState(), AppAction.Connect)
 

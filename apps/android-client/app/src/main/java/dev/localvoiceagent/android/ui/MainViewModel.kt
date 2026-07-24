@@ -50,11 +50,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         },
     )
-    private val player = PcmPlayer(application, viewModelScope) { message ->
-        viewModelScope.launch {
-            reduce(AppAction.ReportError(message))
-        }
-    }
+    private val player = PcmPlayer(
+        context = application,
+        scope = viewModelScope,
+        onError = { message ->
+            viewModelScope.launch {
+                reduce(AppAction.ReportError(message))
+            }
+        },
+        onPlaybackComplete = {
+            viewModelScope.launch {
+                if (
+                    mutableState.value.conversationActive &&
+                    mutableState.value.connectionState == ConnectionState.CONNECTED
+                ) {
+                    reduce(AppAction.SetAssistantState(AssistantState.IDLE))
+                    startListening()
+                }
+            }
+        },
+    )
     @Volatile
     private var inputStreamId: UUID? = null
     private var inputChunkIndex = 0
@@ -93,9 +108,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         when (action) {
             is AppAction.SavePairing -> savePairing(action)
             AppAction.Connect -> connect()
-            AppAction.Disconnect -> gateway.disconnect()
+            AppAction.Disconnect -> {
+                endConversation()
+                reduce(AppAction.Disconnect)
+                gateway.disconnect()
+            }
             AppAction.StartListening -> startListening()
             AppAction.StopListening -> stopListening("client_stop")
+            AppAction.StartConversation -> {
+                reduce(AppAction.StartConversation)
+                startListening()
+            }
+            AppAction.EndConversation -> endConversation()
             AppAction.Interrupt -> interrupt()
             is AppAction.ApprovalDecision -> respondToApproval(action.approved)
             else -> reduce(action)
@@ -162,6 +186,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         reduce(AppAction.Interrupt)
+    }
+
+    private fun endConversation() {
+        val hadInput = inputStreamId != null
+        stopListening("disconnect")
+        player.stop()
+        if (!hadInput && mutableState.value.assistantState in setOf(
+                AssistantState.THINKING,
+                AssistantState.SELECTING_TOOL,
+                AssistantState.EXECUTING,
+                AssistantState.VERIFYING,
+                AssistantState.SYNTHESIZING,
+                AssistantState.SPEAKING,
+            )
+        ) {
+            val targetId = mutableState.value.activeRequestId
+            if (targetId != null) {
+                gateway.send(
+                    type = "operation.cancel.requested",
+                    payload = buildJsonObject {
+                        put("target_kind", "assistant_response")
+                        put("target_id", targetId)
+                        put("reason", "user_request")
+                        put("idempotency_key", UUID.randomUUID().toString())
+                    },
+                )
+            }
+        }
+        reduce(AppAction.EndConversation)
     }
 
     private fun startListening() {
@@ -273,19 +326,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun handleGatewayEvent(event: GatewayEvent) {
         when (event) {
-            is GatewayEvent.ConnectionChanged -> reduce(
-                AppAction.SetConnectionState(
-                    when (event.state) {
-                        GatewayConnectionState.DISCONNECTED -> ConnectionState.DISCONNECTED
-                        GatewayConnectionState.CONNECTING -> ConnectionState.CONNECTING
-                        GatewayConnectionState.CONNECTED -> ConnectionState.CONNECTED
-                        GatewayConnectionState.RECONNECTING -> ConnectionState.RECONNECTING
-                    },
-                ),
-            ).also {
+            is GatewayEvent.ConnectionChanged -> {
+                reduce(
+                    AppAction.SetConnectionState(
+                        when (event.state) {
+                            GatewayConnectionState.DISCONNECTED -> ConnectionState.DISCONNECTED
+                            GatewayConnectionState.CONNECTING -> ConnectionState.CONNECTING
+                            GatewayConnectionState.CONNECTED -> ConnectionState.CONNECTED
+                            GatewayConnectionState.RECONNECTING -> ConnectionState.RECONNECTING
+                        },
+                    ),
+                )
                 if (event.state == GatewayConnectionState.DISCONNECTED) {
                     stopListening("disconnect", sendEvent = false)
                     player.stop()
+                } else if (
+                    event.state == GatewayConnectionState.CONNECTED &&
+                    mutableState.value.conversationActive &&
+                    !recorder.isActive
+                ) {
+                    startListening()
                 }
             }
             is GatewayEvent.Failure -> reduce(
@@ -316,6 +376,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     reduce(AppAction.SetAssistantState(assistantState(state)))
                     if (detail == "vad_end_detected" && recorder.isActive) {
                         stopListening("vad_end")
+                    }
+                    if (
+                        state == "interrupted" &&
+                        mutableState.value.conversationActive &&
+                        mutableState.value.connectionState == ConnectionState.CONNECTED
+                    ) {
+                        startListening()
                     }
                 }
                 "transcript.user.partial", "transcript.user.final" -> reduce(

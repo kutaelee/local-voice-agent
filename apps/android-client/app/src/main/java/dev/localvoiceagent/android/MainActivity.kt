@@ -29,18 +29,8 @@ class MainActivity : ComponentActivity() {
             LocalVoiceAgentTheme {
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 var connectAfterPermission by remember { mutableStateOf(false) }
-                var listenAfterPermission by remember { mutableStateOf(false) }
-                val localNetworkPermission = rememberLauncherForActivityResult(
-                    ActivityResultContracts.RequestPermission(),
-                ) { granted ->
-                    if (granted && connectAfterPermission) {
-                        viewModel.dispatch(AppAction.Connect)
-                    } else if (!granted) {
-                        viewModel.dispatch(
-                            AppAction.ReportError("Local network permission is required"),
-                        )
-                    }
-                    connectAfterPermission = false
+                var audioActionAfterPermission by remember {
+                    mutableStateOf<AppAction?>(null)
                 }
                 val microphonePermissions = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestMultiplePermissions(),
@@ -51,14 +41,39 @@ class MainActivity : ComponentActivity() {
                                 this,
                                 Manifest.permission.RECORD_AUDIO,
                             ) == PackageManager.PERMISSION_GRANTED
-                    if (microphoneGranted && listenAfterPermission) {
-                        viewModel.dispatch(AppAction.StartListening)
+                    val pendingAction = audioActionAfterPermission
+                    if (microphoneGranted && pendingAction != null) {
+                        viewModel.dispatch(pendingAction)
                     } else if (!microphoneGranted) {
                         viewModel.dispatch(
                             AppAction.ReportError("Microphone permission is required"),
                         )
                     }
-                    listenAfterPermission = false
+                    audioActionAfterPermission = null
+                }
+                val localNetworkPermission = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestPermission(),
+                ) { granted ->
+                    if (granted && connectAfterPermission) {
+                        if (
+                            ContextCompat.checkSelfPermission(
+                                this,
+                                Manifest.permission.RECORD_AUDIO,
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            audioActionAfterPermission = AppAction.Connect
+                            microphonePermissions.launch(
+                                audioPermissions().toTypedArray(),
+                            )
+                        } else {
+                            viewModel.dispatch(AppAction.Connect)
+                        }
+                    } else if (!granted) {
+                        viewModel.dispatch(
+                            AppAction.ReportError("Local network permission is required"),
+                        )
+                    }
+                    connectAfterPermission = false
                 }
                 LocalVoiceAgentApp(
                     state = state,
@@ -76,23 +91,19 @@ class MainActivity : ComponentActivity() {
                                 Manifest.permission.ACCESS_LOCAL_NETWORK,
                             )
                         } else if (
-                            action == AppAction.StartListening &&
+                            action in setOf(
+                                AppAction.Connect,
+                                AppAction.StartListening,
+                                AppAction.StartConversation,
+                            ) &&
                             ContextCompat.checkSelfPermission(
                                 this,
                                 Manifest.permission.RECORD_AUDIO,
                             ) != PackageManager.PERMISSION_GRANTED
                         ) {
-                            listenAfterPermission = true
+                            audioActionAfterPermission = action
                             microphonePermissions.launch(
-                                buildList {
-                                    add(Manifest.permission.RECORD_AUDIO)
-                                    if (Build.VERSION.SDK_INT >= 33) {
-                                        add(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                    if (Build.VERSION.SDK_INT >= 31) {
-                                        add(Manifest.permission.BLUETOOTH_CONNECT)
-                                    }
-                                }.toTypedArray(),
+                                audioPermissions().toTypedArray(),
                             )
                         } else {
                             viewModel.dispatch(action)
@@ -100,6 +111,16 @@ class MainActivity : ComponentActivity() {
                     },
                 )
             }
+        }
+    }
+
+    private fun audioPermissions(): List<String> = buildList {
+        add(Manifest.permission.RECORD_AUDIO)
+        if (Build.VERSION.SDK_INT >= 33) {
+            add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        if (Build.VERSION.SDK_INT >= 31) {
+            add(Manifest.permission.BLUETOOTH_CONNECT)
         }
     }
 }

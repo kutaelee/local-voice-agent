@@ -17,6 +17,7 @@ class PcmPlayer(
     context: Context,
     scope: CoroutineScope,
     private val onError: (String) -> Unit,
+    private val onPlaybackComplete: () -> Unit,
 ) {
     private val audioManager = context.getSystemService(AudioManager::class.java)
     private val commands = Channel<Command>(Channel.UNLIMITED)
@@ -119,9 +120,14 @@ class PcmPlayer(
             command.data.size,
             AudioTrack.WRITE_BLOCKING,
         )
-        if (written != command.data.size) {
+        if (shouldReportWriteFailure(
+                isCurrent = playbackGeneration.isCurrent(command.generation),
+                written = written,
+                expected = command.data.size,
+            )
+        ) {
             onError("Audio playback write failed")
-        } else {
+        } else if (written == command.data.size) {
             writtenFrames += written / (command.channels * 2)
         }
     }
@@ -184,7 +190,9 @@ class PcmPlayer(
         ) {
             SystemClock.sleep(10)
         }
+        val completed = playbackGeneration.isCurrent(generation)
         release()
+        if (completed) onPlaybackComplete()
     }
 
     private fun release() {
@@ -194,8 +202,8 @@ class PcmPlayer(
         writtenFrames = 0
         if (activeTrack != null) {
             runCatching { activeTrack.pause() }
-            activeTrack.flush()
-            activeTrack.release()
+            runCatching { activeTrack.flush() }
+            runCatching { activeTrack.release() }
         }
         focusRequest?.let(audioManager::abandonAudioFocusRequest)
         focusRequest = null
@@ -220,6 +228,12 @@ class PcmPlayer(
         val channels: Int,
     )
 }
+
+internal fun shouldReportWriteFailure(
+    isCurrent: Boolean,
+    written: Int,
+    expected: Int,
+): Boolean = isCurrent && written != expected
 
 internal class PlaybackGeneration {
     private val value = AtomicLong(0)

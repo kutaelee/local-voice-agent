@@ -21,10 +21,10 @@ runtimes:
     server_key_policy: unencrypted_pkcs8_runtime_key_never_committed
     test_status: matching_signature_san_eku_encryption_overwrite_public_ip_reserved_ip_wildcard_ntfs_acl_wsl_read_tls_health_and_graceful_stop_passed
     rollback: retain generated deployment certificates; archive only the versioned isolated environment after inventory
-  - id: android-client-build-0.6.3
+  - id: android-client-build-0.6.4
     role: android_client_build
-    version: "0.6.3"
-    status: api37_debug_release_build_pairing_to_voice_navigation_room_state_cache_private_ca_bluetooth_barge_in_and_sequence_resume_compiled
+    version: "0.6.4"
+    status: api37_debug_release_build_continuous_turn_loop_interrupt_safe_pairing_to_voice_room_state_cache_private_ca_bluetooth_and_sequence_resume_compiled
     environment: 'C:\Dev\SDK\Android'
     jdk: "17.0.20"
     android_gradle_plugin: "9.3.0"

@@ -302,6 +302,11 @@ class VoiceSessionEventHandler:
             processing[2].cancel()
             if stream_id is not None:
                 await processing[1].close_vad(stream_id=stream_id)
+            if processing[2] is not asyncio.current_task():
+                await asyncio.gather(
+                    processing[2],
+                    return_exceptions=True,
+                )
             status = "cancellation_requested"
             final_state = "interrupted"
             summary = (
