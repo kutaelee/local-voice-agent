@@ -118,7 +118,11 @@ model repositories, and upstream release notes are used for selections.
    software. The exact 31B MTP target is about 58.3 GiB on disk, has passed
    both shard hashes, and cannot
    reside wholly in 32 GB VRAM; it is conditional on a measured CPU-offload
-   feasibility test. Context length must start conservatively. On this shared
+   feasibility test. The exact target/assistant pair passed live text, tool,
+   strict-schema, and streaming checks with 36 GiB offload, but total model
+   loading took 345.94 seconds and streaming TTFT was 5.62 seconds. It is a
+   compatibility result, not a production selection. Context length must
+   start conservatively. On this shared
    host, a utilization-based 31B launch loaded the weights but failed because
    no KV-cache blocks remained. A retry with an explicit 384 MiB KV cache,
    256-token context, and one sequence passed health, Korean text, tool call,

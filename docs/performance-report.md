@@ -151,6 +151,32 @@ The exact target still lacks the upstream multimodal configuration field
 needed by this runtime path, so both controlled runs were text-only. MTP
 remains disabled in production routing despite the measured latency gain.
 
+## Exact 31B MTP feasibility probe
+
+The exact 31B target and matching assistant passed a constrained live vLLM
+probe with 36 GiB CPU offload, a 256-token text-only context, one sequence,
+a 256 MiB explicit KV cache, eager execution, and one MTP token:
+
+- target weight load: 278.93 seconds;
+- assistant weight load: 7.57 seconds;
+- total model load: 345.94 seconds, 22.48 GiB GPU memory reported;
+- Korean text: 22,535.890 ms;
+- `inspect_gpu({})`: 16,947.540 ms;
+- strict structured output: 26,584.837 ms;
+- streaming: 5,621.137 ms TTFT and 76,491.321 ms total;
+- zero request errors, OOMs, or crashes before the requested shutdown.
+
+Evidence:
+`E:\Data\LocalVoiceAgent\runtime\evidence\vllm-31b-mtp-probe-20260724T000502870Z.json`,
+SHA-256
+`5c56bae23506ea32eaabba5f54406d853af686ef632193f7217777640431c0fe`.
+The runtime log SHA-256 is
+`d3beed68bef252af6341fada064df3bf865a75effcb1dbfe9a9184dd30be57a4`.
+
+This proves assistant compatibility, not operational suitability. The
+measured latency and text-only limitation keep this profile disabled; the
+smaller W4A16 31B checkpoint remains the escalation serving path.
+
 ## Preliminary vLLM 12B smoke
 
 These observations are not benchmark claims. The machine was shared with

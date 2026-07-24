@@ -24,7 +24,7 @@ selection is claimed.
 | Gemma 4 12B exact target MTP OFF (SGLang) | 427.834 / 502.049 ms | 171.786 / 172.388 ms | 5.885 mean | N/A | >=28,907 MiB endpoint snapshot | NOT_RUN on exact-off endpoint | NOT_RUN on exact-off endpoint | 10/10 latency samples | 0/0 |
 | Gemma 4 12B MTP ON (SGLang exact pair) | 447.962 / 523.587 ms | 106.929 / 113.024 ms | 9.441 mean | 0.7687 mean over 16 periodic log observations | >=28,728 MiB endpoint snapshot | Passed separate smoke | Valid `{}` in separate smoke | 10/10 latency samples | 0/0 |
 | Gemma 4 31B MTP OFF | NOT_RUN | NOT_RUN | NOT_RUN | N/A | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN |
-| Gemma 4 31B MTP ON | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN |
+| Gemma 4 31B MTP ON | Functional probe only | Functional probe only | NOT_RUN | Periodic logs observed; not aggregated | >=29,715 MiB polled during load | Passed separate probe | Valid `{}` in separate probe | 4/4 functional requests | 0/0 |
 
 Selection remains pending. Raw measurements will be stored in
 `benchmarks/results/raw-results.json` with evidence references.

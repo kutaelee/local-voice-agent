@@ -10,7 +10,7 @@ live runtime or physical-device test.
 |---:|---|---|---|
 | 1 | Gemma 4 12B runs | VERIFIED | vLLM and SGLang text, tool/schema, streaming, and image smokes passed. |
 | 2 | Gemma 4 31B runs | VERIFIED | vLLM constrained text, tool/schema, and streaming smoke passed. |
-| 3 | Matching MTP assistants run | PARTIAL | Exact 12B assistant runs in vLLM and SGLang; exact 31B pair is downloaded and integrity-checked but has not produced a live MTP response. |
+| 3 | Matching MTP assistants run | VERIFIED | Exact 12B assistants run in vLLM and SGLang; the exact 31B target/assistant also passed live vLLM text, tool, schema, and streaming checks. |
 | 4 | MTP ON/OFF measurements exist | PARTIAL | Controlled SGLang and vLLM exact-target 12B ON/OFF pairs exist; 31B ON/OFF rows remain open. |
 | 5 | vLLM/SGLang comparison exists | PARTIAL | Matching 12B W4A16 MTP-OFF and controlled exact-target ON/OFF comparisons exist; 31B comparison remains incomplete. |
 | 6 | 12B/31B switching works | PARTIAL | State-machine, API, drain, cleanup, and recovery tests pass; live GPU process switch remains open. |
