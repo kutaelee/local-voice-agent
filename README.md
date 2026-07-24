@@ -59,8 +59,10 @@ worker caches four local tone prompts but production keeps one selected
 speaker reference stable across sentences. Talker and sub-talker use the same
 temperature and a profile-bound deterministic seed. Streaming coalesces short
 sentences into 32-character-or-longer semantic speech units, prefers natural
-clause boundaries after 40 characters, and appends one 200 ms terminal tail
-after the complete response. Chatterbox V3 is retained as rollback fallback. Reference audio stays under external
+clause boundaries after 40 characters, binds short list markers to their text,
+and expands an isolated number into a complete spoken phrase. Each generated
+unit gets a 24 ms release and 90 ms breath pause; the final 110 ms tail keeps
+the completed-response pause at 200 ms. Chatterbox V3 is retained as rollback fallback. Reference audio stays under external
 application data and never enters Git or the APK. The
 installed SGLang 0.5.15.post1
 runtime now passes the 12B base text, tool/schema, streaming, image, thinking,

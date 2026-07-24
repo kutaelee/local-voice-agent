@@ -1410,7 +1410,13 @@ def _event_handler_from_environment(
             tts=tts,
             vad=vad,
             output_tail_silence_ms=int(
-                os.environ.get("LVA_TTS_OUTPUT_TAIL_SILENCE_MS", "200")
+                os.environ.get("LVA_TTS_OUTPUT_TAIL_SILENCE_MS", "110")
+            ),
+            output_unit_silence_ms=int(
+                os.environ.get("LVA_TTS_OUTPUT_UNIT_SILENCE_MS", "90")
+            ),
+            output_release_fade_ms=int(
+                os.environ.get("LVA_TTS_OUTPUT_RELEASE_FADE_MS", "24")
             ),
         )
 

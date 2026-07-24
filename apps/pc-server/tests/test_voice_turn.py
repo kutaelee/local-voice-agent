@@ -8,6 +8,9 @@ from local_voice_agent_server.application.voice_turn import (
     Transcript,
     VoiceActivityDecision,
     VoiceTurnService,
+    _finish_pcm16_speech_unit,
+    _prepare_tts_text,
+    _speech_units,
     _take_complete_speech_units,
 )
 
@@ -60,6 +63,46 @@ def test_multiple_short_sentences_form_one_natural_speech_unit() -> None:
         "현재 상태를 처음부터 차분하게 다시 점검하고 있습니다.",
     )
     assert pending == ""
+
+
+def test_non_streamed_short_sentences_and_list_marker_stay_together() -> None:
+    assert _speech_units(
+        "확인 결과를 알려드리겠습니다. 1. 첫 번째 항목은 정상입니다."
+    ) == (
+        "확인 결과를 알려드리겠습니다. 1. 첫 번째 항목은 정상입니다.",
+    )
+
+
+def test_tts_text_expands_isolated_numbers_and_list_prefixes() -> None:
+    assert _prepare_tts_text("7") == "7입니다."
+    assert _prepare_tts_text("1. 첫 번째 항목입니다.") == (
+        "1번, 첫 번째 항목입니다."
+    )
+    assert _prepare_tts_text("버전 1.2입니다.") == "버전 1.2입니다."
+
+
+def test_pcm_speech_unit_gets_a_release_and_natural_pause() -> None:
+    pcm = b"".join(
+        int(10_000).to_bytes(2, "little", signed=True) for _ in range(100)
+    )
+
+    finished = _finish_pcm16_speech_unit(
+        pcm,
+        sample_rate_hz=1_000,
+        channels=1,
+        release_fade_ms=20,
+        silence_ms=90,
+    )
+
+    samples = [
+        int.from_bytes(finished[index : index + 2], "little", signed=True)
+        for index in range(0, len(finished), 2)
+    ]
+    assert len(samples) == 190
+    assert samples[79] == 10_000
+    assert 0 < samples[80] < 10_000
+    assert samples[99] == 0
+    assert samples[100:] == [0] * 90
 
 
 class FakeStt:
@@ -186,12 +229,8 @@ def test_voice_turn_emits_first_sentence_audio_before_synthesizing_next() -> Non
         returned = await service.finish(stream_id=stream_id, emit=emit)
         assert returned == []
         assert [item for item in timeline if item.startswith("tts:")] == [
-            "tts:첫 문장입니다.",
-            "tts:두 번째 문장입니다.",
+            "tts:첫 문장입니다. 두 번째 문장입니다.",
         ]
-        assert timeline.index("event:audio.output.chunk") < timeline.index(
-            "tts:두 번째 문장입니다."
-        )
         chunks = [
             event
             for event in emitted
@@ -213,7 +252,12 @@ def test_streamed_tts_failure_terminates_the_open_audio_stream() -> None:
     class SentenceConversation:
         async def respond(self, text: str, *, language: str) -> str:
             del text, language
-            return "첫 문장입니다. 두 번째 문장입니다."
+            return (
+                "첫 번째 설명은 독립적인 음성 합성 단위를 만들 수 있을 만큼 "
+                "충분히 길고 구체적인 문장입니다. "
+                "두 번째 설명도 별도의 음성 합성 단위로 처리될 만큼 충분히 "
+                "길어서 실패 종료 경로를 검증합니다."
+            )
 
     class FailingSecondTts:
         calls = 0

@@ -531,6 +531,22 @@ requires listening QA.
 
 The initial 60/40 ms hold/crossfade experiment passed byte-level ordering
 tests but failed listening QA because adjacent phonemes perceptibly overlapped.
-It was removed rather than tuned further. Production now leaves each Qwen
-waveform untouched and reduces seams by asking the model to produce a larger
+It was removed rather than tuned further. Production does not overlap adjacent
+Qwen waveforms and reduces seams by asking the model to produce a larger
 multi-sentence semantic unit in one generation.
+
+## Speech-unit release and numeric fragments (2026-07-24)
+
+Live process inspection found that the active Qwen worker intentionally used
+`--tail-silence-ms 0`; therefore independently generated units had no acoustic
+space of their own. The PC-server now applies a 24 ms linear release followed
+by 90 ms of zero PCM to every unit. Its separate final tail is 110 ms, keeping
+the completed-response pause at 200 ms without overlapping adjacent phonemes.
+
+The non-streamed tool-agent path now uses the same 32/40/96-character semantic
+grouping as streamed conversation. A leading list marker such as `1.` stays
+with its description and is spoken as `1번,`; an isolated numeric response such
+as `7` is synthesized as the complete phrase `7입니다.` while the displayed
+assistant transcript remains unchanged. These changes passed deterministic PCM
+release, list-marker, numeric-expansion, and full PC-server regression tests.
+Subjective breath timing remains listening QA.

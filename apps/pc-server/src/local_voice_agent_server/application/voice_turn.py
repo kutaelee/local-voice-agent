@@ -116,11 +116,17 @@ class VoiceTurnService:
         max_input_bytes: int = 8 * 1024 * 1024,
         output_chunk_bytes: int = 32 * 1024,
         output_tail_silence_ms: int = 0,
+        output_unit_silence_ms: int = 0,
+        output_release_fade_ms: int = 0,
     ) -> None:
         if output_chunk_bytes < 1 or output_chunk_bytes > 384 * 1024:
             raise ValueError("output chunk size is invalid")
         if not 0 <= output_tail_silence_ms <= 500:
             raise ValueError("output tail silence is invalid")
+        if not 0 <= output_unit_silence_ms <= 300:
+            raise ValueError("output unit silence is invalid")
+        if not 0 <= output_release_fade_ms <= 100:
+            raise ValueError("output release fade is invalid")
         self._stream = AudioStream(max_bytes=max_input_bytes)
         self._stt = stt
         self._conversation = conversation
@@ -128,6 +134,8 @@ class VoiceTurnService:
         self._vad = vad
         self._output_chunk_bytes = output_chunk_bytes
         self._output_tail_silence_ms = output_tail_silence_ms
+        self._output_unit_silence_ms = output_unit_silence_ms
+        self._output_release_fade_ms = output_release_fade_ms
         self._pending_language: str | None = None
         self._pending_approval_id: UUID | None = None
 
@@ -549,8 +557,9 @@ class VoiceTurnService:
         language: str,
         emit: VoiceEventEmitter | None,
     ) -> None:
+        spoken_text = _prepare_tts_text(speech_unit)
         output = await self._tts.synthesize(
-            speech_unit,
+            spoken_text,
             language=language,
         )
         await self._emit_synthesized_audio(
@@ -579,10 +588,17 @@ class VoiceTurnService:
         frame_bytes = output.channels * 2
         if len(output.pcm_s16le) % frame_bytes:
             raise ValueError("TTS output is not frame aligned")
+        pcm = _finish_pcm16_speech_unit(
+            output.pcm_s16le,
+            sample_rate_hz=output.sample_rate_hz,
+            channels=output.channels,
+            release_fade_ms=self._output_release_fade_ms,
+            silence_ms=self._output_unit_silence_ms,
+        )
         await self._emit_pcm_chunks(
             events,
             state=state,
-            pcm=output.pcm_s16le,
+            pcm=pcm,
             emit=emit,
         )
 
@@ -729,17 +745,36 @@ _WORD_SPEECH_BOUNDARY = re.compile(r"\s+")
 _MIN_STREAM_UNIT_CHARACTERS = 40
 _MIN_HARD_STREAM_UNIT_CHARACTERS = 32
 _MAX_STREAM_UNIT_CHARACTERS = 96
+_LIST_PREFIX = re.compile(r"^(\d{1,3})[.)](?:\s+|$)")
+_STANDALONE_NUMBER = re.compile(r"^(\d{1,3})[.)]?$")
 
 
 def _speech_units(text: str) -> tuple[str, ...]:
-    units = tuple(
-        part.strip()
-        for part in _HARD_SPEECH_BOUNDARY.split(text.strip())
-        if part.strip()
-    )
+    ready, pending = _take_complete_speech_units(text.strip())
+    units = list(ready)
+    trailing = pending.strip()
+    if trailing:
+        if (
+            units
+            and len(units[-1]) + len(trailing) + 1
+            <= _MAX_STREAM_UNIT_CHARACTERS
+        ):
+            units[-1] = f"{units[-1]} {trailing}"
+        else:
+            units.append(trailing)
     if not units:
         raise ValueError("conversation model returned no speech units")
-    return units
+    return tuple(units)
+
+
+def _prepare_tts_text(text: str) -> str:
+    stripped = text.strip()
+    if not stripped:
+        raise ValueError("speech unit is empty")
+    standalone = _STANDALONE_NUMBER.fullmatch(stripped)
+    if standalone is not None:
+        return f"{standalone.group(1)}입니다."
+    return _LIST_PREFIX.sub(r"\1번, ", stripped, count=1)
 
 
 def _take_complete_speech_units(text: str) -> tuple[tuple[str, ...], str]:
@@ -783,3 +818,44 @@ def _take_complete_speech_units(text: str) -> tuple[tuple[str, ...], str]:
             units.append(unit)
         pending = pending[split_at:]
     return tuple(units), pending
+
+
+def _finish_pcm16_speech_unit(
+    pcm: bytes,
+    *,
+    sample_rate_hz: int,
+    channels: int,
+    release_fade_ms: int,
+    silence_ms: int,
+) -> bytes:
+    if sample_rate_hz < 1 or channels < 1:
+        raise ValueError("PCM output format is invalid")
+    if not 0 <= release_fade_ms <= 100 or not 0 <= silence_ms <= 300:
+        raise ValueError("PCM speech-unit tail is invalid")
+    frame_bytes = channels * 2
+    if len(pcm) % frame_bytes:
+        raise ValueError("PCM speech unit is not frame aligned")
+    output = bytearray(pcm)
+    total_frames = len(output) // frame_bytes
+    fade_frames = min(
+        total_frames,
+        round(sample_rate_hz * release_fade_ms / 1_000),
+    )
+    for fade_index in range(fade_frames):
+        frame_index = total_frames - fade_frames + fade_index
+        weight = (fade_frames - fade_index - 1) / fade_frames
+        for channel in range(channels):
+            offset = frame_index * frame_bytes + channel * 2
+            sample = int.from_bytes(
+                output[offset : offset + 2],
+                "little",
+                signed=True,
+            )
+            output[offset : offset + 2] = round(sample * weight).to_bytes(
+                2,
+                "little",
+                signed=True,
+            )
+    silence_frames = round(sample_rate_hz * silence_ms / 1_000)
+    output.extend(b"\x00" * silence_frames * frame_bytes)
+    return bytes(output)
