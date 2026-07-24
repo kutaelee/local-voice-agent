@@ -6,7 +6,7 @@ Windows 11 PC with an RTX 5090 32 GB GPU; inference runtimes run in WSL2 and
 the Android client uses Kotlin and Jetpack Compose.
 
 Current status: **core implementation is integrated; final acceptance is in
-progress**. Seventeen of the twenty product criteria are verified and three
+progress**. Eighteen of the twenty product criteria are verified and two
 remain partial; see [docs/acceptance-status.md](docs/acceptance-status.md).
 The pinned 12B W4A16 model passed text, image, structured-output, streaming,
 and function-calling smoke tests. The exact 12B Q4_0 target/assistant pair
@@ -62,8 +62,7 @@ Windows llama.cpp Q4_0 fallback also
 passes CPU-only Korean text, tool/schema, and streaming while WSL/GPU work
 continues. The required 24-case failure/security matrix and the bounded
 computer-use smokes pass. No full product acceptance is claimed until the
-physical-device barge-in/audio and independent clean-environment
-reproduction are complete.
+physical-device barge-in/audio QA is complete.
 
 ## Architecture
 

@@ -27,12 +27,12 @@ live runtime or physical-device test.
 | 17 | WSL failure has a diagnostic fallback | VERIFIED | Pinned native Windows llama.cpp CPU fallback passes Korean text, tool/schema, and streaming smokes. |
 | 18 | Android debug APK exists | VERIFIED | Version 0.6.2 API 37 debug APK is v2-signed and hash-recorded. |
 | 19 | Install and removal are documented | VERIFIED | Runbook, installation, rollback, artifact, runtime, and model manifests are tracked. |
-| 20 | A new environment can reproduce the system from docs | PARTIAL | Locked environments, scripts, manifests, and validators exist; an independent clean-workstation reproduction has not been run. |
+| 20 | A new environment can reproduce the system from docs | VERIFIED | A fresh public clone at `734405e` with an empty Gradle cache passed prerequisites, 10 validators, 25 root tests, Android 15 tests, lint, and byte-identical debug/release builds. |
 
 ## Current totals
 
-- Verified: 17
-- Partial: 3
+- Verified: 18
+- Partial: 2
 - Failed: 0
 
 ## Evidence anchors
@@ -49,6 +49,8 @@ live runtime or physical-device test.
   `E:\Data\LocalVoiceAgent\benchmarks\results\vllm-31b-exact-mtp-on-s1-20260724T010244662Z.json`
 - Live model switch:
   `E:\Data\LocalVoiceAgent\runtime\evidence\model-switch\live-model-switch-20260724T011306766Z.json`
+- Clean-clone reproduction:
+  `E:\Data\LocalVoiceAgent\runtime\evidence\reproduction\clean-clone-734405e.json`
 - Android artifacts:
   `E:\Data\LocalVoiceAgent\artifacts\android\0.6.2-api37`
 - Detailed executed tests: `docs/test-report.md`
@@ -59,5 +61,3 @@ live runtime or physical-device test.
 1. Install the current APK on a physical Android device and complete
    microphone, speaker/earpiece, Bluetooth, reconnect, LAN/TLS, and barge-in
    QA using `docs/physical-android-qa.md`.
-2. Perform an independent documented clean-environment reproduction or record
-   an explicit scope decision.
