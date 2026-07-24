@@ -6,7 +6,7 @@ Windows 11 PC with an RTX 5090 32 GB GPU; inference runtimes run in WSL2 and
 the Android client uses Kotlin and Jetpack Compose.
 
 Current status: **core implementation is integrated; final acceptance is in
-progress**. Sixteen of the twenty product criteria are verified and four
+progress**. Seventeen of the twenty product criteria are verified and three
 remain partial; see [docs/acceptance-status.md](docs/acceptance-status.md).
 The pinned 12B W4A16 model passed text, image, structured-output, streaming,
 and function-calling smoke tests. The exact 12B Q4_0 target/assistant pair

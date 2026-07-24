@@ -31,8 +31,8 @@ live runtime or physical-device test.
 
 ## Current totals
 
-- Verified: 16
-- Partial: 4
+- Verified: 17
+- Partial: 3
 - Failed: 0
 
 ## Evidence anchors
