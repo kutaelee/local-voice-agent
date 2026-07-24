@@ -12,6 +12,9 @@ def test_windows_installer_is_scoped_and_reproducible() -> None:
     assert "InstallProjectEnvironments" in source
     assert "ValidatePrerequisites" in source
     assert "BuildAndroid" in source
+    assert "$sourceRoot" in source
+    assert "Assert-SourceRepository" in source
+    assert "Project-environment installation is allowed only" in source
     assert "--locked" in source
     assert "UV_PROJECT_ENVIRONMENT" in source
     assert "PLAYWRIGHT_BROWSERS_PATH" in source

@@ -20,6 +20,9 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $repoRoot = 'C:\Dev\Repos\local-voice-agent'
+$sourceRoot = [IO.Path]::GetFullPath(
+    (Join-Path $PSScriptRoot '..')
+).TrimEnd('\')
 $toolEnvironment = (
     'C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor\.venv'
 )
@@ -36,20 +39,35 @@ $dataRoots = @(
     'E:\Data\LocalVoiceAgent'
 )
 
-function Assert-CanonicalRepository {
+function Assert-SourceRepository {
     $actual = [IO.Path]::GetFullPath(
         (Get-Location).Path
     ).TrimEnd('\')
     if (
         -not $actual.Equals(
+            $sourceRoot,
+            [StringComparison]::OrdinalIgnoreCase
+        )
+    ) {
+        throw "Run this script from its source repository: $sourceRoot"
+    }
+    if (-not (Test-Path -LiteralPath '.git' -PathType Container)) {
+        throw 'The source repository Git metadata is unavailable.'
+    }
+}
+
+function Assert-CanonicalRepository {
+    Assert-SourceRepository
+    if (
+        -not $sourceRoot.Equals(
             $repoRoot,
             [StringComparison]::OrdinalIgnoreCase
         )
     ) {
-        throw "Run this script from the canonical repository: $repoRoot"
-    }
-    if (-not (Test-Path -LiteralPath '.git' -PathType Container)) {
-        throw 'The canonical repository Git metadata is unavailable.'
+        throw (
+            'Project-environment installation is allowed only from the ' +
+            "canonical repository: $repoRoot"
+        )
     }
 }
 
@@ -84,7 +102,9 @@ function Get-PrerequisiteReport {
     }
 
     $paths = [ordered]@{
-        repository = Test-Path -LiteralPath $repoRoot -PathType Container
+        repository = Test-Path -LiteralPath (
+            Join-Path $sourceRoot '.git'
+        ) -PathType Container
         jdk_17 = Test-Path -LiteralPath (
             Join-Path $jdk 'bin\java.exe'
         ) -PathType Leaf
@@ -191,7 +211,7 @@ function Install-ProjectEnvironments {
 }
 
 function Invoke-AndroidBuild {
-    Assert-CanonicalRepository
+    Assert-SourceRepository
     $report = Get-PrerequisiteReport
     if (-not $report.ready_for_android_build) {
         $report | ConvertTo-Json -Depth 5
@@ -210,7 +230,7 @@ function Invoke-AndroidBuild {
         $env:ANDROID_HOME = $androidSdk
         $env:ANDROID_SDK_ROOT = $androidSdk
         $env:GRADLE_USER_HOME = $gradleCache
-        Push-Location (Join-Path $repoRoot 'apps\android-client')
+        Push-Location (Join-Path $sourceRoot 'apps\android-client')
         try {
             & .\gradlew.bat `
                 --no-daemon `
@@ -262,7 +282,7 @@ Android Studio, and public-listener changes remain manual approval gates.
 }
 
 if ($ValidatePrerequisites) {
-    Assert-CanonicalRepository
+    Assert-SourceRepository
     Get-PrerequisiteReport | ConvertTo-Json -Depth 5
     exit 0
 }
