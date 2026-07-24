@@ -115,15 +115,31 @@ if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
     }
 }
 
-$listener = [System.Net.Sockets.TcpListener]::new($parsedAddress, $Port)
-try {
-    $listener.Start()
+$windowsOwnsAddress = [bool](Get-NetIPAddress -IPAddress $ListenAddress -ErrorAction SilentlyContinue)
+if ($isLoopback -or $windowsOwnsAddress) {
+    $listener = [System.Net.Sockets.TcpListener]::new($parsedAddress, $Port)
+    try {
+        $listener.Start()
+    }
+    catch {
+        throw "PC server port $ListenAddress`:$Port is unavailable."
+    }
+    finally {
+        $listener.Stop()
+    }
 }
-catch {
-    throw "PC server port $ListenAddress`:$Port is unavailable."
-}
-finally {
-    $listener.Stop()
+else {
+    $wslAddressOutput = @(wsl.exe -d Ubuntu -- ip -o addr show)
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Could not inspect WSL network addresses.'
+    }
+    $wslOwnsAddress = [bool]($wslAddressOutput | Where-Object {
+        $fields = $_ -split '\s+'
+        $fields.Count -ge 4 -and ($fields[3] -split '/')[0] -eq $ListenAddress
+    })
+    if (-not $wslOwnsAddress) {
+        throw "ListenAddress is not assigned to Windows or WSL Ubuntu: $ListenAddress"
+    }
 }
 
 New-Item -ItemType Directory -Path (Split-Path -Parent $statusPath) -Force | Out-Null

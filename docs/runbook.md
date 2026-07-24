@@ -534,6 +534,34 @@ $env:LVA_PAIRING_TOKEN = '<at-least-32-random-characters>'
   -TlsPrivateKeyPath 'E:\Data\LocalVoiceAgent\tls\home-lan-2026\server-key.pem'
 ```
 
+When `wslinfo --networking-mode` reports `nat`, the WSL process cannot own the
+Windows Wi-Fi address. Bind the PC server to the exact private WSL address and
+run the TLS-transparent Windows relay on the certificate's private-LAN
+address. The relay rejects non-private endpoints and does not terminate or
+inspect TLS:
+
+```powershell
+$wslAddress = ((wsl.exe -d Ubuntu -- hostname -I) -split '\s+')[0]
+$env:LVA_PAIRING_TOKEN = '<at-least-32-random-characters>'
+.\scripts\start-server.ps1 `
+  -ListenAddress $wslAddress `
+  -EnablePrivateNetwork `
+  -TlsCertificatePath 'E:\Data\LocalVoiceAgent\tls\home-lan-2026\server-cert.pem' `
+  -TlsPrivateKeyPath 'E:\Data\LocalVoiceAgent\tls\home-lan-2026\server-key.pem'
+
+python .\scripts\private-network-tcp-relay.py `
+  --listen-host 192.168.1.20 `
+  --listen-port 8765 `
+  --target-host $wslAddress `
+  --target-port 8765
+```
+
+Run the relay through the normal supervised process mechanism in persistent
+operation. During manual QA, retain its PID and stop only that exact process
+after verifying its executable and command line. The relay does not create a
+Windows Firewall rule; if the phone cannot reach it, stop and request approval
+before changing the firewall.
+
 The private key and certificate are runtime data, not repository files. For a
 debug APK test, import the private CA on the Android device using the
 device-owner flow, then pair the app with `wss://192.168.1.20:8765` and the
