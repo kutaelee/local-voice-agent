@@ -60,4 +60,5 @@ live runtime or physical-device test.
 
 1. Install the current APK on a physical Android device and complete
    microphone, speaker/earpiece, Bluetooth, reconnect, LAN/TLS, and barge-in
-   QA using `docs/physical-android-qa.md`.
+   QA using `docs/physical-android-qa.md` and the registered metadata-only
+   collector.

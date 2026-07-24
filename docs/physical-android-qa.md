@@ -27,10 +27,20 @@ Expected SHA-256:
 
 ## Install and pair
 
+Run the read-only preflight first. It rejects emulators, requires exactly one
+authorized physical device, and verifies the recorded APK hash:
+
 ```powershell
-C:\Dev\SDK\Android\platform-tools\adb.exe devices -l
-C:\Dev\SDK\Android\platform-tools\adb.exe -s <physical-serial> install -r `
-  E:\Data\LocalVoiceAgent\artifacts\android\0.6.2-api37\local-voice-agent-0.6.2-debug.apk
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\physical-android-qa.ps1 -Action preflight
+```
+
+The verified installer is explicit and never accepts a pairing token:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\physical-android-qa.ps1 `
+  -Action install -DeviceSerial <physical-serial>
 ```
 
 Enter the `wss://` private address and pairing token on the device. Do not
@@ -70,3 +80,38 @@ Do not retain raw microphone audio, full transcripts, pairing tokens, private
 keys, contacts, notifications, or unrelated device logs. Remove the debug CA
 and disable USB debugging after QA unless the device remains an explicitly
 managed development device.
+
+## Evidence collector
+
+After installation, initialize the metadata-only evidence file:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\physical-android-qa.ps1 `
+  -Action initialize -DeviceSerial <physical-serial>
+```
+
+The command prints the new evidence path. Record each observed case only after
+performing it on the device:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\physical-android-qa.ps1 `
+  -Action set-case `
+  -EvidencePath <printed-evidence-path> `
+  -Case barge_in -Outcome passed -MeasuredLatencyMs <measured-ms>
+```
+
+Finalize only after all 13 cases have a terminal result:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\physical-android-qa.ps1 `
+  -Action finalize `
+  -DeviceSerial <physical-serial> `
+  -EvidencePath <printed-evidence-path>
+```
+
+Finalization rechecks the same device model, API level, installed app version,
+case completeness, evidence hash, and privacy fields. It reports `passed`
+only if every case passed.
