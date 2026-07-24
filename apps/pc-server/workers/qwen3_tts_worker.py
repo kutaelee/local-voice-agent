@@ -17,6 +17,11 @@ from worker_protocol import require_token, serve
 SUPPORTED_STYLES = frozenset({"neutral", "happy", "dark", "advert"})
 
 
+def stable_speaker_seed(profile_id: str) -> int:
+    digest = sha256(profile_id.encode("ascii")).digest()
+    return int.from_bytes(digest[:8], "big") & ((1 << 63) - 1)
+
+
 def bounded_max_new_tokens(text: str, configured_limit: int) -> int:
     if not text or not 128 <= configured_limit <= 512:
         raise ValueError("code token bound input is invalid")
@@ -143,6 +148,9 @@ def main() -> int:
             prompt_cache.move_to_end(cache_key)
 
         max_new_tokens = bounded_max_new_tokens(text, args.max_code_tokens)
+        speaker_seed = stable_speaker_seed(profile_id)
+        torch.manual_seed(speaker_seed)
+        torch.cuda.manual_seed_all(speaker_seed)
         with torch.inference_mode():
             wavs, sample_rate = model.generate_voice_clone(
                 text=text,
@@ -173,6 +181,7 @@ def main() -> int:
             "style": style,
             "tail_silence_ms": args.tail_silence_ms,
             "max_new_tokens": max_new_tokens,
+            "speaker_seed": speaker_seed,
         }
 
     asyncio.run(
@@ -191,6 +200,7 @@ def main() -> int:
                 "tail_silence_ms": args.tail_silence_ms,
                 "max_code_tokens": args.max_code_tokens,
                 "dual_track_input": True,
+                "stable_speaker_seed": True,
                 "device": "cuda",
             },
         )

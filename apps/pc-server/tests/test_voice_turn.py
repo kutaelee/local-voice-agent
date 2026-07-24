@@ -8,6 +8,8 @@ from local_voice_agent_server.application.voice_turn import (
     Transcript,
     VoiceActivityDecision,
     VoiceTurnService,
+    _crossfade_pcm16_boundary,
+    _hold_pcm16_boundary,
     _take_complete_speech_units,
 )
 
@@ -38,6 +40,47 @@ def test_short_first_sentence_is_coalesced_to_avoid_playback_gap() -> None:
         "Okay. The next sentence has enough audio to cover synthesis.",
     )
     assert pending == ""
+
+
+def test_short_korean_apology_is_coalesced_with_following_sentence() -> None:
+    ready, pending = _take_complete_speech_units(
+        "죄송합니다. 바로 다시 확인하겠습니다. "
+    )
+
+    assert ready == ("죄송합니다. 바로 다시 확인하겠습니다.",)
+    assert pending == ""
+
+
+def test_pcm_boundary_hold_and_crossfade_preserve_order_without_a_gap() -> None:
+    previous = b"".join(
+        int(1_000).to_bytes(2, "little", signed=True) for _ in range(100)
+    )
+    current = b"".join(
+        int(-1_000).to_bytes(2, "little", signed=True) for _ in range(100)
+    )
+
+    body, held = _hold_pcm16_boundary(
+        previous,
+        sample_rate_hz=1_000,
+        channels=1,
+    )
+    transition, remainder = _crossfade_pcm16_boundary(
+        held,
+        current,
+        sample_rate_hz=1_000,
+        channels=1,
+    )
+
+    assert len(body) == 75 * 2
+    assert len(held) == 25 * 2
+    assert len(transition) == 25 * 2
+    assert len(remainder) == 75 * 2
+    transition_samples = [
+        int.from_bytes(transition[index : index + 2], "little", signed=True)
+        for index in range(0, len(transition), 2)
+    ]
+    assert transition_samples[0] > 0
+    assert transition_samples[-1] < 0
 
 
 class FakeStt:
@@ -252,7 +295,7 @@ def test_streamed_llm_continues_while_first_audio_is_synthesized() -> None:
         async def stream(self, text: str, *, language: str):
             assert text
             assert language == "ko"
-            yield "첫 문장입니다. "
+            yield "첫 번째 설명은 충분히 길어서 먼저 음성으로 재생됩니다. "
             yield "두 번째 "
             yield "문장입니다."
 
@@ -310,15 +353,22 @@ def test_streamed_llm_continues_while_first_audio_is_synthesized() -> None:
             event.payload["text"]
             for event in emitted
             if event.type == "assistant.text.delta"
-        ] == ["첫 문장입니다. ", "두 번째 ", "문장입니다."]
+        ] == [
+            "첫 번째 설명은 충분히 길어서 먼저 음성으로 재생됩니다. ",
+            "두 번째 ",
+            "문장입니다.",
+        ]
         final = next(
             event
             for event in emitted
             if event.type == "assistant.text.final"
         )
-        assert final.payload["text"] == "첫 문장입니다. 두 번째 문장입니다."
+        assert (
+            final.payload["text"]
+            == "첫 번째 설명은 충분히 길어서 먼저 음성으로 재생됩니다. 두 번째 문장입니다."
+        )
         assert [item for item in timeline if item.startswith("tts:")] == [
-            "tts:첫 문장입니다.",
+            "tts:첫 번째 설명은 충분히 길어서 먼저 음성으로 재생됩니다.",
             "tts:두 번째 문장입니다.",
         ]
         assert emitted[-1].type == "audio.output.end"

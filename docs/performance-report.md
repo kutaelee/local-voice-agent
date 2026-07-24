@@ -502,3 +502,28 @@ between sentences.
 These are small live regression samples, not p50/p95 results. Sentence-level
 generation remains selected because synthesizing the whole response delayed
 first audio by the full 13 seconds in the measured two-sentence sample.
+
+## Short-sentence continuity and speaker stability (2026-07-24)
+
+Live QA identified that a short independent unit such as `죄송합니다.` could
+finish playback before the next unit completed synthesis. Before correction,
+five identical requests produced 0.64–0.88 seconds of audio with materially
+different peak/RMS levels, confirming stochastic output variation.
+
+Production now:
+
+- coalesces a hard-boundary unit shorter than 18 characters with the next unit;
+- continues synthesizing the next eligible unit while prior audio plays;
+- holds 60 ms at each independent unit boundary and applies a 40 ms PCM16
+  crossfade when the next unit is ready;
+- fixes the Qwen sampling seed per selected voice profile while retaining
+  sampling and the user-selected temperature.
+
+After the worker restart, five identical short-apology requests were
+byte-identical (`dfa780cfcca4…`), each produced 0.800 seconds of audio with
+peak 6,879 and RMS 1,434.2. Warm synthesis took 0.889–0.957 seconds; the first
+post-load request took 2.574 seconds. The coalesced 22-character apology and
+follow-up produced 2.800 seconds of audio in 2.775–2.971 seconds and was also
+byte-identical across two requests. These timings are bounded regression
+samples, not p50/p95 measurements; subjective speaker similarity still
+requires listening QA.

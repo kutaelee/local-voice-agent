@@ -57,7 +57,9 @@ transcript and tone. Qwen3-TTS 1.7B Base is the quality-first primary clone
 engine; the 0.6B Base checkpoint remains a lower-VRAM comparison option. The
 worker caches four local tone prompts but production keeps one selected
 speaker reference stable across sentences. Talker and sub-talker use the same
-temperature, and one 200 ms terminal tail is appended after the complete
+temperature and a profile-bound deterministic seed. Streaming coalesces short
+sentences with the following sentence, overlaps longer boundaries with a
+40 ms PCM crossfade, and appends one 200 ms terminal tail after the complete
 response. Chatterbox V3 is retained as rollback fallback. Reference audio stays under external
 application data and never enters Git or the APK. The
 installed SGLang 0.5.15.post1

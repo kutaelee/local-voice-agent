@@ -43,6 +43,7 @@ class _AudioOutputState:
     output_format: tuple[int, int] | None = None
     chunk_index: int = 0
     started: bool = False
+    pending_boundary_pcm: bytes = b""
 
 
 @dataclass(frozen=True, slots=True)
@@ -576,6 +577,49 @@ class VoiceTurnService:
             state.output_format = current_format
         elif state.output_format != current_format:
             raise ValueError("TTS output format changed within one response")
+        frame_bytes = output.channels * 2
+        if len(output.pcm_s16le) % frame_bytes:
+            raise ValueError("TTS output is not frame aligned")
+        pcm = output.pcm_s16le
+        if state.pending_boundary_pcm:
+            transition, pcm = _crossfade_pcm16_boundary(
+                state.pending_boundary_pcm,
+                pcm,
+                sample_rate_hz=output.sample_rate_hz,
+                channels=output.channels,
+            )
+            state.pending_boundary_pcm = b""
+            await self._emit_pcm_chunks(
+                events,
+                state=state,
+                pcm=transition,
+                emit=emit,
+            )
+        body, state.pending_boundary_pcm = _hold_pcm16_boundary(
+            pcm,
+            sample_rate_hz=output.sample_rate_hz,
+            channels=output.channels,
+        )
+        await self._emit_pcm_chunks(
+            events,
+            state=state,
+            pcm=body,
+            emit=emit,
+        )
+
+    async def _emit_pcm_chunks(
+        self,
+        events: list[VoiceEvent],
+        *,
+        state: _AudioOutputState,
+        pcm: bytes,
+        emit: VoiceEventEmitter | None,
+    ) -> None:
+        if not pcm:
+            return
+        if state.output_format is None:
+            raise RuntimeError("TTS output format is unavailable")
+        sample_rate_hz, channels = state.output_format
         if not state.started:
             await self._deliver(
                 events,
@@ -586,15 +630,13 @@ class VoiceTurnService:
                 emit=emit,
             )
             state.started = True
-        bytes_per_second = output.sample_rate_hz * output.channels * 2
+        bytes_per_second = sample_rate_hz * channels * 2
         for offset in range(
             0,
-            len(output.pcm_s16le),
+            len(pcm),
             self._output_chunk_bytes,
         ):
-            chunk = output.pcm_s16le[
-                offset : offset + self._output_chunk_bytes
-            ]
+            chunk = pcm[offset : offset + self._output_chunk_bytes]
             duration_ms = max(
                 1,
                 round(len(chunk) * 1_000 / bytes_per_second),
@@ -607,8 +649,8 @@ class VoiceTurnService:
                         "audio_stream_id": str(state.stream_id),
                         "chunk_index": state.chunk_index,
                         "encoding": "pcm_s16le",
-                        "sample_rate_hz": output.sample_rate_hz,
-                        "channels": output.channels,
+                        "sample_rate_hz": sample_rate_hz,
+                        "channels": channels,
                         "duration_ms": duration_ms,
                         "data_base64": base64.b64encode(chunk).decode("ascii"),
                     },
@@ -625,6 +667,15 @@ class VoiceTurnService:
         reason: str,
         emit: VoiceEventEmitter | None,
     ) -> None:
+        if state.pending_boundary_pcm:
+            pending = state.pending_boundary_pcm
+            state.pending_boundary_pcm = b""
+            await self._emit_pcm_chunks(
+                events,
+                state=state,
+                pcm=pending,
+                emit=emit,
+            )
         if (
             state.started
             and state.output_format is not None
@@ -706,8 +757,10 @@ _STREAM_SPEECH_BOUNDARY = _HARD_SPEECH_BOUNDARY
 _CLAUSE_SPEECH_BOUNDARY = re.compile(r"[,，、;；:：]\s*")
 _WORD_SPEECH_BOUNDARY = re.compile(r"\s+")
 _MIN_STREAM_UNIT_CHARACTERS = 18
-_MIN_HARD_STREAM_UNIT_CHARACTERS = 6
+_MIN_HARD_STREAM_UNIT_CHARACTERS = 18
 _MAX_STREAM_UNIT_CHARACTERS = 52
+_BOUNDARY_HOLD_MS = 60
+_BOUNDARY_CROSSFADE_MS = 40
 
 
 def _speech_units(text: str) -> tuple[str, ...]:
@@ -748,3 +801,73 @@ def _take_complete_speech_units(text: str) -> tuple[tuple[str, ...], str]:
             units.append(unit)
         pending = pending[split_at:]
     return tuple(units), pending
+
+
+def _hold_pcm16_boundary(
+    pcm: bytes,
+    *,
+    sample_rate_hz: int,
+    channels: int,
+) -> tuple[bytes, bytes]:
+    frame_bytes = channels * 2
+    frames = len(pcm) // frame_bytes
+    target_frames = round(sample_rate_hz * _BOUNDARY_HOLD_MS / 1_000)
+    hold_frames = min(target_frames, frames // 4)
+    if hold_frames <= 0:
+        return pcm, b""
+    hold_bytes = hold_frames * frame_bytes
+    return pcm[:-hold_bytes], pcm[-hold_bytes:]
+
+
+def _crossfade_pcm16_boundary(
+    previous: bytes,
+    current: bytes,
+    *,
+    sample_rate_hz: int,
+    channels: int,
+) -> tuple[bytes, bytes]:
+    frame_bytes = channels * 2
+    if (
+        not previous
+        or not current
+        or len(previous) % frame_bytes
+        or len(current) % frame_bytes
+    ):
+        return previous, current
+    previous_frames = len(previous) // frame_bytes
+    current_frames = len(current) // frame_bytes
+    overlap_frames = min(
+        round(sample_rate_hz * _BOUNDARY_CROSSFADE_MS / 1_000),
+        previous_frames,
+        current_frames,
+    )
+    if overlap_frames <= 0:
+        return previous, current
+    overlap_samples = overlap_frames * channels
+    overlap_bytes = overlap_samples * 2
+    previous_overlap = previous[-overlap_bytes:]
+    current_overlap = current[:overlap_bytes]
+    mixed = bytearray(overlap_bytes)
+    for sample_index in range(overlap_samples):
+        frame_index = sample_index // channels
+        current_weight = (frame_index + 1) / (overlap_frames + 1)
+        previous_sample = int.from_bytes(
+            previous_overlap[sample_index * 2 : sample_index * 2 + 2],
+            "little",
+            signed=True,
+        )
+        current_sample = int.from_bytes(
+            current_overlap[sample_index * 2 : sample_index * 2 + 2],
+            "little",
+            signed=True,
+        )
+        value = round(
+            previous_sample * (1.0 - current_weight)
+            + current_sample * current_weight
+        )
+        mixed[sample_index * 2 : sample_index * 2 + 2] = int(value).to_bytes(
+            2,
+            "little",
+            signed=True,
+        )
+    return previous[:-overlap_bytes] + bytes(mixed), current[overlap_bytes:]
