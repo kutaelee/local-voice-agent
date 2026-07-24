@@ -530,18 +530,23 @@ Executor, and PostgreSQL are healthy:
   -EnableTools
 ```
 
-Navigate to `http://127.0.0.1:46326/qa`. Loopback is a browser secure context
-for microphone capture and avoids installing the debug private CA into the
-Windows trust store. The portal covers:
+Navigate to `http://127.0.0.1:46326/qa`. The page automatically obtains a
+memory-only QA session and connects; no pairing-token entry is required.
+Loopback is a browser secure context for microphone capture and avoids
+installing the debug private CA into the Windows trust store. The portal
+covers:
 
-- authenticated pairing through a bounded, single-use WebSocket ticket;
+- same-origin loopback bootstrap plus a bounded, single-use WebSocket ticket;
 - continuous VAD turns, STT, streamed model text, scheduled PCM playback, and
   interruption;
 - tool plans, Level 1/2 approval responses, execution events, and evidence IDs;
 - voice-profile settings and live runtime/worker/agent diagnostics;
 - STT-final, LLM-TTFT, TTS-first-audio, and playback-underrun measurements.
 
-The long-lived pairing token is never placed in a URL or browser storage.
+The bootstrap rejects non-loopback and cross-origin requests, binds its
+short-lived credential to the client address and user agent, and keeps it
+only in page/server memory. The long-lived pairing token is never returned to
+the browser or placed in a URL or browser storage.
 Stop this instance without disturbing the private-LAN Android gateway:
 
 ```powershell

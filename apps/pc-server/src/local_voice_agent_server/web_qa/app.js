@@ -43,6 +43,7 @@ const ui = {
 
 const state = {
   socket: null,
+  qaAccessToken: null,
   sessionId: crypto.randomUUID(),
   sequence: 0,
   connected: false,
@@ -95,9 +96,38 @@ function normalizedBaseUrl() {
 }
 
 function authHeaders() {
-  const token = ui.pairingToken.value;
+  const token = ui.pairingToken.value || state.qaAccessToken || "";
   if (token.length < 32) throw new Error("페어링 토큰을 확인하세요.");
   return { Authorization: `Bearer ${token}` };
+}
+
+function canUseLocalQaBootstrap() {
+  try {
+    const server = new URL(normalizedBaseUrl());
+    return (
+      server.origin === location.origin
+      && ["127.0.0.1", "localhost", "[::1]"].includes(server.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function bootstrapLocalQa() {
+  const response = await fetch(`${normalizedBaseUrl()}/v1/qa/bootstrap`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || typeof body.access_token !== "string") {
+    throw new Error(
+      body.detail || "로컬 QA 자동 인증을 시작하지 못했습니다.",
+    );
+  }
+  state.qaAccessToken = body.access_token;
+  ui.pairingToken.value = "";
+  ui.pairingToken.placeholder = "로컬 QA 자동 인증 사용 중";
 }
 
 async function api(path, options = {}) {
@@ -197,6 +227,9 @@ async function connect() {
   try {
     const base = normalizedBaseUrl();
     localStorage.setItem("lva.qa.serverUrl", base);
+    if (!ui.pairingToken.value && canUseLocalQaBootstrap()) {
+      await bootstrapLocalQa();
+    }
     const ticket = await api("/v1/qa/ws-ticket", { method: "POST", body: "{}" });
     const websocketUrl = new URL(
       `/v1/sessions/${state.sessionId}/events`,
@@ -667,3 +700,6 @@ window.addEventListener("beforeunload", () => {
 });
 syncSliderLabels();
 setConnection(false);
+if (canUseLocalQaBootstrap()) {
+  connect();
+}

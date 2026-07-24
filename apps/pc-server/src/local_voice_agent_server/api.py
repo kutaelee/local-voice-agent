@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
 import hmac
+import ipaddress
 import json
 import logging
 import os
@@ -20,7 +21,7 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Literal
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from .protocol.envelope import EventEnvelope
@@ -297,6 +298,91 @@ class _QaWebSocketTicketStore:
             self._tickets.pop(digest, None)
 
 
+@dataclass(frozen=True, slots=True)
+class _QaBrowserSession:
+    digest: bytes
+    client_fingerprint: str
+    expires_at: float
+
+
+class _QaBrowserSessionStore:
+    """Memory-only QA credentials bound to one loopback browser fingerprint."""
+
+    def __init__(
+        self,
+        *,
+        ttl_seconds: float = 43_200,
+        capacity: int = 128,
+    ) -> None:
+        if not 300 <= ttl_seconds <= 86_400:
+            raise ValueError("QA browser session TTL is invalid")
+        if not 8 <= capacity <= 1_024:
+            raise ValueError("QA browser session capacity is invalid")
+        self._ttl_seconds = ttl_seconds
+        self._capacity = capacity
+        self._secret = secrets.token_bytes(32)
+        self._sessions: OrderedDict[bytes, _QaBrowserSession] = OrderedDict()
+        self._lock = asyncio.Lock()
+
+    @property
+    def ttl_seconds(self) -> float:
+        return self._ttl_seconds
+
+    def _digest(self, token: str) -> bytes:
+        return hmac.digest(self._secret, token.encode("ascii"), "sha256")
+
+    async def issue(self, *, client_fingerprint: str) -> str:
+        token = secrets.token_urlsafe(32)
+        digest = self._digest(token)
+        now = time.monotonic()
+        async with self._lock:
+            self._expire(now)
+            self._sessions[digest] = _QaBrowserSession(
+                digest=digest,
+                client_fingerprint=client_fingerprint,
+                expires_at=now + self._ttl_seconds,
+            )
+            while len(self._sessions) > self._capacity:
+                self._sessions.popitem(last=False)
+        return token
+
+    async def validate(
+        self,
+        token: str,
+        *,
+        client_fingerprint: str,
+    ) -> bool:
+        if not token or len(token) > 128:
+            return False
+        try:
+            digest = self._digest(token)
+        except UnicodeEncodeError:
+            return False
+        now = time.monotonic()
+        async with self._lock:
+            self._expire(now)
+            session = self._sessions.get(digest)
+            if session is not None:
+                self._sessions.move_to_end(digest)
+        return bool(
+            session is not None
+            and session.expires_at >= now
+            and hmac.compare_digest(
+                session.client_fingerprint,
+                client_fingerprint,
+            )
+        )
+
+    def _expire(self, now: float) -> None:
+        expired = [
+            digest
+            for digest, session in self._sessions.items()
+            if session.expires_at < now
+        ]
+        for digest in expired:
+            self._sessions.pop(digest, None)
+
+
 def _client_fingerprint(
     *,
     host: str | None,
@@ -304,6 +390,18 @@ def _client_fingerprint(
 ) -> str:
     value = f"{host or 'unknown'}\n{user_agent[:512]}"
     return sha256(value.encode("utf-8")).hexdigest()
+
+
+def _is_same_origin_loopback_request(request: Request) -> bool:
+    client_host = request.client.host if request.client is not None else ""
+    try:
+        if not ipaddress.ip_address(client_host).is_loopback:
+            return False
+    except ValueError:
+        return False
+    origin = request.headers.get("origin", "").rstrip("/")
+    expected_origin = f"{request.url.scheme}://{request.url.netloc}"
+    return bool(origin) and hmac.compare_digest(origin, expected_origin)
 
 
 def _qa_ticket_from_subprotocol(websocket: WebSocket) -> str | None:
@@ -340,7 +438,26 @@ def create_app(
     session_states_lock = asyncio.Lock()
     disconnect_cleanup_tasks: dict[UUID, asyncio.Task[None]] = {}
     qa_ticket_store = _QaWebSocketTicketStore()
+    qa_browser_session_store = _QaBrowserSessionStore()
     qa_root = Path(__file__).with_name("web_qa")
+
+    def request_fingerprint(request: Request) -> str:
+        return _client_fingerprint(
+            host=request.client.host if request.client is not None else None,
+            user_agent=request.headers.get("user-agent", ""),
+        )
+
+    async def request_authorized(request: Request) -> bool:
+        if _authorized_request(request, settings.pairing_token):
+            return True
+        authorization = request.headers.get("authorization", "")
+        prefix = "Bearer "
+        if not authorization.startswith(prefix):
+            return False
+        return await qa_browser_session_store.validate(
+            authorization[len(prefix) :],
+            client_fingerprint=request_fingerprint(request),
+        )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -403,16 +520,32 @@ def create_app(
     async def qa_audio_worklet() -> FileResponse:
         return qa_file("pcm-worklet.js", "text/javascript")
 
+    @app.post("/v1/qa/bootstrap")
+    async def qa_browser_bootstrap(request: Request) -> JSONResponse:
+        if not _is_same_origin_loopback_request(request):
+            raise HTTPException(
+                status_code=403,
+                detail="local QA bootstrap requires a same-origin loopback request",
+            )
+        access_token = await qa_browser_session_store.issue(
+            client_fingerprint=request_fingerprint(request),
+        )
+        return JSONResponse(
+            {
+                "schema_version": "1.0",
+                "access_token": access_token,
+                "expires_in_seconds": qa_browser_session_store.ttl_seconds,
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+
     @app.post("/v1/qa/ws-ticket")
     async def qa_websocket_ticket(request: Request) -> dict[str, object]:
-        if not _authorized_request(request, settings.pairing_token):
+        if not await request_authorized(request):
             raise HTTPException(status_code=401, detail="invalid pairing token")
-        client_host = request.client.host if request.client is not None else None
-        fingerprint = _client_fingerprint(
-            host=client_host,
-            user_agent=request.headers.get("user-agent", ""),
+        ticket = await qa_ticket_store.issue(
+            client_fingerprint=request_fingerprint(request),
         )
-        ticket = await qa_ticket_store.issue(client_fingerprint=fingerprint)
         return {
             "schema_version": "1.0",
             "ticket": ticket,
@@ -421,7 +554,7 @@ def create_app(
 
     @app.get("/v1/qa/runtime-status")
     async def qa_runtime_status(request: Request) -> dict[str, object]:
-        if not _authorized_request(request, settings.pairing_token):
+        if not await request_authorized(request):
             raise HTTPException(status_code=401, detail="invalid pairing token")
         if qa_runtime_status_provider is None:
             raise HTTPException(
@@ -439,11 +572,7 @@ def create_app(
 
     @app.get("/v1/status/agents")
     async def agent_status(request: Request) -> dict[str, object]:
-        authorization = request.headers.get("authorization", "")
-        if not hmac.compare_digest(
-            authorization,
-            f"Bearer {settings.pairing_token}",
-        ):
+        if not await request_authorized(request):
             raise HTTPException(status_code=401, detail="invalid pairing token")
         if agent_status_provider is None:
             raise HTTPException(
@@ -464,7 +593,7 @@ def create_app(
 
     @app.get("/v1/models/status")
     async def model_status(request: Request) -> dict[str, object]:
-        if not _authorized_request(request, settings.pairing_token):
+        if not await request_authorized(request):
             raise HTTPException(status_code=401, detail="invalid pairing token")
         if model_switch_coordinator is None:
             raise HTTPException(
@@ -492,7 +621,7 @@ def create_app(
 
     @app.get("/v1/voice/profiles")
     async def voice_profiles(request: Request) -> dict[str, object]:
-        if not _authorized_request(request, settings.pairing_token):
+        if not await request_authorized(request):
             raise HTTPException(status_code=401, detail="invalid pairing token")
         if voice_profile_store is None:
             raise HTTPException(
@@ -517,7 +646,7 @@ def create_app(
         payload: CreateVoiceProfileRequest,
         request: Request,
     ) -> dict[str, object]:
-        if not _authorized_request(request, settings.pairing_token):
+        if not await request_authorized(request):
             raise HTTPException(status_code=401, detail="invalid pairing token")
         if voice_profile_store is None:
             raise HTTPException(
@@ -546,7 +675,7 @@ def create_app(
         payload: UpdateVoiceSettingsRequest,
         request: Request,
     ) -> dict[str, object]:
-        if not _authorized_request(request, settings.pairing_token):
+        if not await request_authorized(request):
             raise HTTPException(status_code=401, detail="invalid pairing token")
         if voice_profile_store is None:
             raise HTTPException(
@@ -577,7 +706,7 @@ def create_app(
         payload: ModelSwitchRequest,
         request: Request,
     ) -> dict[str, object]:
-        if not _authorized_request(request, settings.pairing_token):
+        if not await request_authorized(request):
             raise HTTPException(status_code=401, detail="invalid pairing token")
         if model_switch_coordinator is None:
             raise HTTPException(

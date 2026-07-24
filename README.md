@@ -139,10 +139,12 @@ APK build in the local web console:
   -EnableTools
 ```
 
-Open `http://127.0.0.1:46326/qa`. The console keeps the pairing token only in
-page memory, exchanges it for a 45-second single-use WebSocket ticket, and
-shows STT, LLM, first-audio, and playback-underrun timing. The dedicated
-46326 listener is loopback-only and does not create a firewall rule. Use
+Open `http://127.0.0.1:46326/qa`. The same-origin loopback console
+automatically obtains a fingerprint-bound, memory-only QA session and
+connects without exposing or storing the long-lived pairing token. It
+exchanges that session for a 45-second single-use WebSocket ticket and shows
+STT, LLM, first-audio, and playback-underrun timing. The dedicated 46326
+listener is loopback-only and does not create a firewall rule. Use
 `scripts\stop-server.ps1 -InstanceName web-qa` and
 `scripts\stop-gpu-voice-stack.ps1` for registered shutdown.
 

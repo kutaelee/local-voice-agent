@@ -139,6 +139,114 @@ def test_qa_websocket_ticket_requires_pairing_token() -> None:
     assert TOKEN not in response.text
 
 
+def test_qa_loopback_bootstrap_issues_memory_only_browser_session() -> None:
+    expected = {
+        "runtime": {
+            "state": "ready",
+            "model_id": "gemma4-12b",
+            "mtp_mode": "off",
+        },
+        "workers": {"vad": True, "stt": True, "tts": True},
+    }
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        qa_runtime_status_provider=lambda: expected,
+    )
+    api = TestClient(
+        app,
+        base_url="http://127.0.0.1:46326",
+        client=("127.0.0.1", 50_000),
+        headers={"user-agent": "qa-browser-test"},
+    )
+
+    assert api.post("/v1/qa/bootstrap", json={}).status_code == 403
+    issued = api.post(
+        "/v1/qa/bootstrap",
+        headers={"Origin": "http://127.0.0.1:46326"},
+        json={},
+    )
+    assert issued.status_code == 200
+    assert issued.headers["cache-control"] == "no-store"
+    access_token = issued.json()["access_token"]
+    assert len(access_token) >= 32
+    assert access_token != TOKEN
+    assert TOKEN not in issued.text
+
+    runtime = api.get(
+        "/v1/qa/runtime-status",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert runtime.status_code == 200
+    assert runtime.json() == {"schema_version": "1.0", **expected}
+    ticket = api.post(
+        "/v1/qa/ws-ticket",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={},
+    )
+    assert ticket.status_code == 200
+    assert TOKEN not in ticket.text
+
+
+def test_qa_loopback_bootstrap_rejects_remote_and_cross_origin_requests() -> None:
+    app = create_app(ServerSettings(pairing_token=TOKEN))
+    remote = TestClient(
+        app,
+        base_url="http://192.168.200.94:46321",
+        client=("192.168.200.50", 50_000),
+    )
+    assert (
+        remote.post(
+            "/v1/qa/bootstrap",
+            headers={"Origin": "http://192.168.200.94:46321"},
+            json={},
+        ).status_code
+        == 403
+    )
+
+    loopback = TestClient(
+        app,
+        base_url="http://127.0.0.1:46326",
+        client=("127.0.0.1", 50_000),
+    )
+    assert (
+        loopback.post(
+            "/v1/qa/bootstrap",
+            headers={"Origin": "http://attacker.invalid"},
+            json={},
+        ).status_code
+        == 403
+    )
+
+
+def test_qa_browser_session_is_bound_to_client_fingerprint() -> None:
+    app = create_app(ServerSettings(pairing_token=TOKEN))
+    original = TestClient(
+        app,
+        base_url="http://127.0.0.1:46326",
+        client=("127.0.0.1", 50_000),
+        headers={"user-agent": "qa-browser-one"},
+    )
+    issued = original.post(
+        "/v1/qa/bootstrap",
+        headers={"Origin": "http://127.0.0.1:46326"},
+        json={},
+    )
+    access_token = issued.json()["access_token"]
+
+    changed_browser = TestClient(
+        app,
+        base_url="http://127.0.0.1:46326",
+        client=("127.0.0.1", 50_000),
+        headers={"user-agent": "qa-browser-two"},
+    )
+    rejected = changed_browser.post(
+        "/v1/qa/ws-ticket",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={},
+    )
+    assert rejected.status_code == 401
+
+
 def test_qa_runtime_status_is_authenticated_and_bounded() -> None:
     expected = {
         "runtime": {

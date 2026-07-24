@@ -134,6 +134,13 @@ and verifies non-inherited NTFS ACLs granting access only to the current user
 and LocalSystem. The unencrypted server key is runtime-only and never enters
 Git, an APK, or logs.
 
+The Web QA portal does not receive the long-lived pairing token. Its bootstrap
+requires an exact same-origin request from a loopback client and issues a
+bounded, memory-only credential tied to the client address and user agent.
+Remote-LAN and cross-origin bootstrap requests fail closed. The credential is
+lost on page/server restart and is exchanged for the existing 45-second
+single-use WebSocket ticket.
+
 Reference-voice data is a separate, explicit exception to default raw-audio
 non-retention. Registration requires affirmative voice-rights and
 local-processing consent flags, accepts only a bounded 3–30 second PCM WAV,
