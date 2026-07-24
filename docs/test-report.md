@@ -217,5 +217,6 @@ firewall change was made.
 | Android unit tests and lint | Passed | 29/29 debug unit tests and lint completed successfully with the project-isolated Android SDK |
 | Gemma 4 12B scoped FAQ smoke | Passed | `gpuq` job `263152cf-76b3-4871-9d0c-347936796af7`: 4/4 salon questions accepted and 2/2 unrelated questions rejected; 2,435.599 ms cold then 206.110–471.006 ms; 14,682 MiB peak total GPU use; model stopped |
 | Qwen3-TTS 1.7B salon projection | Passed with latency limitation | `gpuq` job `9a098b73-fc84-4486-a29e-08deb76f6ee0`: two ordered 24 kHz PCM streams passed with 24 ms release and 200 ms final pause; full synthesis took 8,460.720 ms and 5,096.497 ms; 7,677 MiB peak total GPU use; worker stopped |
+| Live salon gateway model/TTS path | Passed with latency limitation | Authenticated 46326 WebSocket → Gemma FAQ → Qwen3-TTS → ordered PCM completed without fallback; greeting 11,252.553 ms/13 chunks, unmatched salon FAQ 7,827.962 ms/9 chunks |
 | Repository validators | Passed | 10/10 validators; 32 protocol events and 75 tool contracts |
 | User listening and physical notification QA | Not run | Deliberately deferred until all automated regressions and deployment startup are complete |

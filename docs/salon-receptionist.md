@@ -115,3 +115,10 @@ The live two-sample TTS smoke passed, but full synthesis completed in
 8,460.720 ms for the greeting and 5,096.497 ms for the confirmation. These
 are measured limitations, not first-audio streaming measurements. Subjective
 voice quality and telephone responsiveness remain user QA.
+
+The final authenticated live gateway smoke also passed
+WebSocket → scoped Gemma FAQ → Qwen3-TTS → ordered PCM completion. Greeting
+end-to-end completion took 11,252.553 ms with 13 chunks; the previously
+unmatched salon FAQ took 7,827.962 ms with nine chunks and did not use the
+model-unavailable fallback. This verifies wiring, not acceptable interactive
+latency.
