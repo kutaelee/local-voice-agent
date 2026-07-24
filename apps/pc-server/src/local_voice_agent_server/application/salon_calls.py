@@ -1,0 +1,530 @@
+"""Deterministic salon call persona and multi-turn reservation workflow."""
+
+from __future__ import annotations
+
+import asyncio
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
+import re
+from typing import Callable, Literal
+from uuid import UUID, uuid4
+
+from ..domain.salon_booking import (
+    Reservation,
+    ReservationRequest,
+    SalonBookingError,
+    SalonPolicy,
+    SalonReservationService,
+    local_datetime,
+)
+
+
+SalonAction = Literal["availability", "book", "cancel", "modify"]
+
+
+@dataclass(frozen=True, slots=True)
+class SalonEvent:
+    type: str
+    payload: dict[str, object]
+
+
+@dataclass(slots=True)
+class SalonCallState:
+    call_id: UUID
+    started_at: datetime
+    action: SalonAction | None = None
+    service_id: str | None = None
+    staff_id: str | None = None
+    starts_at: datetime | None = None
+    customer_name: str | None = None
+    phone: str | None = None
+    reservation_code: str | None = None
+    awaiting_confirmation: bool = False
+
+    def clear_transaction(self) -> None:
+        self.action = None
+        self.service_id = None
+        self.staff_id = None
+        self.starts_at = None
+        self.customer_name = None
+        self.phone = None
+        self.reservation_code = None
+        self.awaiting_confirmation = False
+
+
+class SalonCallCoordinator:
+    def __init__(
+        self,
+        *,
+        reservations: SalonReservationService,
+        now: Callable[[], datetime] | None = None,
+    ) -> None:
+        self._reservations = reservations
+        self.policy = reservations.policy
+        self._now = now or (lambda: datetime.now(self.policy.timezone))
+        self._calls: dict[UUID, SalonCallState] = {}
+        self._lock = asyncio.Lock()
+
+    async def handle(
+        self,
+        *,
+        session_id: UUID,
+        event_type: str,
+        text: str | None = None,
+    ) -> list[SalonEvent]:
+        async with self._lock:
+            if event_type == "salon.call.start":
+                return self._start(session_id)
+            if event_type == "salon.call.message":
+                if text is None:
+                    raise ValueError("salon call text is required")
+                return self._message(session_id, text)
+            if event_type == "salon.call.end":
+                return self._end(session_id)
+            raise ValueError("unsupported salon call event")
+
+    async def disconnect(self, session_id: UUID) -> None:
+        async with self._lock:
+            self._calls.pop(session_id, None)
+
+    def reservation_snapshot(self) -> list[dict[str, object]]:
+        return [
+            _reservation_payload(item)
+            for item in self._reservations.list_reservations()
+        ]
+
+    def _start(self, session_id: UUID) -> list[SalonEvent]:
+        existing = self._calls.get(session_id)
+        if existing is not None:
+            return [
+                SalonEvent(
+                    "salon.call.started",
+                    {
+                        "call_id": str(existing.call_id),
+                        "status": "already_active",
+                    },
+                )
+            ]
+        state = SalonCallState(call_id=uuid4(), started_at=self._normalized_now())
+        self._calls[session_id] = state
+        greeting = (
+            f"안녕하세요, {self.policy.salon_name} 예약 도우미 "
+            f"{self.policy.receptionist_name}입니다. "
+            "예약, 변경, 취소, 시술 가격과 영업시간을 도와드릴게요."
+        )
+        return [
+            SalonEvent(
+                "salon.call.started",
+                {
+                    "call_id": str(state.call_id),
+                    "status": "active",
+                    "persona": self.policy.receptionist_name,
+                    "salon_name": self.policy.salon_name,
+                },
+            ),
+            SalonEvent("salon.assistant.message", {"text": greeting}),
+            SalonEvent(
+                "assistant.state",
+                {"state": "listening", "detail": "salon_call_active"},
+            ),
+        ]
+
+    def _message(self, session_id: UUID, text: str) -> list[SalonEvent]:
+        state = self._calls.get(session_id)
+        if state is None:
+            raise ValueError("salon call is not active")
+        normalized = " ".join(text.strip().split())
+        if not normalized or len(normalized) > 2_000:
+            raise ValueError("salon call message is invalid")
+        if _is_negative_confirmation(normalized) and state.awaiting_confirmation:
+            state.clear_transaction()
+            return self._reply("알겠습니다. 요청은 반영하지 않았습니다. 다른 예약을 도와드릴까요?")
+
+        informational = self._informational_answer(normalized)
+        if informational is not None and not state.awaiting_confirmation:
+            return self._reply(informational)
+
+        self._capture_details(state, normalized)
+        explicit_action = _detect_action(normalized)
+        if explicit_action is not None:
+            if state.action != explicit_action:
+                state.awaiting_confirmation = False
+            state.action = explicit_action
+        if state.action is None:
+            if _is_greeting(normalized):
+                return self._reply("네, 편하게 말씀해 주세요. 어떤 예약을 도와드릴까요?")
+            return self._reply(
+                "저는 미용실 예약, 변경, 취소와 시술·가격·영업시간 안내만 도와드릴 수 있어요."
+            )
+        try:
+            if state.action == "availability":
+                return self._availability(state)
+            if state.action == "book":
+                return self._book(state, normalized)
+            if state.action == "cancel":
+                return self._cancel(state, normalized)
+            return self._modify(state, normalized)
+        except SalonBookingError as error:
+            state.awaiting_confirmation = False
+            return [
+                SalonEvent(
+                    "salon.assistant.message",
+                    {"text": str(error), "error_code": error.code},
+                )
+            ]
+
+    def _availability(self, state: SalonCallState) -> list[SalonEvent]:
+        if state.service_id is None:
+            return self._reply("원하시는 시술을 알려주세요. 커트, 염색, 펌, 클리닉이 가능합니다.")
+        if state.starts_at is None:
+            return self._reply("원하시는 날짜와 시간을 알려주세요.")
+        staff = self._reservations.available_staff(
+            service_id=state.service_id,
+            starts_at=state.starts_at,
+        )
+        service = self.policy.service(state.service_id)
+        if not staff:
+            return self._reply(
+                f"{_format_datetime(state.starts_at)}에는 {service.name} 예약이 어렵습니다. "
+                "다른 시간을 말씀해 주세요."
+            )
+        names = ", ".join(member.name for member in staff)
+        state.action = "book"
+        return self._reply(
+            f"{_format_datetime(state.starts_at)} {service.name} 예약이 가능합니다. "
+            f"가능한 담당자는 {names}입니다. 예약을 원하시면 이름과 휴대전화 번호를 알려주세요."
+        )
+
+    def _book(self, state: SalonCallState, text: str) -> list[SalonEvent]:
+        missing = self._missing_booking_field(state)
+        if missing is not None:
+            return self._reply(missing)
+        assert state.service_id is not None
+        assert state.starts_at is not None
+        assert state.customer_name is not None
+        assert state.phone is not None
+        if not state.awaiting_confirmation:
+            state.awaiting_confirmation = True
+            service = self.policy.service(state.service_id)
+            staff = (
+                self.policy.staff_member(state.staff_id).name
+                if state.staff_id is not None
+                else "가능한 담당자"
+            )
+            return self._reply(
+                f"{state.customer_name} 고객님, {_format_datetime(state.starts_at)} "
+                f"{service.name}, {staff}로 예약할까요?"
+            )
+        if not _is_positive_confirmation(text):
+            return self._reply("예약 진행 여부를 네 또는 아니요로 말씀해 주세요.")
+        reservation = self._reservations.create(
+            ReservationRequest(
+                customer_name=state.customer_name,
+                phone=state.phone,
+                service_id=state.service_id,
+                starts_at=state.starts_at,
+                staff_id=state.staff_id,
+            )
+        )
+        state.clear_transaction()
+        return self._changed("created", reservation)
+
+    def _cancel(self, state: SalonCallState, text: str) -> list[SalonEvent]:
+        if state.reservation_code is None:
+            return self._reply("취소할 예약번호 8자리를 알려주세요.")
+        if state.phone is None:
+            return self._reply("예약 확인을 위해 휴대전화 번호를 알려주세요.")
+        if not state.awaiting_confirmation:
+            state.awaiting_confirmation = True
+            return self._reply(
+                f"예약번호 {state.reservation_code} 예약을 취소할까요?"
+            )
+        if not _is_positive_confirmation(text):
+            return self._reply("취소 진행 여부를 네 또는 아니요로 말씀해 주세요.")
+        reservation = self._reservations.cancel(
+            reservation_code=state.reservation_code,
+            phone=state.phone,
+        )
+        state.clear_transaction()
+        return self._changed("cancelled", reservation)
+
+    def _modify(self, state: SalonCallState, text: str) -> list[SalonEvent]:
+        if state.reservation_code is None:
+            return self._reply("변경할 예약번호 8자리를 알려주세요.")
+        if state.phone is None:
+            return self._reply("예약 확인을 위해 휴대전화 번호를 알려주세요.")
+        if state.starts_at is None:
+            return self._reply("변경할 새 날짜와 시간을 알려주세요.")
+        if not state.awaiting_confirmation:
+            state.awaiting_confirmation = True
+            return self._reply(
+                f"예약번호 {state.reservation_code} 예약을 "
+                f"{_format_datetime(state.starts_at)}로 변경할까요?"
+            )
+        if not _is_positive_confirmation(text):
+            return self._reply("변경 진행 여부를 네 또는 아니요로 말씀해 주세요.")
+        reservation = self._reservations.modify(
+            reservation_code=state.reservation_code,
+            phone=state.phone,
+            starts_at=state.starts_at,
+            service_id=state.service_id,
+            staff_id=state.staff_id,
+        )
+        state.clear_transaction()
+        return self._changed("modified", reservation)
+
+    def _capture_details(self, state: SalonCallState, text: str) -> None:
+        service = self.policy.service_by_text(text)
+        if service is not None:
+            state.service_id = service.service_id
+        staff = self.policy.staff_by_text(text)
+        if staff is not None:
+            state.staff_id = staff.staff_id
+        parsed_datetime = _parse_datetime(
+            text,
+            now=self._normalized_now(),
+            timezone_name=self.policy.timezone_name,
+        )
+        if parsed_datetime is not None:
+            state.starts_at = parsed_datetime
+        phone = _parse_phone(text)
+        if phone is not None:
+            state.phone = phone
+        name = _parse_name(text)
+        if name is not None:
+            state.customer_name = name
+        code = _parse_reservation_code(text)
+        if code is not None:
+            state.reservation_code = code
+
+    def _informational_answer(self, text: str) -> str | None:
+        if any(word in text for word in ("영업시간", "몇 시", "휴무", "문 여")):
+            lines = []
+            for weekday, label in enumerate(("월", "화", "수", "목", "금", "토", "일")):
+                hours = self.policy.business_hours[weekday]
+                value = (
+                    "휴무"
+                    if hours is None
+                    else f"{hours.opens_at:%H:%M}~{hours.closes_at:%H:%M}"
+                )
+                lines.append(f"{label} {value}")
+            return "영업시간은 " + ", ".join(lines) + "입니다."
+        if any(word in text for word in ("가격", "얼마", "요금", "메뉴")):
+            return "시술 가격은 " + ", ".join(
+                f"{item.name} {item.price_won:,}원" for item in self.policy.services
+            ) + "입니다."
+        if any(word in text for word in ("위치", "주소", "어디")):
+            return f"주소는 {self.policy.address}입니다."
+        if "주차" in text:
+            return self.policy.parking
+        if any(word in text for word in ("취소 규정", "취소 수수료", "변경 규정")):
+            return self.policy.cancellation_policy
+        if any(word in text for word in ("시술", "서비스", "뭐 해")):
+            return "가능한 시술은 " + ", ".join(
+                f"{item.name} 약 {item.duration_minutes}분"
+                for item in self.policy.services
+            ) + "입니다."
+        return None
+
+    def _missing_booking_field(self, state: SalonCallState) -> str | None:
+        if state.service_id is None:
+            return "원하시는 시술을 알려주세요."
+        if state.starts_at is None:
+            return "원하시는 날짜와 시간을 알려주세요."
+        if state.customer_name is None:
+            return "예약자 이름을 알려주세요."
+        if state.phone is None:
+            return "연락받을 휴대전화 번호를 알려주세요."
+        return None
+
+    def _changed(
+        self,
+        change_type: str,
+        reservation: Reservation,
+    ) -> list[SalonEvent]:
+        action = {
+            "created": "예약이 확정됐습니다",
+            "modified": "예약이 변경됐습니다",
+            "cancelled": "예약이 취소됐습니다",
+        }[change_type]
+        service = self.policy.service(reservation.service_id)
+        staff = self.policy.staff_member(reservation.staff_id)
+        summary = (
+            f"{action}. 예약번호는 {reservation.short_code}, "
+            f"{_format_datetime(reservation.starts_at)} {service.name}, "
+            f"담당 {staff.name}입니다."
+        )
+        event_payload = _reservation_payload(reservation)
+        return [
+            SalonEvent("salon.assistant.message", {"text": summary}),
+            SalonEvent(
+                "salon.reservation.updated",
+                {"change_type": change_type, "reservation": event_payload},
+            ),
+            SalonEvent(
+                "salon.owner.notification",
+                {
+                    "title": f"{self.policy.salon_name} 예약 {action[4:6]}",
+                    "body": summary,
+                    "change_type": change_type,
+                    "reservation_id": str(reservation.reservation_id),
+                },
+            ),
+        ]
+
+    def _end(self, session_id: UUID) -> list[SalonEvent]:
+        state = self._calls.pop(session_id, None)
+        if state is None:
+            raise ValueError("salon call is not active")
+        return [
+            SalonEvent(
+                "salon.assistant.message",
+                {"text": f"{self.policy.salon_name}이었습니다. 감사합니다."},
+            ),
+            SalonEvent(
+                "salon.call.ended",
+                {"call_id": str(state.call_id), "status": "completed"},
+            ),
+            SalonEvent("assistant.state", {"state": "idle"}),
+        ]
+
+    @staticmethod
+    def _reply(text: str) -> list[SalonEvent]:
+        return [SalonEvent("salon.assistant.message", {"text": text})]
+
+    def _normalized_now(self) -> datetime:
+        value = self._now()
+        if value.tzinfo is None:
+            return value.replace(tzinfo=self.policy.timezone)
+        return value.astimezone(self.policy.timezone)
+
+
+def _detect_action(text: str) -> SalonAction | None:
+    if "취소" in text and "취소 규정" not in text and "취소 수수료" not in text:
+        return "cancel"
+    if any(word in text for word in ("변경", "옮기", "바꾸")):
+        return "modify"
+    if any(word in text for word in ("가능", "빈 시간", "자리 있", "비어")):
+        return "availability"
+    if "예약" in text:
+        return "book"
+    return None
+
+
+def _is_greeting(text: str) -> bool:
+    return any(word in text for word in ("안녕", "여보세요", "문의", "질문"))
+
+
+def _is_positive_confirmation(text: str) -> bool:
+    normalized = text.replace(" ", "")
+    return normalized in {
+        "네",
+        "네.",
+        "예",
+        "예.",
+        "맞아요",
+        "맞습니다",
+        "진행해주세요",
+        "예약해주세요",
+        "취소해주세요",
+        "변경해주세요",
+        "그렇게해주세요",
+    }
+
+
+def _is_negative_confirmation(text: str) -> bool:
+    return any(word in text for word in ("아니요", "아니", "취소할게", "그만"))
+
+
+def _parse_phone(text: str) -> str | None:
+    match = re.search(r"(?<!\d)(01[016789])[- ]?(\d{3,4})[- ]?(\d{4})(?!\d)", text)
+    return "".join(match.groups()) if match is not None else None
+
+
+def _parse_name(text: str) -> str | None:
+    match = re.search(
+        r"(?:이름|예약자)(?:은|는|이|가)?\s*[:：]?\s*([가-힣A-Za-z]{2,30})",
+        text,
+    )
+    return match.group(1) if match is not None else None
+
+
+def _parse_reservation_code(text: str) -> str | None:
+    match = re.search(r"예약\s*번호(?:는|가)?\s*[:：]?\s*([A-Fa-f0-9-]{8,36})", text)
+    return match.group(1).replace("-", "").upper() if match is not None else None
+
+
+def _parse_datetime(
+    text: str,
+    *,
+    now: datetime,
+    timezone_name: str,
+) -> datetime | None:
+    selected_date: date | None = None
+    iso = re.search(r"\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\b", text)
+    korean = re.search(r"(?:(20\d{2})년\s*)?(\d{1,2})월\s*(\d{1,2})일", text)
+    try:
+        if iso is not None:
+            selected_date = date(int(iso.group(1)), int(iso.group(2)), int(iso.group(3)))
+        elif korean is not None:
+            year = int(korean.group(1)) if korean.group(1) else now.year
+            selected_date = date(year, int(korean.group(2)), int(korean.group(3)))
+            if korean.group(1) is None and selected_date < now.date():
+                selected_date = selected_date.replace(year=year + 1)
+        elif "모레" in text:
+            selected_date = now.date() + timedelta(days=2)
+        elif "내일" in text:
+            selected_date = now.date() + timedelta(days=1)
+        elif "오늘" in text:
+            selected_date = now.date()
+    except ValueError as error:
+        raise SalonBookingError("DATE_INVALID", "날짜를 확인해 주세요.") from error
+
+    clock = re.search(
+        r"(?:(오전|오후)\s*)?(\d{1,2})시(?:\s*(\d{1,2})분)?",
+        text,
+    )
+    colon = re.search(r"(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?!\d)", text)
+    if clock is None and colon is None:
+        return None
+    if selected_date is None:
+        selected_date = now.date()
+    if colon is not None:
+        hour = int(colon.group(1))
+        minute = int(colon.group(2))
+    else:
+        assert clock is not None
+        period = clock.group(1)
+        hour = int(clock.group(2))
+        minute = int(clock.group(3) or 0)
+        if not 1 <= hour <= 12 and period is not None:
+            raise SalonBookingError("TIME_INVALID", "시간을 확인해 주세요.")
+        if period == "오후" and hour < 12:
+            hour += 12
+        if period == "오전" and hour == 12:
+            hour = 0
+    try:
+        selected_time = time(hour, minute)
+    except ValueError as error:
+        raise SalonBookingError("TIME_INVALID", "시간을 확인해 주세요.") from error
+    return local_datetime(selected_date, selected_time, timezone_name)
+
+
+def _format_datetime(value: datetime) -> str:
+    weekday = "월화수목금토일"[value.weekday()]
+    return f"{value:%Y년 %-m월 %-d일}({weekday}) {value:%H시 %M분}"
+
+
+def _reservation_payload(item: Reservation) -> dict[str, object]:
+    return {
+        "reservation_id": str(item.reservation_id),
+        "reservation_code": item.short_code,
+        "customer_name": item.customer_name,
+        "phone_masked": item.phone[:3] + "****" + item.phone[-4:],
+        "service_id": item.service_id,
+        "staff_id": item.staff_id,
+        "starts_at": item.starts_at.isoformat(),
+        "ends_at": item.ends_at.isoformat(),
+        "status": item.status,
+        "version": item.version,
+    }

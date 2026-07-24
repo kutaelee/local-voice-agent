@@ -541,7 +541,9 @@ covers:
   interruption;
 - tool plans, Level 1/2 approval responses, execution events, and evidence IDs;
 - voice-profile settings and live runtime/worker/agent diagnostics;
-- STT-final, LLM-TTFT, TTS-first-audio, and playback-underrun measurements.
+- STT-final, LLM-TTFT, TTS-first-audio, and playback-underrun measurements;
+- a GPU-free text salon-call simulation, confirmation-bound reservation
+  changes, the masked reservation table, and owner notifications.
 
 The bootstrap rejects non-loopback and cross-origin requests, binds its
 short-lived credential to the client address and user agent, and keeps it
@@ -556,6 +558,36 @@ Stop this instance without disturbing the private-LAN Android gateway:
 The web portal does not replace physical APK checks for Bluetooth, earpiece,
 foreground service, audio focus, Keystore, rotation, backgrounding, or power
 management.
+
+To exercise only the text receptionist while GPU jobs belong to another
+project, omit `-EnableVoice` and `-EnableTools`:
+
+```powershell
+.\scripts\start-server.ps1 `
+  -InstanceName web-qa `
+  -ListenAddress 127.0.0.1 `
+  -Port 46326
+```
+
+The launcher defaults the immutable policy to the repository config, active
+reservation data to `E:\Data\LocalVoiceAgent\salon\reservations.json`, and
+pre-mutation fast-recovery copies to
+`D:\LocalBackup\LocalVoiceAgent\salon`. Override these only with the
+`LVA_SALON_*` environment variables for an isolated test. The newest verified
+D: recovery manifest is the current local recovery point. Off-machine backup
+is not configured for this feature; do not report one.
+
+Restore procedure:
+
+1. Stop both registered gateway instances and verify their listeners are
+   absent.
+2. Verify the selected recovery manifest and SHA-256.
+3. Copy the artifact to a new test path and start a test gateway with
+   `LVA_SALON_DATA_PATH` pointing there.
+4. Validate snapshot, create, change, and cancellation behavior.
+5. After explicit approval, preserve the current active file in a new
+   timestamped recovery container and replace it with the verified copy.
+6. Restart and verify the production snapshot.
 
 For the registered loopback PC-server process, start PostgreSQL and apply
 migrations first. Keep every token in the invoking process environment or an

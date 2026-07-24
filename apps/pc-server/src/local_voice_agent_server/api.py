@@ -37,6 +37,7 @@ from .application.model_switch import (
     ModelSwitchCoordinator,
     ModelSwitchEvent,
 )
+from .application.salon_calls import SalonCallCoordinator
 from .application.tool_execution_lifecycle import DurableToolExecutionLifecycle
 from .application.tool_planner import ToolPlanner
 from .application.voice_turn import VoiceTurnService
@@ -59,6 +60,8 @@ from .infrastructure.tool_executor_client import (
 )
 from .infrastructure.tool_registry import ToolRegistry
 from .infrastructure.persistence import PostgresStateStore
+from .infrastructure.file_reservations import FileReservationStore
+from .infrastructure.salon_config import load_salon_policy
 from .infrastructure.voice_profiles import (
     VOICE_STYLES,
     VoiceProfileError,
@@ -70,8 +73,12 @@ from .protocol.client_events import (
     AudioInputEndPayload,
     ApprovalResponsePayload,
     ClientPayload,
+    SalonCallEndPayload,
+    SalonCallMessagePayload,
+    SalonCallStartPayload,
     validate_client_payload,
 )
+from .domain.salon_booking import SalonReservationService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -82,6 +89,9 @@ ClientEventType = Literal[
     "audio.input.end",
     "tool.approval.response",
     "operation.cancel.requested",
+    "salon.call.start",
+    "salon.call.message",
+    "salon.call.end",
     "error",
 ]
 
@@ -425,6 +435,7 @@ def create_app(
     qa_runtime_status_provider: (
         Callable[[], dict[str, object]] | None
     ) = None,
+    salon_call_coordinator: SalonCallCoordinator | None = None,
     reconnect_grace_seconds: float = 120,
 ) -> FastAPI:
     if not 0.01 <= reconnect_grace_seconds <= 600:
@@ -434,6 +445,10 @@ def create_app(
         Callable[[UUID, ModelSwitchEvent], Awaitable[None]]
     ] = set()
     switch_subscribers_lock = asyncio.Lock()
+    salon_notification_subscribers: set[
+        Callable[[UUID, Any], Awaitable[None]]
+    ] = set()
+    salon_notification_subscribers_lock = asyncio.Lock()
     session_states: OrderedDict[UUID, _SessionReplayState] = OrderedDict()
     session_states_lock = asyncio.Lock()
     disconnect_cleanup_tasks: dict[UUID, asyncio.Task[None]] = {}
@@ -589,6 +604,29 @@ def create_app(
         return {
             "schema_version": "1.0",
             "agents": agents,
+        }
+
+    @app.get("/v1/salon/reservations")
+    async def salon_reservations(request: Request) -> dict[str, object]:
+        if not await request_authorized(request):
+            raise HTTPException(status_code=401, detail="invalid pairing token")
+        if salon_call_coordinator is None:
+            raise HTTPException(
+                status_code=503,
+                detail="salon call service is unavailable",
+            )
+        try:
+            reservations = await asyncio.to_thread(
+                salon_call_coordinator.reservation_snapshot
+            )
+        except Exception as error:
+            raise HTTPException(
+                status_code=503,
+                detail="salon reservation table is unavailable",
+            ) from error
+        return {
+            "schema_version": "1.0",
+            "reservations": reservations,
         }
 
     @app.get("/v1/models/status")
@@ -925,9 +963,22 @@ def create_app(
                 payload=event.payload,
             )
 
+        async def emit_salon_notification(
+            request_id: UUID,
+            event: Any,
+        ) -> None:
+            await send_event(
+                event_type=event.type,
+                request_id=request_id,
+                payload=event.payload,
+            )
+
         if model_switch_coordinator is not None:
             async with switch_subscribers_lock:
                 switch_subscribers.add(emit_model_switch)
+        if salon_call_coordinator is not None:
+            async with salon_notification_subscribers_lock:
+                salon_notification_subscribers.add(emit_salon_notification)
 
         async def send_error(
             *,
@@ -960,15 +1011,52 @@ def create_app(
                 )
 
             try:
-                outbound = await handler.handle(
-                    session_id=session_id,
-                    request_id=request_id,
-                    event_type=event_type,
-                    payload=payload,
-                    emit=emit,
-                )
+                if isinstance(
+                    payload,
+                    (
+                        SalonCallStartPayload,
+                        SalonCallMessagePayload,
+                        SalonCallEndPayload,
+                    ),
+                ):
+                    if salon_call_coordinator is None:
+                        raise ValueError("salon call service is unavailable")
+                    outbound = await salon_call_coordinator.handle(
+                        session_id=session_id,
+                        event_type=event_type,
+                        text=(
+                            payload.text
+                            if isinstance(payload, SalonCallMessagePayload)
+                            else None
+                        ),
+                    )
+                else:
+                    outbound = await handler.handle(
+                        session_id=session_id,
+                        request_id=request_id,
+                        event_type=event_type,
+                        payload=payload,
+                        emit=emit,
+                    )
                 for item in outbound:
-                    await emit(item)
+                    if item.type != "salon.owner.notification":
+                        await emit(item)
+                        continue
+                    async with salon_notification_subscribers_lock:
+                        subscribers = tuple(salon_notification_subscribers)
+                    failed = []
+                    for subscriber in subscribers:
+                        try:
+                            await asyncio.wait_for(
+                                subscriber(request_id, item),
+                                timeout=2,
+                            )
+                        except Exception:
+                            failed.append(subscriber)
+                    if failed:
+                        async with salon_notification_subscribers_lock:
+                            for subscriber in failed:
+                                salon_notification_subscribers.discard(subscriber)
             except asyncio.CancelledError:
                 return
             except Exception:
@@ -1069,6 +1157,8 @@ def create_app(
                         if current is None or current.connected:
                             return
                     await handler.disconnect(session_id=session_id)
+                    if salon_call_coordinator is not None:
+                        await salon_call_coordinator.disconnect(session_id)
                     async with session_states_lock:
                         current = session_states.get(session_id)
                         if current is replay_state and not current.connected:
@@ -1086,6 +1176,11 @@ def create_app(
             if model_switch_coordinator is not None:
                 async with switch_subscribers_lock:
                     switch_subscribers.discard(emit_model_switch)
+            if salon_call_coordinator is not None:
+                async with salon_notification_subscribers_lock:
+                    salon_notification_subscribers.discard(
+                        emit_salon_notification
+                    )
 
     return app
 
@@ -1099,6 +1194,7 @@ def create_app_from_environment() -> FastAPI:
         activity_barrier=model_activity_barrier,
     )
     voice_profile_store = _voice_profile_store_from_environment()
+    salon_call_coordinator = _salon_call_coordinator_from_environment()
     return create_app(
         ServerSettings.from_environment(),
         event_handler=_event_handler_from_environment(
@@ -1112,6 +1208,7 @@ def create_app_from_environment() -> FastAPI:
         model_switch_coordinator=model_switch_coordinator,
         voice_profile_store=voice_profile_store,
         qa_runtime_status_provider=_qa_runtime_status_provider_from_environment(),
+        salon_call_coordinator=salon_call_coordinator,
     )
 
 
@@ -1234,6 +1331,41 @@ def _state_store_from_environment() -> PostgresStateStore | None:
     if not database_url:
         raise RuntimeError("LVA_DATABASE_URL is required when tools are enabled")
     return PostgresStateStore.from_url(database_url)
+
+
+def _salon_call_coordinator_from_environment() -> SalonCallCoordinator | None:
+    if os.environ.get("LVA_SALON_ENABLED", "1") != "1":
+        return None
+    policy_path = Path(
+        os.environ.get(
+            "LVA_SALON_POLICY_PATH",
+            "/mnt/c/Dev/Repos/local-voice-agent/configs/salon-booking.json",
+        )
+    )
+    data_path = Path(
+        os.environ.get(
+            "LVA_SALON_RESERVATIONS_PATH",
+            "/mnt/e/Data/LocalVoiceAgent/salon/reservations.json",
+        )
+    )
+    backup_root = Path(
+        os.environ.get(
+            "LVA_SALON_BACKUP_ROOT",
+            "/mnt/d/LocalBackup/LocalVoiceAgent/salon",
+        )
+    )
+    policy = load_salon_policy(policy_path)
+    store = FileReservationStore(
+        data_path=data_path,
+        backup_root=backup_root,
+    )
+    store.initialize()
+    return SalonCallCoordinator(
+        reservations=SalonReservationService(
+            policy=policy,
+            repository=store,
+        )
+    )
 
 
 def _agent_status_provider_from_environment(

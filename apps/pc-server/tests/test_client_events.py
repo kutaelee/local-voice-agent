@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from local_voice_agent_server.protocol.client_events import (
     AudioInputChunkPayload,
+    SalonCallMessagePayload,
     validate_client_payload,
 )
 
@@ -57,4 +58,23 @@ def test_payload_rejects_unknown_field() -> None:
                 "channels": 1,
                 "extra": True,
             },
+        )
+
+
+def test_salon_call_message_is_closed_and_bounded() -> None:
+    payload = validate_client_payload(
+        "salon.call.message",
+        {"text": "내일 오후 2시에 커트 예약하고 싶어요"},
+    )
+    assert isinstance(payload, SalonCallMessagePayload)
+
+    with pytest.raises(ValidationError):
+        validate_client_payload(
+            "salon.call.message",
+            {"text": "예약", "unexpected": True},
+        )
+    with pytest.raises(ValidationError):
+        validate_client_payload(
+            "salon.call.message",
+            {"text": "x" * 2001},
         )

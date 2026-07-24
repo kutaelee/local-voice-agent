@@ -205,3 +205,14 @@ firewall change was made.
 | Web QA automatic loopback pairing | Passed | Three security regressions cover same-origin loopback issuance, missing-origin/remote/cross-origin rejection, changed-fingerprint rejection, authenticated runtime status, and WebSocket ticket issuance. The full PC-server suite completed 185 passing tests with two environment-dependent skips. |
 | Short-sentence continuity and stable Qwen speaker sampling | Passed (automated/live; listening confirmation pending) | Short Korean sentences are coalesced into a 32-character-or-longer natural semantic unit, long clauses may split at punctuation after 40 characters, and unpunctuated units are bounded at 96 characters. A rejected PCM crossfade experiment was removed after listening QA. Profile-bound seeding makes repeated synthesis byte-identical. The PC-server suite completed 188 passing tests with two environment-dependent skips. Five live repeated apology requests produced the same 0.800-second PCM digest; subjective voice identity and prosody remain user QA. |
 | Natural unit release and numeric fragment handling | Passed (automated/live configuration; listening confirmation pending) | Active-worker inspection confirmed zero worker tail. Production now applies a 24 ms release plus 90 ms unit pause and a 110 ms final tail, without waveform overlap. Non-streamed tool replies share semantic grouping; list markers bind to their description and isolated numerals receive a natural spoken suffix without changing the transcript. The PC-server suite completed 191 passing tests with two environment-dependent skips. |
+
+## 2026-07-25 salon receptionist text slice
+
+| Check | Result | Evidence |
+|---|---|---|
+| PC-server full suite | Passed | 214 collected: 212 passed and two environment-dependent cases skipped |
+| Salon conversation catalog | Passed | 22 GPU-free cases cover greeting, FAQs, scope refusal, availability, missing fields, confirmation, booking, closed/outside/misaligned slots, change and cancellation |
+| Protocol and API | Passed | Closed client payloads, authenticated reservation snapshot, WebSocket call lifecycle, and cross-session masked owner notification |
+| Reservation integrity | Passed | Atomic file store, append-only pre-mutation recovery manifest, duplicate prevention, overlap/staff assignment, hours/horizon/alignment, code+phone change/cancel verification |
+| Android unit tests and lint | Passed | 29/29 debug unit tests and lint completed successfully with the project-isolated Android SDK |
+| User listening and physical notification QA | Not run | Deliberately deferred until the text model smoke and final TTS attachment are complete |

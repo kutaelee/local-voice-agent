@@ -1,9 +1,16 @@
 package dev.localvoiceagent.android.ui
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.util.Base64
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.core.content.ContextCompat
@@ -19,6 +26,7 @@ import dev.localvoiceagent.android.network.VoiceSettingsDto
 import dev.localvoiceagent.android.protocol.ProtocolEnvelope
 import dev.localvoiceagent.android.security.PairingTokenStore
 import dev.localvoiceagent.android.storage.LocalStateStore
+import dev.localvoiceagent.android.R
 import java.util.UUID
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
@@ -597,6 +605,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         text = envelope.payload.getValue("text").jsonPrimitive.content,
                     ),
                 )
+                "salon.assistant.message" -> reduce(
+                    AppAction.SetAssistantText(
+                        requestId = envelope.requestId.toString(),
+                        sequence = envelope.sequence,
+                        text = envelope.payload.getValue("text").jsonPrimitive.content,
+                    ),
+                )
+                "salon.call.started" -> reduce(AppAction.StartConversation)
+                "salon.call.ended" -> reduce(AppAction.EndConversation)
+                "salon.reservation.updated" -> {
+                    val change = envelope.payload.getValue("change_type")
+                        .jsonPrimitive.content
+                    val summary = "Salon reservation $change"
+                    reduce(
+                        AppAction.SetExecutionSummary(
+                            sequence = envelope.sequence,
+                            summary = summary,
+                        ),
+                    )
+                    viewModelScope.launch {
+                        localState.saveExecutionSummary(envelope.sequence, summary)
+                    }
+                }
+                "salon.owner.notification" -> {
+                    val title = envelope.payload.getValue("title").jsonPrimitive.content
+                    val body = envelope.payload.getValue("body").jsonPrimitive.content
+                    showSalonNotification(title, body)
+                    reduce(
+                        AppAction.SetExecutionSummary(
+                            sequence = envelope.sequence,
+                            summary = "$title: $body",
+                        ),
+                    )
+                    viewModelScope.launch {
+                        localState.saveExecutionSummary(
+                            envelope.sequence,
+                            "$title: $body",
+                        )
+                    }
+                }
                 "audio.output.chunk" -> {
                     val data = Base64.decode(
                         envelope.payload.getValue("data_base64").jsonPrimitive.content,
@@ -699,7 +747,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         else -> AssistantState.IDLE
     }
 
+    private fun showSalonNotification(title: String, body: String) {
+        val application = getApplication<Application>()
+        val manager = application.getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    SALON_NOTIFICATION_CHANNEL,
+                    "Salon reservations",
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ),
+            )
+        }
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ActivityCompat.checkSelfPermission(
+                application,
+                android.Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        val notification = NotificationCompat.Builder(
+            application,
+            SALON_NOTIFICATION_CHANNEL,
+        )
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(application).notify(
+            title.hashCode(),
+            notification,
+        )
+    }
+
     private fun reduce(action: AppAction) {
         mutableState.value = AppReducer.reduce(mutableState.value, action)
+    }
+
+    private companion object {
+        const val SALON_NOTIFICATION_CHANNEL = "salon_reservations"
     }
 }

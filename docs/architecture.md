@@ -17,6 +17,7 @@ rollback, model runtime state, and agent task state.
 | Workspace | Allowlisted roots, project profiles, hash preconditions |
 | AgentStatus | Fact adapters and confidence labels |
 | Observability | Structured logs, metrics, evidence metadata |
+| SalonReception | Scoped receptionist persona, booking rules, call state, owner notification |
 
 ## Process boundaries
 
@@ -148,6 +149,16 @@ Aggregate ownership, compare-and-swap transitions, idempotency constraints,
 transaction boundaries, and migration rollback are detailed in
 [`database-design.md`](database-design.md).
 
+The salon demonstration uses a deliberately smaller persistence adapter while
+telephony is deferred. Its committed policy is immutable at runtime; active
+reservations are held in one versioned JSON document under
+`E:\Data\LocalVoiceAgent\salon`. Mutations are serialized, validated by the
+domain service, written atomically, and preceded by a checksummed append-only
+copy under `D:\LocalBackup\LocalVoiceAgent\salon`. The browser and Android
+receive masked projections rather than the stored phone number. This adapter
+can later be replaced by a PostgreSQL repository without changing the
+aggregate or WebSocket contracts.
+
 ## Protocol
 
 WebSocket envelopes contain `schema_version`, `type`, `session_id`,
@@ -157,6 +168,8 @@ after measured LAN latency and complexity comparisons.
 
 Android UDF state, audio interruption, pairing, reconnection, and device-test
 boundaries are detailed in [`android-design.md`](android-design.md).
+The scoped salon call and notification flow is detailed in
+[`salon-receptionist.md`](salon-receptionist.md).
 VAD, STT/TTS isolation, streaming boundaries, and barge-in measurements are
 detailed in [`audio-design.md`](audio-design.md).
 

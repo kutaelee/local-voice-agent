@@ -152,6 +152,18 @@ and path escape, and receives no arbitrary model-generated path. Removing a
 profile remains a separate destructive operation and is not exposed in this
 slice.
 
+Salon reservation handling has a separate deterministic authority boundary.
+The receptionist and any future LLM wording adapter cannot write files
+directly. Only the reservation domain service may mutate the fixed active
+JSON path, and only after an explicit caller confirmation. It validates
+hours, horizon, slot alignment, staff capability and overlap. Change and
+cancellation additionally require both the reservation code and normalized
+phone number. The file adapter rejects symbolic-link paths, bounds input,
+writes atomically, and creates a checksummed append-only pre-mutation recovery
+copy on D:. Browser snapshots, WebSocket owner notifications, and Android
+notification text mask the customer phone number. Full phone numbers never
+enter Git, application logs, or protocol evidence.
+
 ## Approval integrity
 
 Approvals bind to the exact tool, normalized arguments, target fingerprint,

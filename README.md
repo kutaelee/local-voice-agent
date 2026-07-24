@@ -82,7 +82,7 @@ physical-device barge-in/audio QA is complete.
 The product is a modular monolith with light DDD and hexagonal boundaries.
 GPU workers and the tool executor are separate processes. The main domains are
 Conversation, Model Routing, Tool Execution, Approval, Workspace, Agent
-Status, and Observability.
+Status, Observability, and the file-backed Salon Receptionist demonstration.
 
 See [docs/architecture.md](docs/architecture.md) and
 [docs/product-requirements.md](docs/product-requirements.md).
@@ -95,6 +95,8 @@ See [docs/architecture.md](docs/architecture.md) and
 | Models | `E:\AI\Models\Standalone\LocalVoiceAgent` |
 | Download and Hugging Face cache | `E:\Cache\LocalVoiceAgent` |
 | Runtime logs, sessions, evidence, backups, temp | `E:\Data\LocalVoiceAgent` |
+| Active salon reservation data | `E:\Data\LocalVoiceAgent\salon` |
+| Salon fast-recovery copies | `D:\LocalBackup\LocalVoiceAgent\salon` |
 | PostgreSQL active data | `E:\Data\DB\Active\LocalVoiceAgent` |
 | Windows Tool Executor runtime | `C:\Dev\Tools\LocalVoiceAgent\runtimes\tool-executor` |
 | WSL user runtimes | `/home/kutae/.local/share/local-voice-agent/runtimes` |
@@ -155,6 +157,13 @@ listener is loopback-only and does not create a firewall rule. Use
 Physical Android QA is still required for foreground-service lifecycle,
 Bluetooth/earpiece routing, audio focus, Keystore persistence, and power
 management.
+
+The same portal also exposes a GPU-free text-first **예약 전화 시뮬레이션**.
+Starting that conversation represents an incoming salon call. It exercises
+the committed hours/services policy, confirmation-bound reservation changes,
+the masked file-backed schedule, and connected-app owner notifications
+without starting VAD, STT, an LLM, or TTS. See
+[docs/salon-receptionist.md](docs/salon-receptionist.md).
 
 After setting an untracked `LVA_TOOL_EXECUTOR_TOKEN` with at least 32 random
 characters, the isolated executor can be started and stopped with

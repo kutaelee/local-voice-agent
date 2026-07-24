@@ -77,6 +77,23 @@ Rollback applies the inverse patch only when the current hash still matches
 the postcondition. A mismatch stops automatic rollback and requests manual
 review.
 
+### Salon reservation table
+
+Stop both registered gateway instances before restoring the salon table.
+Locate the newest successful
+`D:\LocalBackup\LocalVoiceAgent\salon\<timestamp>\recovery-manifest.json`,
+verify its recorded SHA-256 against `reservations.json`, and first start a
+test gateway with `LVA_SALON_DATA_PATH` pointed at a new test copy. Validate
+the reservation snapshot and representative booking/change/cancel cases.
+Only after that validation and explicit user approval may the active
+`E:\Data\LocalVoiceAgent\salon\reservations.json` be replaced. Preserve the
+current active file as a new timestamped recovery artifact; never overwrite
+it as the restore test. Restart the gateways and verify the snapshot.
+
+The latest local recovery point is the newest verified D: manifest. No
+off-machine backup job is configured for salon reservations yet, so there is
+currently no off-machine recovery point.
+
 ## External/system changes
 
 No driver, WSL feature, distribution, firewall, registry, system PATH, BIOS,

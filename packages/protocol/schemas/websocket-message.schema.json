@@ -41,6 +41,14 @@
         "model.switch.completed",
         "operation.cancel.requested",
         "operation.cancel.result",
+        "salon.call.start",
+        "salon.call.message",
+        "salon.call.end",
+        "salon.call.started",
+        "salon.assistant.message",
+        "salon.reservation.updated",
+        "salon.owner.notification",
+        "salon.call.ended",
         "error"
       ]
     },

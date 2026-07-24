@@ -51,6 +51,31 @@ class ProtocolEnvelopeTest {
     }
 
     @Test
+    fun salonOwnerNotificationParses() {
+        val envelope = ProtocolEnvelope.parse(
+            """
+            {
+              "schema_version":"1.0",
+              "type":"salon.owner.notification",
+              "session_id":"$sessionId",
+              "request_id":"$requestId",
+              "sequence":3,
+              "timestamp":"2026-07-25T10:00:00+09:00",
+              "payload":{
+                "title":"윤슬 헤어 예약 확정",
+                "body":"7월 26일 오후 2시 커트 예약",
+                "change_type":"created",
+                "reservation_id":"76c34365-ec83-4ba9-940b-e2fd7db34340"
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals("salon.owner.notification", envelope.type)
+        assertEquals(3, envelope.sequence)
+    }
+
+    @Test
     fun naiveTimestampAndUnknownTypeAreRejected() {
         assertThrows(Exception::class.java) {
             ProtocolEnvelope.parse(

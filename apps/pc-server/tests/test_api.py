@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
+from pathlib import Path
 from threading import Event
 import time
 from uuid import uuid4
@@ -20,14 +21,21 @@ from local_voice_agent_server.application.model_switch import (
     ModelSwitchCoordinator,
     RuntimeActionReceipt,
 )
+from local_voice_agent_server.application.salon_calls import SalonCallCoordinator
 from local_voice_agent_server.application.session_events import OutboundEvent
 from local_voice_agent_server.domain.model_runtime import (
     ModelRuntime,
     ModelRuntimeState,
 )
+from local_voice_agent_server.domain.salon_booking import SalonReservationService
+from local_voice_agent_server.infrastructure.file_reservations import (
+    FileReservationStore,
+)
+from local_voice_agent_server.infrastructure.salon_config import load_salon_policy
 
 
 TOKEN = "test-only-pairing-token-with-32-chars"
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def client() -> TestClient:
@@ -792,3 +800,139 @@ def test_websocket_forwards_emitted_event_before_returned_events() -> None:
     assert streamed["type"] == "assistant.text.delta"
     assert terminal["type"] == "assistant.text.final"
     assert streamed["sequence"] < terminal["sequence"]
+
+
+def test_websocket_runs_salon_text_call_without_voice_or_model(
+    tmp_path: Path,
+) -> None:
+    policy = load_salon_policy(REPO_ROOT / "configs" / "salon-booking.json")
+    now = lambda: datetime(2026, 7, 25, 9, 0, tzinfo=policy.timezone)
+    coordinator = SalonCallCoordinator(
+        reservations=SalonReservationService(
+            policy=policy,
+            repository=FileReservationStore(
+                data_path=tmp_path / "reservations.json",
+                backup_root=tmp_path / "backup",
+            ),
+            now=now,
+        ),
+        now=now,
+    )
+    session_id = uuid4()
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        salon_call_coordinator=coordinator,
+    )
+    with TestClient(app).websocket_connect(
+        f"/v1/sessions/{session_id}/events",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+    ) as websocket:
+        assert websocket.receive_json()["type"] == "assistant.state"
+        websocket.send_json(
+            client_event(
+                event_type="salon.call.start",
+                session_id=str(session_id),
+                request_id=str(uuid4()),
+                sequence=0,
+                payload={"channel": "web_qa"},
+            )
+        )
+        assert websocket.receive_json()["type"] == "salon.call.started"
+        assert websocket.receive_json()["type"] == "salon.assistant.message"
+        assert websocket.receive_json()["type"] == "assistant.state"
+        websocket.send_json(
+            client_event(
+                event_type="salon.call.message",
+                session_id=str(session_id),
+                request_id=str(uuid4()),
+                sequence=1,
+                payload={"text": "커트 가격은 얼마예요?"},
+            )
+        )
+        answer = websocket.receive_json()
+    assert answer["type"] == "salon.assistant.message"
+    assert "25,000원" in answer["payload"]["text"]
+
+    table = TestClient(app).get(
+        "/v1/salon/reservations",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+    )
+    assert table.status_code == 200
+    assert table.json() == {"schema_version": "1.0", "reservations": []}
+
+
+def test_salon_reservation_notification_is_broadcast_to_another_app_session(
+    tmp_path: Path,
+) -> None:
+    policy = load_salon_policy(REPO_ROOT / "configs" / "salon-booking.json")
+    now = lambda: datetime(2026, 7, 25, 9, 0, tzinfo=policy.timezone)
+    coordinator = SalonCallCoordinator(
+        reservations=SalonReservationService(
+            policy=policy,
+            repository=FileReservationStore(
+                data_path=tmp_path / "reservations.json",
+                backup_root=tmp_path / "backup",
+            ),
+            now=now,
+        ),
+        now=now,
+    )
+    caller_session = uuid4()
+    owner_session = uuid4()
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        salon_call_coordinator=coordinator,
+    )
+    api = TestClient(app)
+    with api.websocket_connect(
+        f"/v1/sessions/{owner_session}/events",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+    ) as owner:
+        owner.receive_json()
+        with api.websocket_connect(
+            f"/v1/sessions/{caller_session}/events",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        ) as caller:
+            caller.receive_json()
+            caller.send_json(
+                client_event(
+                    event_type="salon.call.start",
+                    session_id=str(caller_session),
+                    request_id=str(uuid4()),
+                    sequence=0,
+                    payload={"channel": "web_qa"},
+                )
+            )
+            for _ in range(3):
+                caller.receive_json()
+            caller.send_json(
+                client_event(
+                    event_type="salon.call.message",
+                    session_id=str(caller_session),
+                    request_id=str(uuid4()),
+                    sequence=1,
+                    payload={
+                        "text": (
+                            "7월 26일 오후 2시에 커트 예약. "
+                            "이름은 김규태, 010-1234-5678"
+                        )
+                    },
+                )
+            )
+            caller.receive_json()
+            caller.send_json(
+                client_event(
+                    event_type="salon.call.message",
+                    session_id=str(caller_session),
+                    request_id=str(uuid4()),
+                    sequence=2,
+                    payload={"text": "네"},
+                )
+            )
+            assert caller.receive_json()["type"] == "salon.assistant.message"
+            assert caller.receive_json()["type"] == "salon.reservation.updated"
+            assert caller.receive_json()["type"] == "salon.owner.notification"
+            notification = owner.receive_json()
+
+    assert notification["type"] == "salon.owner.notification"
+    assert notification["payload"]["change_type"] == "created"

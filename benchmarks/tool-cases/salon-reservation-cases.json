@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "description": "GPU-free deterministic salon receptionist text cases",
+  "fixed_now": "2026-07-25T09:00:00+09:00",
+  "cases": [
+    {"id": "greeting", "messages": ["안녕하세요"], "expected_contains": "어떤 예약"},
+    {"id": "business-hours", "messages": ["영업시간이 어떻게 돼요?"], "expected_contains": "월 휴무"},
+    {"id": "prices", "messages": ["커트 가격은 얼마예요?"], "expected_contains": "커트 25,000원"},
+    {"id": "services", "messages": ["어떤 시술을 하나요?"], "expected_contains": "클리닉 약 60분"},
+    {"id": "location", "messages": ["미용실 위치가 어디예요?"], "expected_contains": "성수이로 25"},
+    {"id": "parking", "messages": ["주차 가능한가요?"], "expected_contains": "2시간 무료"},
+    {"id": "cancellation-policy", "messages": ["취소 규정 알려주세요"], "expected_contains": "방문 2시간 전"},
+    {"id": "scope-weather", "messages": ["내일 날씨 알려줘"], "expected_contains": "미용실 예약"},
+    {"id": "scope-code", "messages": ["파이썬 코드를 고쳐줘"], "expected_contains": "미용실 예약"},
+    {"id": "scope-stock", "messages": ["삼성전자 주가 알려줘"], "expected_contains": "미용실 예약"},
+    {"id": "availability", "messages": ["7월 26일 오후 3시에 염색 가능해요?"], "expected_contains": "예약이 가능합니다"},
+    {"id": "missing-service", "messages": ["7월 26일 오후 2시에 예약할게요"], "expected_contains": "원하시는 시술"},
+    {"id": "missing-date", "messages": ["커트 예약할게요"], "expected_contains": "날짜와 시간"},
+    {"id": "missing-name", "messages": ["7월 26일 오후 2시에 커트 예약할게요"], "expected_contains": "예약자 이름"},
+    {
+      "id": "missing-phone",
+      "messages": ["7월 26일 오후 2시에 커트 예약할게요. 이름은 김규태"],
+      "expected_contains": "휴대전화 번호"
+    },
+    {
+      "id": "book-success",
+      "messages": [
+        "7월 26일 오후 2시에 커트 예약할게요. 이름은 김규태, 010-1234-5678",
+        "네"
+      ],
+      "expected_contains": "예약이 확정됐습니다",
+      "expected_event": "salon.reservation.updated"
+    },
+    {
+      "id": "closed-day",
+      "messages": [
+        "7월 27일 오후 2시에 커트 예약할게요. 이름은 김규태, 010-1111-1111",
+        "네"
+      ],
+      "expected_contains": "정기 휴무일",
+      "expected_error_code": "SALON_CLOSED"
+    },
+    {
+      "id": "outside-hours",
+      "messages": [
+        "7월 26일 오전 9시에 커트 예약할게요. 이름은 김규태, 010-2222-2222",
+        "네"
+      ],
+      "expected_contains": "영업시간 안",
+      "expected_error_code": "OUTSIDE_BUSINESS_HOURS"
+    },
+    {
+      "id": "misaligned-slot",
+      "messages": [
+        "7월 26일 오후 2시 10분에 커트 예약할게요. 이름은 김규태, 010-3333-3333",
+        "네"
+      ],
+      "expected_contains": "30분 단위",
+      "expected_error_code": "SLOT_ALIGNMENT_INVALID"
+    },
+    {"id": "cancel-missing-code", "messages": ["예약 취소할게요"], "expected_contains": "예약번호 8자리"},
+    {"id": "modify-missing-code", "messages": ["예약을 내일로 변경할게요"], "expected_contains": "변경할 예약번호"},
+    {
+      "id": "reject-confirmation",
+      "messages": [
+        "7월 26일 오후 4시에 커트 예약할게요. 이름은 김규태, 010-4444-4444",
+        "아니요"
+      ],
+      "expected_contains": "반영하지 않았습니다"
+    }
+  ]
+}

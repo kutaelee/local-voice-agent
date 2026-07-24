@@ -80,6 +80,18 @@ class ClientErrorPayload(ClosedPayload):
     evidence_id: Annotated[str | None, Field(max_length=256)] = None
 
 
+class SalonCallStartPayload(ClosedPayload):
+    channel: Literal["web_qa", "android"]
+
+
+class SalonCallMessagePayload(ClosedPayload):
+    text: Annotated[str, Field(min_length=1, max_length=2000)]
+
+
+class SalonCallEndPayload(ClosedPayload):
+    reason: Literal["caller_hangup", "owner_end", "session_closing"]
+
+
 ClientPayload = (
     AudioInputStartPayload
     | AudioInputChunkPayload
@@ -87,6 +99,9 @@ ClientPayload = (
     | ApprovalResponsePayload
     | OperationCancelPayload
     | ClientErrorPayload
+    | SalonCallStartPayload
+    | SalonCallMessagePayload
+    | SalonCallEndPayload
 )
 
 _PAYLOAD_TYPES: dict[str, type[ClosedPayload]] = {
@@ -95,6 +110,9 @@ _PAYLOAD_TYPES: dict[str, type[ClosedPayload]] = {
     "audio.input.end": AudioInputEndPayload,
     "tool.approval.response": ApprovalResponsePayload,
     "operation.cancel.requested": OperationCancelPayload,
+    "salon.call.start": SalonCallStartPayload,
+    "salon.call.message": SalonCallMessagePayload,
+    "salon.call.end": SalonCallEndPayload,
     "error": ClientErrorPayload,
 }
 

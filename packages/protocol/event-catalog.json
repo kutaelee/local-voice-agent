@@ -24,6 +24,14 @@
     {"type": "model.switch.completed", "direction": "pc_to_android", "replayable": true},
     {"type": "operation.cancel.requested", "direction": "android_to_pc", "replayable": true},
     {"type": "operation.cancel.result", "direction": "pc_to_android", "replayable": true},
+    {"type": "salon.call.start", "direction": "android_to_pc", "replayable": true},
+    {"type": "salon.call.message", "direction": "android_to_pc", "replayable": true},
+    {"type": "salon.call.end", "direction": "android_to_pc", "replayable": true},
+    {"type": "salon.call.started", "direction": "pc_to_android", "replayable": true},
+    {"type": "salon.assistant.message", "direction": "pc_to_android", "replayable": true},
+    {"type": "salon.reservation.updated", "direction": "pc_to_android", "replayable": true},
+    {"type": "salon.owner.notification", "direction": "pc_to_android", "replayable": true},
+    {"type": "salon.call.ended", "direction": "pc_to_android", "replayable": true},
     {"type": "error", "direction": "bidirectional", "replayable": true}
   ]
 }

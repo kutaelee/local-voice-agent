@@ -60,6 +60,11 @@ data class ProtocolEnvelope(
             "model.switch.started",
             "model.switch.completed",
             "operation.cancel.result",
+            "salon.call.started",
+            "salon.assistant.message",
+            "salon.reservation.updated",
+            "salon.owner.notification",
+            "salon.call.ended",
             "error",
         )
 
@@ -69,6 +74,9 @@ data class ProtocolEnvelope(
             "audio.input.end",
             "tool.approval.response",
             "operation.cancel.requested",
+            "salon.call.start",
+            "salon.call.message",
+            "salon.call.end",
             "error",
         )
 

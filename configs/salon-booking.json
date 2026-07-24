@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "salon": {
+    "name": "윤슬 헤어",
+    "receptionist_name": "수아",
+    "timezone": "Asia/Seoul",
+    "address": "서울시 성동구 성수이로 25, 2층",
+    "phone": "02-555-0125",
+    "parking": "건물 뒤편 주차장을 2시간 무료로 이용할 수 있습니다.",
+    "cancellation_policy": "예약 변경과 취소는 방문 2시간 전까지 수수료 없이 가능합니다.",
+    "booking_horizon_days": 90,
+    "slot_minutes": 30
+  },
+  "business_hours": {
+    "monday": null,
+    "tuesday": {"opens_at": "10:00", "closes_at": "19:00"},
+    "wednesday": {"opens_at": "10:00", "closes_at": "19:00"},
+    "thursday": {"opens_at": "10:00", "closes_at": "19:00"},
+    "friday": {"opens_at": "10:00", "closes_at": "20:00"},
+    "saturday": {"opens_at": "10:00", "closes_at": "20:00"},
+    "sunday": {"opens_at": "10:00", "closes_at": "18:00"}
+  },
+  "services": [
+    {
+      "service_id": "haircut",
+      "name": "커트",
+      "duration_minutes": 45,
+      "price_won": 25000,
+      "aliases": ["컷", "남자 커트", "여자 커트"]
+    },
+    {
+      "service_id": "color",
+      "name": "염색",
+      "duration_minutes": 120,
+      "price_won": 90000,
+      "aliases": ["컬러", "뿌리 염색"]
+    },
+    {
+      "service_id": "perm",
+      "name": "펌",
+      "duration_minutes": 150,
+      "price_won": 120000,
+      "aliases": ["파마", "다운펌"]
+    },
+    {
+      "service_id": "clinic",
+      "name": "클리닉",
+      "duration_minutes": 60,
+      "price_won": 60000,
+      "aliases": ["트리트먼트", "헤어 클리닉"]
+    }
+  ],
+  "staff": [
+    {
+      "staff_id": "minji",
+      "name": "민지",
+      "service_ids": ["haircut", "color", "perm", "clinic"]
+    },
+    {
+      "staff_id": "jun",
+      "name": "준",
+      "service_ids": ["haircut", "color", "perm"]
+    },
+    {
+      "staff_id": "sora",
+      "name": "소라",
+      "service_ids": ["haircut", "color", "clinic"]
+    }
+  ]
+}

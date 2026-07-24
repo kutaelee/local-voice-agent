@@ -84,6 +84,7 @@
         "state": {
           "enum": [
             "connecting",
+            "idle",
             "listening",
             "recognizing",
             "thinking",
@@ -393,6 +394,106 @@
         "final_state": {"type": "string", "minLength": 1, "maxLength": 128},
         "summary": {"type": "string", "maxLength": 4096},
         "evidence_id": {"type": ["string", "null"], "maxLength": 256}
+      },
+      "additionalProperties": false
+    },
+    "salon.call.start": {
+      "type": "object",
+      "required": ["channel"],
+      "properties": {
+        "channel": {"enum": ["web_qa", "android"]}
+      },
+      "additionalProperties": false
+    },
+    "salon.call.message": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1, "maxLength": 2000}
+      },
+      "additionalProperties": false
+    },
+    "salon.call.end": {
+      "type": "object",
+      "required": ["reason"],
+      "properties": {
+        "reason": {"enum": ["caller_hangup", "owner_end", "session_closing"]}
+      },
+      "additionalProperties": false
+    },
+    "salon.call.started": {
+      "type": "object",
+      "required": ["call_id", "status"],
+      "properties": {
+        "call_id": {"$ref": "#/$defs/_uuid"},
+        "status": {"enum": ["active", "already_active"]},
+        "persona": {"type": "string", "maxLength": 64},
+        "salon_name": {"type": "string", "maxLength": 128}
+      },
+      "additionalProperties": false
+    },
+    "salon.assistant.message": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "error_code": {"type": "string", "maxLength": 128}
+      },
+      "additionalProperties": false
+    },
+    "salon.reservation.updated": {
+      "type": "object",
+      "required": ["change_type", "reservation"],
+      "properties": {
+        "change_type": {"enum": ["created", "modified", "cancelled"]},
+        "reservation": {
+          "type": "object",
+          "required": [
+            "reservation_id",
+            "reservation_code",
+            "customer_name",
+            "phone_masked",
+            "service_id",
+            "staff_id",
+            "starts_at",
+            "ends_at",
+            "status",
+            "version"
+          ],
+          "properties": {
+            "reservation_id": {"$ref": "#/$defs/_uuid"},
+            "reservation_code": {"type": "string", "pattern": "^[A-F0-9]{8}$"},
+            "customer_name": {"type": "string", "minLength": 1, "maxLength": 64},
+            "phone_masked": {"type": "string", "maxLength": 32},
+            "service_id": {"type": "string", "maxLength": 64},
+            "staff_id": {"type": "string", "maxLength": 64},
+            "starts_at": {"type": "string", "format": "date-time"},
+            "ends_at": {"type": "string", "format": "date-time"},
+            "status": {"enum": ["confirmed", "cancelled"]},
+            "version": {"type": "integer", "minimum": 1}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "salon.owner.notification": {
+      "type": "object",
+      "required": ["title", "body", "change_type", "reservation_id"],
+      "properties": {
+        "title": {"type": "string", "minLength": 1, "maxLength": 128},
+        "body": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "change_type": {"enum": ["created", "modified", "cancelled"]},
+        "reservation_id": {"$ref": "#/$defs/_uuid"}
+      },
+      "additionalProperties": false
+    },
+    "salon.call.ended": {
+      "type": "object",
+      "required": ["call_id", "status"],
+      "properties": {
+        "call_id": {"$ref": "#/$defs/_uuid"},
+        "status": {"const": "completed"}
       },
       "additionalProperties": false
     },

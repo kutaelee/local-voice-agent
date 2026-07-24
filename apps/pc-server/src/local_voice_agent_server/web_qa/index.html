@@ -61,16 +61,54 @@
           </label>
         </div>
 
+        <div class="salon-console">
+          <div class="salon-console-heading">
+            <div>
+              <span class="salon-label">SALON CALL · TEXT FIRST</span>
+              <strong>예약 전화 시뮬레이션</strong>
+            </div>
+            <span id="salonCallStatus" class="badge muted">대기</span>
+          </div>
+          <p class="salon-copy">
+            전화 수신 대신 웹 텍스트로 예약·변경·취소·가격·영업시간을 검증합니다.
+            다른 주제는 페르소나가 거절합니다.
+          </p>
+          <div class="salon-call-actions">
+            <button id="salonStartButton" class="primary" disabled>예약 전화 받기</button>
+            <button id="salonEndButton" class="secondary" disabled>통화 종료</button>
+          </div>
+          <form id="salonMessageForm" class="salon-message-form">
+            <input id="salonMessageInput" type="text" maxlength="2000"
+                   autocomplete="off" disabled
+                   placeholder="예: 7월 26일 오후 2시에 커트 예약하고 싶어요">
+            <button id="salonSendButton" class="primary" type="submit" disabled>보내기</button>
+          </form>
+          <div class="salon-table-wrap">
+            <div class="salon-table-heading">
+              <span>파일 기반 예약표</span>
+              <button id="salonRefreshButton" class="ghost" type="button" disabled>새로고침</button>
+            </div>
+            <table class="salon-table">
+              <thead>
+                <tr><th>예약번호</th><th>일시</th><th>시술</th><th>담당</th><th>상태</th></tr>
+              </thead>
+              <tbody id="salonReservationRows">
+                <tr><td colspan="5">예약 없음</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <div id="conversation" class="conversation" aria-live="polite">
           <div class="empty-state">
-            연결한 뒤 시작을 누르면 VAD가 발화 끝을 감지합니다.
+            연결 후 예약 전화를 받으면 텍스트 상담이 시작됩니다.
           </div>
         </div>
 
         <div class="voice-controls">
           <button id="startButton" class="call" disabled>
             <span class="call-dot"></span>
-            대화 시작
+            음성 대화 시작
           </button>
           <button id="stopButton" class="secondary" disabled>듣기 중지</button>
           <button id="interruptButton" class="danger" disabled>응답 중단</button>

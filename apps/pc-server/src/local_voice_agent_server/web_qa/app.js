@@ -8,6 +8,14 @@ const ui = {
   diagnoseButton: $("diagnoseButton"),
   diagnostics: $("diagnostics"),
   conversation: $("conversation"),
+  salonCallStatus: $("salonCallStatus"),
+  salonStartButton: $("salonStartButton"),
+  salonEndButton: $("salonEndButton"),
+  salonMessageForm: $("salonMessageForm"),
+  salonMessageInput: $("salonMessageInput"),
+  salonSendButton: $("salonSendButton"),
+  salonRefreshButton: $("salonRefreshButton"),
+  salonReservationRows: $("salonReservationRows"),
   autoContinue: $("autoContinue"),
   startButton: $("startButton"),
   stopButton: $("stopButton"),
@@ -66,6 +74,8 @@ const state = {
   assistantMessage: null,
   metrics: {},
   turn: {},
+  salonCallActive: false,
+  salonCallId: null,
 };
 
 const assistantLabels = {
@@ -163,6 +173,22 @@ function setConnection(connected, label = connected ? "연결됨" : "연결 안 
   ui.interruptButton.disabled = !connected;
   ui.saveVoiceButton.disabled = !connected;
   ui.voiceProfile.disabled = !connected;
+  ui.salonStartButton.disabled = !connected || state.salonCallActive;
+  ui.salonEndButton.disabled = !connected || !state.salonCallActive;
+  ui.salonMessageInput.disabled = !connected || !state.salonCallActive;
+  ui.salonSendButton.disabled = !connected || !state.salonCallActive;
+  ui.salonRefreshButton.disabled = !connected;
+}
+
+function setSalonCall(active, label = active ? "통화 중" : "대기") {
+  state.salonCallActive = active;
+  ui.salonCallStatus.textContent = label;
+  ui.salonCallStatus.className = `badge ${active ? "online" : "muted"}`;
+  ui.salonStartButton.disabled = !state.connected || active;
+  ui.salonEndButton.disabled = !state.connected || !active;
+  ui.salonMessageInput.disabled = !state.connected || !active;
+  ui.salonSendButton.disabled = !state.connected || !active;
+  if (active) ui.salonMessageInput.focus();
 }
 
 function setAssistant(value, detail = "") {
@@ -246,7 +272,11 @@ async function connect() {
       setAssistant("idle", "연결됨. 통화를 시작할 수 있습니다.");
       ui.connectButton.disabled = false;
       addEvent("socket.open", { session_id: state.sessionId });
-      await Promise.allSettled([refreshDiagnostics(), loadVoiceSettings()]);
+      await Promise.allSettled([
+        refreshDiagnostics(),
+        loadVoiceSettings(),
+        refreshSalonReservations(),
+      ]);
     });
     socket.addEventListener("message", (event) => {
       try {
@@ -260,6 +290,8 @@ async function connect() {
       await stopCapture(false);
       stopPlayback();
       state.socket = null;
+      state.salonCallId = null;
+      setSalonCall(false);
       setConnection(false, event.code === 1000 ? "연결 안 됨" : `실패 ${event.code}`);
       ui.connectButton.disabled = false;
       setAssistant("error", event.reason || "WebSocket 연결이 종료됐습니다.");
@@ -281,6 +313,81 @@ async function disconnect() {
   stopPlayback();
   if (state.socket) {
     state.socket.close(1000, "user disconnect");
+  }
+}
+
+function startSalonCall() {
+  if (!state.connected || state.salonCallActive) return;
+  state.currentRequestId = crypto.randomUUID();
+  if (send(
+    "salon.call.start",
+    { channel: "web_qa" },
+    state.currentRequestId,
+  )) {
+    ui.salonCallStatus.textContent = "수신 중";
+    ui.salonStartButton.disabled = true;
+  }
+}
+
+function sendSalonMessage(event) {
+  event.preventDefault();
+  const text = ui.salonMessageInput.value.trim();
+  if (!text || !state.salonCallActive) return;
+  const requestId = crypto.randomUUID();
+  if (send("salon.call.message", { text }, requestId)) {
+    addMessage("user", text);
+    ui.salonMessageInput.value = "";
+    state.assistantMessage = null;
+  }
+}
+
+function endSalonCall() {
+  if (!state.salonCallActive) return;
+  send(
+    "salon.call.end",
+    { reason: "owner_end" },
+    crypto.randomUUID(),
+  );
+  ui.salonEndButton.disabled = true;
+}
+
+async function refreshSalonReservations() {
+  if (!state.connected) return;
+  try {
+    const body = await api("/v1/salon/reservations");
+    ui.salonReservationRows.replaceChildren();
+    if (!body.reservations.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 5;
+      cell.textContent = "예약 없음";
+      row.appendChild(cell);
+      ui.salonReservationRows.appendChild(row);
+      return;
+    }
+    for (const reservation of body.reservations.slice(-20).reverse()) {
+      const row = document.createElement("tr");
+      const values = [
+        reservation.reservation_code,
+        new Date(reservation.starts_at).toLocaleString("ko-KR", {
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        reservation.service_id,
+        reservation.staff_id,
+        reservation.status === "confirmed" ? "확정" : "취소",
+      ];
+      for (const value of values) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      }
+      ui.salonReservationRows.appendChild(row);
+    }
+  } catch (error) {
+    addEvent("salon.table_error", { message: error.message });
   }
 }
 
@@ -583,6 +690,21 @@ function handleServerEvent(envelope) {
     ui.conversation.scrollTop = ui.conversation.scrollHeight;
   } else if (type === "assistant.text.final") {
     if (!state.assistantMessage) state.assistantMessage = addMessage("assistant", payload.text);
+  } else if (type === "salon.call.started") {
+    state.salonCallId = payload.call_id;
+    setSalonCall(true, "통화 중");
+  } else if (type === "salon.assistant.message") {
+    addMessage("assistant", payload.text);
+    setAssistant("listening", "예약 전화를 텍스트로 상담 중입니다.");
+  } else if (type === "salon.reservation.updated") {
+    showToast(`예약 ${payload.change_type} · ${payload.reservation.reservation_code}`);
+    refreshSalonReservations();
+  } else if (type === "salon.owner.notification") {
+    showToast(payload.title);
+  } else if (type === "salon.call.ended") {
+    state.salonCallId = null;
+    setSalonCall(false, "종료");
+    setAssistant("idle", "예약 전화가 종료됐습니다.");
   } else if (type === "audio.output.chunk") {
     enqueueAudio(payload);
   } else if (type === "audio.output.end") {
@@ -681,6 +803,10 @@ ui.serverUrl.value = localStorage.getItem("lva.qa.serverUrl") || location.origin
 ui.connectButton.addEventListener("click", connect);
 ui.diagnoseButton.addEventListener("click", () => refreshDiagnostics().catch((error) => showToast(error.message)));
 ui.startButton.addEventListener("click", startListening);
+ui.salonStartButton.addEventListener("click", startSalonCall);
+ui.salonEndButton.addEventListener("click", endSalonCall);
+ui.salonMessageForm.addEventListener("submit", sendSalonMessage);
+ui.salonRefreshButton.addEventListener("click", refreshSalonReservations);
 ui.stopButton.addEventListener("click", () => {
   state.manuallyStopped = true;
   stopCapture(true, "client_stop");
@@ -699,6 +825,7 @@ window.addEventListener("beforeunload", () => {
   state.mediaStream?.getTracks().forEach((track) => track.stop());
 });
 syncSliderLabels();
+setSalonCall(false);
 setConnection(false);
 if (canUseLocalQaBootstrap()) {
   connect();

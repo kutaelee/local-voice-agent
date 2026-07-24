@@ -1,0 +1,280 @@
+import asyncio
+from datetime import datetime
+from pathlib import Path
+from uuid import uuid4
+
+from local_voice_agent_server.application.salon_calls import SalonCallCoordinator
+from local_voice_agent_server.domain.salon_booking import SalonReservationService
+from local_voice_agent_server.infrastructure.file_reservations import (
+    FileReservationStore,
+)
+from local_voice_agent_server.infrastructure.salon_config import load_salon_policy
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+POLICY_PATH = REPO_ROOT / "configs" / "salon-booking.json"
+
+
+def _coordinator(tmp_path: Path) -> SalonCallCoordinator:
+    policy = load_salon_policy(POLICY_PATH)
+    now = lambda: datetime(2026, 7, 25, 9, 0, tzinfo=policy.timezone)
+    service = SalonReservationService(
+        policy=policy,
+        repository=FileReservationStore(
+            data_path=tmp_path / "reservations.json",
+            backup_root=tmp_path / "backup",
+        ),
+        now=now,
+    )
+    return SalonCallCoordinator(reservations=service, now=now)
+
+
+def _texts(events) -> list[str]:
+    return [
+        str(event.payload["text"])
+        for event in events
+        if event.type == "salon.assistant.message"
+    ]
+
+
+def test_call_starts_with_bounded_salon_persona(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        coordinator = _coordinator(tmp_path)
+        events = await coordinator.handle(
+            session_id=uuid4(),
+            event_type="salon.call.start",
+        )
+        assert [event.type for event in events] == [
+            "salon.call.started",
+            "salon.assistant.message",
+            "assistant.state",
+        ]
+        assert "윤슬 헤어 예약 도우미 수아" in _texts(events)[0]
+
+    asyncio.run(scenario())
+
+
+def test_scope_guard_answers_salon_questions_and_refuses_unrelated_topics(
+    tmp_path: Path,
+) -> None:
+    async def scenario() -> None:
+        coordinator = _coordinator(tmp_path)
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        price = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="커트 가격은 얼마예요?",
+        )
+        weather = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="오늘 서울 날씨 알려줘",
+        )
+        assert "커트 25,000원" in _texts(price)[0]
+        assert "미용실 예약" in _texts(weather)[0]
+        assert "날씨" not in _texts(weather)[0]
+
+    asyncio.run(scenario())
+
+
+def test_multi_turn_booking_emits_owner_notification(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        coordinator = _coordinator(tmp_path)
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        confirmation = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text=(
+                "7월 26일 오후 2시에 커트 예약할게요. "
+                "이름은 김규태고 010-1234-5678입니다."
+            ),
+        )
+        assert "예약할까요" in _texts(confirmation)[0]
+        changed = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="네",
+        )
+        assert [event.type for event in changed] == [
+            "salon.assistant.message",
+            "salon.reservation.updated",
+            "salon.owner.notification",
+        ]
+        assert "예약이 확정됐습니다" in _texts(changed)[0]
+        assert changed[1].payload["change_type"] == "created"
+
+    asyncio.run(scenario())
+
+
+def test_availability_flows_into_booking_without_losing_slot(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        coordinator = _coordinator(tmp_path)
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        available = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="7월 26일 오후 3시에 염색 가능해요?",
+        )
+        ask_name = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="예약해주세요",
+        )
+        assert "예약이 가능합니다" in _texts(available)[0]
+        assert "예약자 이름" in _texts(ask_name)[0]
+
+    asyncio.run(scenario())
+
+
+def test_booking_confirmation_can_be_rejected_without_writing(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        coordinator = _coordinator(tmp_path)
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text=(
+                "7월 26일 오후 2시에 커트 예약. "
+                "이름은 김규태, 010-1234-5678"
+            ),
+        )
+        rejected = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="아니요",
+        )
+        assert "반영하지 않았습니다" in _texts(rejected)[0]
+        assert coordinator._reservations.list_reservations() == ()
+
+    asyncio.run(scenario())
+
+
+def test_confirmed_booking_can_be_modified_and_cancelled(tmp_path: Path) -> None:
+    async def book(
+        coordinator: SalonCallCoordinator,
+        session_id,
+    ) -> str:
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text=(
+                "7월 26일 오후 2시에 커트 예약할게요. "
+                "이름은 김규태, 010-1234-5678"
+            ),
+        )
+        created = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="네",
+        )
+        reservation = created[1].payload["reservation"]
+        assert isinstance(reservation, dict)
+        return str(reservation["reservation_code"])
+
+    async def scenario() -> None:
+        coordinator = _coordinator(tmp_path)
+        code = await book(coordinator, uuid4())
+
+        modify_session = uuid4()
+        await coordinator.handle(
+            session_id=modify_session,
+            event_type="salon.call.start",
+        )
+        confirmation = await coordinator.handle(
+            session_id=modify_session,
+            event_type="salon.call.message",
+            text=(
+                f"예약번호 {code}, 010-1234-5678이고 "
+                "7월 28일 오후 3시 30분으로 변경할게요"
+            ),
+        )
+        assert "변경할까요" in _texts(confirmation)[0]
+        modified = await coordinator.handle(
+            session_id=modify_session,
+            event_type="salon.call.message",
+            text="네",
+        )
+        assert modified[1].payload["change_type"] == "modified"
+
+        cancel_session = uuid4()
+        await coordinator.handle(
+            session_id=cancel_session,
+            event_type="salon.call.start",
+        )
+        confirmation = await coordinator.handle(
+            session_id=cancel_session,
+            event_type="salon.call.message",
+            text=f"예약번호 {code}, 010-1234-5678 예약 취소할게요",
+        )
+        assert "취소할까요" in _texts(confirmation)[0]
+        cancelled = await coordinator.handle(
+            session_id=cancel_session,
+            event_type="salon.call.message",
+            text="네",
+        )
+        assert cancelled[1].payload["change_type"] == "cancelled"
+
+    asyncio.run(scenario())
+
+
+def test_duplicate_and_closed_day_errors_are_explained(tmp_path: Path) -> None:
+    async def create(
+        coordinator: SalonCallCoordinator,
+        session_id,
+        phone: str,
+        text: str,
+    ):
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text=f"{text} 이름은 김규태, {phone}",
+        )
+        return await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="네",
+        )
+
+    async def scenario() -> None:
+        coordinator = _coordinator(tmp_path)
+        await create(
+            coordinator,
+            uuid4(),
+            "010-1234-5678",
+            "7월 26일 오후 2시에 커트 예약.",
+        )
+        duplicate = await create(
+            coordinator,
+            uuid4(),
+            "010-1234-5678",
+            "7월 26일 오후 2시에 염색 예약.",
+        )
+        assert duplicate[0].payload["error_code"] == "DUPLICATE_RESERVATION"
+
+        closed_session = uuid4()
+        await coordinator.handle(
+            session_id=closed_session,
+            event_type="salon.call.start",
+        )
+        await coordinator.handle(
+            session_id=closed_session,
+            event_type="salon.call.message",
+            text=(
+                "7월 27일 오후 2시에 커트 예약. "
+                "이름은 김규태, 010-9999-9999"
+            ),
+        )
+        closed = await coordinator.handle(
+            session_id=closed_session,
+            event_type="salon.call.message",
+            text="네",
+        )
+        assert closed[0].payload["error_code"] == "SALON_CLOSED"
+
+    asyncio.run(scenario())
