@@ -63,3 +63,8 @@ measurements:
     peak_vram_mib: 0
     measurement_kind: cpu_only_recovery_smoke
     gpu_peak_vram_mib: null
+  qwen3-tts-1.7b:
+    peak_allocated_vram_mib: 4531
+    measurement_kind: torch_peak_allocated_single_clone_smoke
+    prompt_cache_entries: 4
+    note: primary TTS; reserve first-audio priority and unload for admitted 31B work

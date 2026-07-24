@@ -5,10 +5,9 @@ repo="/mnt/c/Dev/Repos/local-voice-agent"
 run_root="/home/kutae/.local/share/local-voice-agent/run"
 log_root="/mnt/e/Data/LocalVoiceAgent/runtime/logs"
 stt_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1/.venv"
-tts_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-v3-py3146/.venv"
+tts_engine="${LVA_TTS_ENGINE:-qwen3}"
 vad_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/vad-silero-6.2.1/.venv"
 stt_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/stt/faster-whisper-large-v3-turbo/0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf"
-tts_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18"
 voice_profiles_root="/mnt/e/Data/LocalVoiceAgent/voice-profiles"
 stt_socket="${run_root}/stt.sock"
 tts_socket="${run_root}/tts.sock"
@@ -22,6 +21,25 @@ worker_token="${LVA_AUDIO_WORKER_TOKEN:-}"
 mkdir -p "${run_root}" "${log_root}" "${voice_profiles_root}/profiles"
 chmod 700 "${run_root}"
 chmod 700 "${voice_profiles_root}" "${voice_profiles_root}/profiles"
+
+case "${tts_engine}" in
+  qwen3)
+    tts_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/tts-qwen3-1.7b/.venv"
+    tts_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/tts/qwen3-tts-12hz-1.7b-base/fd4b254389122332181a7c3db7f27e918eec64e3"
+    tts_worker="${repo}/apps/pc-server/workers/qwen3_tts_worker.py"
+    tts_extra_args=(--tail-silence-ms 160 --max-cached-prompts 4)
+    ;;
+  chatterbox)
+    tts_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-v3-py3146/.venv"
+    tts_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18"
+    tts_worker="${repo}/apps/pc-server/workers/tts_worker.py"
+    tts_extra_args=()
+    ;;
+  *)
+    echo "LVA_TTS_ENGINE must be qwen3 or chatterbox." >&2
+    exit 3
+    ;;
+esac
 
 assert_not_running() {
   local name="$1"
@@ -106,11 +124,13 @@ fi
 nohup env \
   PYTHONNOUSERSITE=1 \
   HF_HUB_OFFLINE=1 \
+  TRANSFORMERS_OFFLINE=1 \
   LVA_AUDIO_WORKER_TOKEN="${worker_token}" \
-  "${tts_runtime}/bin/python" "${repo}/apps/pc-server/workers/tts_worker.py" \
+  "${tts_runtime}/bin/python" "${tts_worker}" \
     --socket "${tts_socket}" \
     --model "${tts_model}" \
     --voice-profiles-root "${voice_profiles_root}" \
+    "${tts_extra_args[@]}" \
   >"${log_root}/tts-worker.log" 2>&1 &
 tts_pid=$!
 started_pids+=("${tts_pid}")
@@ -122,4 +142,4 @@ if ! wait_for_health "${tts_socket}" 120; then
 fi
 
 trap - ERR
-echo "Audio workers ready: vad_pid=${vad_pid} stt_pid=${stt_pid} tts_pid=${tts_pid}"
+echo "Audio workers ready: vad_pid=${vad_pid} stt_pid=${stt_pid} tts_pid=${tts_pid} tts_engine=${tts_engine}"

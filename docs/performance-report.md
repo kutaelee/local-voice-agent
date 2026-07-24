@@ -12,6 +12,24 @@ speedup, VRAM peak, or end-to-end voice latency until the benchmark harness
 uses fixed model revisions, prompts, sampling, context, background load, and
 GPU power conditions.
 
+## Qwen3-TTS primary voice-clone smoke
+
+Qwen3-TTS 12Hz 1.7B Base revision `fd4b254…` loaded on the RTX 5090 with
+PyTorch 2.11.0+cu130 and SDPA. One cold load took 26.148 seconds and peak
+allocated VRAM was 4,750,705,664 bytes. These are single-run smoke values, not
+p50/p95 benchmarks.
+
+| Route | Synthesis | Audio | RTF |
+|---|---:|---:|---:|
+| Neutral with 160 ms terminal tail | 7.914 s | 5.680 s | 1.393 |
+| Happy cached reference | 4.339 s | 4.160 s | 1.043 |
+| Dark cached reference | 4.978 s | 4.960 s | 1.004 |
+
+The worker uses exact reference transcripts, a four-entry bounded prompt
+cache, non-streaming text mode, and a verified 160 ms zero-PCM terminal tail.
+Comma splitting was removed after listening QA exposed unnatural joins.
+Physical Android listening QA for the new worker remains pending.
+
 ## User-authorized reference voice smoke
 
 A local 8.192-second Korean reference clip was canonicalized to 24 kHz mono

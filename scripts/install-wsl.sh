@@ -15,7 +15,8 @@ WSL runtime installation plan
 - SGLang: 0.5.15.post1 isolated environment
 - STT: faster-whisper 1.2.1 isolated CUDA 12/CPU environment
 - VAD: Silero VAD 6.2.1 ONNX CPU environment
-- TTS: Chatterbox Multilingual V3 isolated environment
+- TTS primary: Qwen3-TTS 12Hz 1.7B Base isolated CUDA 13 environment
+- TTS fallback: Chatterbox Multilingual V3 isolated environment
 
 No package is installed in plan-only mode.
 EOF
@@ -218,6 +219,24 @@ case "${mode}" in
       "${source_archive}"
     "${environment}/.venv/bin/python" -c \
       'import chatterbox, torch, torchaudio; print(f"torch={torch.__version__} cuda={torch.version.cuda} torchaudio={torchaudio.__version__} gpu={torch.cuda.get_device_name(0)}")'
+    ;;
+
+  --install-qwen3-tts)
+    environment="${runtime_root}/tts-qwen3-1.7b"
+    lock_file="${script_dir}/requirements/qwen3-tts.lock"
+    [[ -f "${lock_file}" ]] || {
+      echo "Missing Qwen3-TTS lock file: ${lock_file}" >&2
+      exit 8
+    }
+    create_environment "${environment}"
+    "${uv_bin}" pip sync \
+      --python "${environment}/.venv/bin/python" \
+      --require-hashes \
+      --torch-backend=cu130 \
+      "${lock_file}"
+    "${uv_bin}" pip check --python "${environment}/.venv/bin/python"
+    "${environment}/.venv/bin/python" -c \
+      'from importlib.metadata import version; import torch, torchaudio; print(f"qwen-tts={version(\"qwen-tts\")} torch={torch.__version__} cuda={torch.version.cuda} torchaudio={torchaudio.__version__} gpu={torch.cuda.get_device_name(0)}")'
     ;;
 
   *)

@@ -418,7 +418,7 @@ bash scripts/start-vllm.sh
 ```
 
 The audio workers use mode-0600 Unix sockets. The launcher health-checks VAD,
-STT, and TTS before returning. A VAD-only process smoke that does not start
+STT, and the primary Qwen3-TTS worker before returning. A VAD-only process smoke that does not start
 the GPU workers is available while the GPU is occupied:
 
 ```bash
@@ -442,6 +442,8 @@ python scripts/register-voice-profile.py \
   --root /mnt/e/Data/LocalVoiceAgent/voice-profiles \
   --wav /absolute/path/reference.wav \
   --name 'My Korean voice' \
+  --reference-text 'The exact words spoken in the reference clip.' \
+  --style neutral \
   --playback-rate 1.0 \
   --exaggeration 0.5 \
   --cfg-weight 0.5 \
@@ -461,6 +463,21 @@ with the registered system FFmpeg executable:
 Do not place reference clips, transcripts, synthesized samples, profile IDs,
 or consent metadata in Git. Profile deletion is intentionally unavailable in
 this slice; treat removal as a separate destructive operation.
+
+Qwen3-TTS requires an exact transcript for ICL cloning. Profiles without one
+remain usable only with the retained Chatterbox fallback. Same-speaker
+neutral/happy/dark/advert profiles can be bound with
+`scripts/configure-voice-style-bindings.py`; the binding stays under the
+external profile root. Automatic routing is conservative and operates at
+sentence boundaries. It does not claim syllable-level prosody control.
+
+Qwen3 is the launcher default. To roll back without deleting either isolated
+runtime or model, stop the owned audio workers and restart with:
+
+```bash
+export LVA_TTS_ENGINE=chatterbox
+bash scripts/start-audio-workers.sh
+```
 
 vLLM binds only to `127.0.0.1:8766`; its first model load from the canonical
 NTFS model store can
@@ -746,7 +763,7 @@ Install the verified debug APK only when a device is visible in
 ```powershell
 C:\Dev\SDK\Android\platform-tools\adb.exe devices
 C:\Dev\SDK\Android\platform-tools\adb.exe install -r `
-  E:\Data\LocalVoiceAgent\artifacts\android\0.6.5-api37\local-voice-agent-0.6.5-debug.apk
+  E:\Data\LocalVoiceAgent\artifacts\android\0.6.6-api37\local-voice-agent-0.6.6-debug.apk
 ```
 
 The release APK is intentionally unsigned and cannot be installed until the

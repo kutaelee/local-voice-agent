@@ -53,6 +53,7 @@ from .infrastructure.tool_executor_client import (
 from .infrastructure.tool_registry import ToolRegistry
 from .infrastructure.persistence import PostgresStateStore
 from .infrastructure.voice_profiles import (
+    VOICE_STYLES,
     VoiceProfileError,
     VoiceProfileStore,
     VoiceSettings,
@@ -130,6 +131,15 @@ class CreateVoiceProfileRequest(BaseModel):
     wav_base64: str = Field(min_length=1, max_length=12_000_000)
     rights_confirmed: Literal[True]
     local_processing_consent: Literal[True]
+    reference_text: str | None = Field(default=None, min_length=1, max_length=1_000)
+    style: str = Field(default="neutral", min_length=1, max_length=16)
+
+    @field_validator("style")
+    @classmethod
+    def style_must_be_supported(cls, value: str) -> str:
+        if value not in VOICE_STYLES:
+            raise ValueError("unsupported voice style")
+        return value
 
 
 class UpdateVoiceSettingsRequest(BaseModel):
@@ -340,6 +350,8 @@ def create_app(
                 wav_base64=payload.wav_base64,
                 rights_confirmed=payload.rights_confirmed,
                 local_processing_consent=payload.local_processing_consent,
+                reference_text=payload.reference_text,
+                style=payload.style,
             )
         except VoiceProfileError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error

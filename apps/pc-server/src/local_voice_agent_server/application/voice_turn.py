@@ -635,11 +635,7 @@ class VoiceTurnService:
 _HARD_SPEECH_BOUNDARY = re.compile(
     r"(?:(?<=[.!?\u3002\uff01\uff1f])\s+|\n{2,})"
 )
-_STREAM_SPEECH_BOUNDARY = re.compile(
-    r"(?P<hard>(?<=[.!?\u3002\uff01\uff1f])\s+|\n{2,})"
-    r"|(?P<soft>(?<=[,;:\u3001\uff0c\uff1b])\s*)"
-)
-_MIN_SOFT_SPEECH_CHARS = 36
+_STREAM_SPEECH_BOUNDARY = _HARD_SPEECH_BOUNDARY
 
 
 def _speech_units(text: str) -> tuple[str, ...]:
@@ -658,8 +654,7 @@ def _take_complete_speech_units(text: str) -> tuple[tuple[str, ...], str]:
     start = 0
     for boundary in _STREAM_SPEECH_BOUNDARY.finditer(text):
         unit = text[start : boundary.start()].strip()
-        is_hard = boundary.lastgroup == "hard"
-        if unit and (is_hard or len(unit) >= _MIN_SOFT_SPEECH_CHARS):
+        if unit:
             units.append(unit)
             start = boundary.end()
     return tuple(units), text[start:]

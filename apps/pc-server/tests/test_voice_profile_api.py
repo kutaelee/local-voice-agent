@@ -74,6 +74,8 @@ def test_voice_profile_api_registers_and_selects_reference(
                 "wav_base64": base64.b64encode(reference_wav()).decode("ascii"),
                 "rights_confirmed": True,
                 "local_processing_consent": True,
+                "reference_text": "오늘은 차분하게 테스트합니다.",
+                "style": "neutral",
             },
         )
         profile_id = created.json()["profile"]["profile_id"]
@@ -94,6 +96,10 @@ def test_voice_profile_api_registers_and_selects_reference(
     assert updated.status_code == 200
     assert catalog.status_code == 200
     assert len(catalog.json()["profiles"]) == 2
+    created_profile = catalog.json()["profiles"][1]
+    assert created_profile["style"] == "neutral"
+    assert created_profile["has_reference_text"] is True
+    assert "reference_text" not in created_profile
     assert catalog.json()["settings"] == {
         "profile_id": profile_id,
         "playback_rate": 1.1,

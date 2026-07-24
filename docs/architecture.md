@@ -162,7 +162,10 @@ detailed in [`audio-design.md`](audio-design.md).
 
 The current voice composition uses three authenticated mode-0600 Unix-socket
 workers: Silero VAD 6.2.1 on CPU ONNX, faster-whisper on its isolated CUDA 12
-stack, and Chatterbox V3 on its isolated CUDA 13 stack. VAD consumes ordered
+stack, and Qwen3-TTS 1.7B Base on its isolated CUDA 13 stack. Qwen reference
+audio and exact transcripts stay in external application data; a bounded
+four-entry prompt cache supports sentence-level neutral/happy/dark/advert
+tone changes. Chatterbox V3 remains an isolated rollback fallback. VAD consumes ordered
 PCM chunks and returns a server endpoint decision; Android then stops capture
 and sends the terminal input event. Voice-response completion runs as a
 background task so a monotonic cancellation event can be processed while
@@ -170,7 +173,9 @@ STT, model inference, or TTS is pending. Cancellation IDs are bounded and
 deduplicated per session; later output from a cancelled task is discarded.
 The gateway also accepts emitted events before the handler returns. For plain
 conversation, the vLLM adapter consumes SSE text deltas and synthesizes each
-complete sentence unit before the remaining answer is available. Tool-enabled
+complete sentence unit before the remaining answer is available. It does not
+split at commas because independent generations produced audible word-boundary
+discontinuities. Tool-enabled
 turns keep the full structured response so the policy path never executes a
 partial tool call. Chunk indexes remain monotonic across the single output
 stream; cancellation and TTS failure explicitly terminate an already-open

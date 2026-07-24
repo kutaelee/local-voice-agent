@@ -129,12 +129,14 @@ def test_tts_adapter_sends_selected_voice_controls(tmp_path: Path) -> None:
                     token=TOKEN,
                     timeout_seconds=2,
                 ),
-                options_provider=lambda: VoiceSynthesisOptions(
+                options_provider=lambda _: VoiceSynthesisOptions(
                     profile_id="83c1f58c-052d-449d-a598-db0c19023b08",
                     reference_audio_path=reference,
                     exaggeration=0.5,
                     cfg_weight=0.5,
                     temperature=0.8,
+                    reference_text="테스트 참조 문장입니다.",
+                    style="neutral",
                 ),
             )
             await adapter.synthesize("테스트", language="ko")
@@ -146,6 +148,8 @@ def test_tts_adapter_sends_selected_voice_controls(tmp_path: Path) -> None:
         assert observed["exaggeration"] == 0.5
         assert observed["cfg_weight"] == 0.5
         assert observed["temperature"] == 0.8
+        assert observed["reference_text"] == "테스트 참조 문장입니다."
+        assert observed["style"] == "neutral"
 
     asyncio.run(scenario())
 

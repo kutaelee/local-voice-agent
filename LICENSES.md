@@ -12,6 +12,7 @@ This file records licenses verified during Slice 0. It is not legal advice.
 | Silero VAD | MIT | Candidate |
 | faster-whisper | MIT | Candidate |
 | Chatterbox | MIT | Candidate |
+| Qwen3-TTS code and `Qwen/Qwen3-TTS-12Hz-1.7B-Base` | Apache-2.0 | Installed primary local TTS |
 | PostgreSQL | PostgreSQL License | Candidate |
 | SQLAlchemy | MIT | Candidate |
 | FastAPI 0.139.2 | MIT | Installed in isolated PC-server environment |

@@ -13,7 +13,7 @@ download_workers="${MODEL_DOWNLOAD_WORKERS:-16}"
 download_only="${MODEL_DOWNLOAD_ONLY:-}"
 
 case "${download_only}" in
-  ""|default_target_12b|mtp_assistant_12b|mtp_target_12b|escalation_target_31b|mtp_assistant_31b|mtp_target_31b|stt_large_v3_turbo|stt_small|tts_chatterbox_v3)
+  ""|default_target_12b|mtp_assistant_12b|mtp_target_12b|escalation_target_31b|mtp_assistant_31b|mtp_target_31b|stt_large_v3_turbo|stt_small|tts_chatterbox_v3|tts_qwen3_base)
     ;;
   *)
     echo "Unknown MODEL_DOWNLOAD_ONLY role: ${download_only}" >&2
@@ -35,6 +35,8 @@ models=(
   "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|s3gen.pt|9b9ff07e60b20c136e2b1b3d7563a24604e8d2c4c267888d1ee929dd0151d2a3|1057165844|MIT"
   "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|ve.pt|4b16d836bc598509860f6fa068165a8bb5e9ac84f05582dfcf278a5a372879f1|5698626|MIT"
   "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|conds.pt|6552d70568833628ba019c6b03459e77fe71ca197d5c560cef9411bee9d87f4e|107374|MIT"
+  "tts_qwen3_base|Qwen/Qwen3-TTS-12Hz-1.7B-Base|fd4b254389122332181a7c3db7f27e918eec64e3|${model_root}/tts/qwen3-tts-12hz-1.7b-base/fd4b254389122332181a7c3db7f27e918eec64e3|model.safetensors|38fc7fc51c5e776e840414b6fd443962e9411b9654888fd7913e4da643cb857c|3857413744|Apache-2.0"
+  "tts_qwen3_base|Qwen/Qwen3-TTS-12Hz-1.7B-Base|fd4b254389122332181a7c3db7f27e918eec64e3|${model_root}/tts/qwen3-tts-12hz-1.7b-base/fd4b254389122332181a7c3db7f27e918eec64e3|speech_tokenizer/model.safetensors|836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258|682293092|Apache-2.0"
 )
 
 [[ "${download_workers}" =~ ^([1-9]|1[0-6])$ ]] || {
@@ -145,6 +147,7 @@ for entry in "${models[@]}"; do
     --local-dir "${target}"
 
   actual_file="${target}/${filename}"
+  mkdir -p "$(dirname -- "${actual_file}")"
   partial_file="${actual_file}.partial"
   state_file="${state_root}/${model//\//--}-${revision}-${filename}.ranges.json"
   weight_url="https://huggingface.co/${model}/resolve/${revision}/${filename}?download=true"

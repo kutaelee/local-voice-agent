@@ -19,6 +19,14 @@ def main() -> int:
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--wav", type=Path, required=True)
     parser.add_argument("--name", required=True)
+    transcript = parser.add_mutually_exclusive_group()
+    transcript.add_argument("--reference-text")
+    transcript.add_argument("--reference-text-file", type=Path)
+    parser.add_argument(
+        "--style",
+        choices=("neutral", "happy", "dark", "advert"),
+        default="neutral",
+    )
     parser.add_argument("--playback-rate", type=float, default=1.0)
     parser.add_argument("--exaggeration", type=float, default=0.5)
     parser.add_argument("--cfg-weight", type=float, default=0.5)
@@ -30,6 +38,11 @@ def main() -> int:
         parser.error("--wav must be an existing absolute path")
     if not args.root.is_absolute():
         parser.error("--root must be an absolute path")
+    if args.reference_text_file is not None and (
+        not args.reference_text_file.is_absolute()
+        or not args.reference_text_file.is_file()
+    ):
+        parser.error("--reference-text-file must be an existing absolute path")
 
     store = VoiceProfileStore(args.root)
     wav_bytes = args.wav.read_bytes()
@@ -38,6 +51,12 @@ def main() -> int:
         wav_base64=base64.b64encode(wav_bytes).decode("ascii"),
         rights_confirmed=args.confirm_rights,
         local_processing_consent=args.consent_local_processing,
+        reference_text=(
+            args.reference_text_file.read_text(encoding="utf-8")
+            if args.reference_text_file is not None
+            else args.reference_text
+        ),
+        style=args.style,
     )
     settings = store.update_settings(
         VoiceSettings(

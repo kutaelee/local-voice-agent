@@ -19,8 +19,11 @@ from uuid import UUID, uuid4
 MAX_REFERENCE_BYTES = 8 * 1024 * 1024
 MIN_REFERENCE_SECONDS = 3.0
 MAX_REFERENCE_SECONDS = 30.0
+MAX_REFERENCE_TEXT_CHARS = 1_000
 DEFAULT_PROFILE_ID = "default"
 _PROFILE_NAME = re.compile(r"^[^\x00-\x1f\x7f]{1,64}$")
+_REFERENCE_TEXT = re.compile(r"^[^\x00-\x08\x0b\x0c\x0e-\x1f\x7f]+$")
+VOICE_STYLES = frozenset({"neutral", "happy", "dark", "advert"})
 
 
 class VoiceProfileError(ValueError):
@@ -38,8 +41,19 @@ class VoiceProfile:
     duration_ms: int | None = None
     sample_rate_hz: int | None = None
     channels: int | None = None
+    style: str = "neutral"
+    reference_text: str | None = None
 
     def to_dict(self) -> dict[str, object]:
+        public = {
+            key: value
+            for key, value in asdict(self).items()
+            if value is not None and key != "reference_text"
+        }
+        public["has_reference_text"] = self.reference_text is not None
+        return public
+
+    def to_metadata_dict(self) -> dict[str, object]:
         return {
             key: value
             for key, value in asdict(self).items()
@@ -78,6 +92,8 @@ class VoiceSynthesisOptions:
     exaggeration: float
     cfg_weight: float
     temperature: float
+    reference_text: str | None
+    style: str
 
 
 class VoiceProfileStore:
@@ -89,6 +105,7 @@ class VoiceProfileStore:
         self._root = root
         self._profiles_root = root / "profiles"
         self._settings_path = root / "settings.json"
+        self._style_bindings_path = root / "style-bindings.json"
         self._profiles_root.mkdir(parents=True, exist_ok=True, mode=0o700)
 
     @property
@@ -144,6 +161,8 @@ class VoiceProfileStore:
         wav_base64: str,
         rights_confirmed: bool,
         local_processing_consent: bool,
+        reference_text: str | None = None,
+        style: str = "neutral",
     ) -> VoiceProfile:
         normalized_name = name.strip()
         if not _PROFILE_NAME.fullmatch(normalized_name):
@@ -152,6 +171,9 @@ class VoiceProfileStore:
             raise VoiceProfileError(
                 "voice ownership and local processing consent are required"
             )
+        normalized_reference_text = _normalize_reference_text(reference_text)
+        if style not in VOICE_STYLES:
+            raise VoiceProfileError("voice profile style is invalid")
         try:
             wav_bytes = base64.b64decode(wav_base64, validate=True)
         except (ValueError, binascii.Error) as error:
@@ -177,8 +199,10 @@ class VoiceProfileStore:
                 duration_ms=duration_ms,
                 sample_rate_hz=sample_rate,
                 channels=channels,
+                style=style,
+                reference_text=normalized_reference_text,
             )
-            self._atomic_json(metadata_path, profile.to_dict())
+            self._atomic_json(metadata_path, profile.to_metadata_dict())
         except Exception:
             audio_path.unlink(missing_ok=True)
             metadata_path.unlink(missing_ok=True)
@@ -189,14 +213,53 @@ class VoiceProfileStore:
             raise
         return profile
 
-    def synthesis_options(self) -> VoiceSynthesisOptions:
+    def synthesis_options(self, text: str = "") -> VoiceSynthesisOptions:
         settings = self.get_settings()
+        profile_id = self._routed_profile_id(
+            base_profile_id=settings.profile_id,
+            text=text,
+        )
+        profile = (
+            None
+            if profile_id == DEFAULT_PROFILE_ID
+            else self._read_profile(
+                self._profile_root(profile_id) / "metadata.json"
+            )
+        )
         return VoiceSynthesisOptions(
-            profile_id=settings.profile_id,
-            reference_audio_path=self.reference_path(settings.profile_id),
+            profile_id=profile_id,
+            reference_audio_path=self.reference_path(profile_id),
             exaggeration=settings.exaggeration,
             cfg_weight=settings.cfg_weight,
             temperature=settings.temperature,
+            reference_text=profile.reference_text if profile else None,
+            style=profile.style if profile else "neutral",
+        )
+
+    def update_style_bindings(
+        self,
+        *,
+        base_profile_id: str,
+        profile_ids: dict[str, str],
+    ) -> None:
+        if set(profile_ids) != VOICE_STYLES:
+            raise VoiceProfileError("all voice styles must be bound")
+        self._require_profile(base_profile_id)
+        for style, profile_id in profile_ids.items():
+            self._require_profile(profile_id)
+            profile = self._read_profile(
+                self._profile_root(profile_id) / "metadata.json"
+            )
+            if profile.style != style or profile.reference_text is None:
+                raise VoiceProfileError("voice style binding does not match metadata")
+        if profile_ids["neutral"] != base_profile_id:
+            raise VoiceProfileError("neutral style must be the base profile")
+        self._atomic_json(
+            self._style_bindings_path,
+            {
+                "base_profile_id": base_profile_id,
+                "profiles": profile_ids,
+            },
         )
 
     def reference_path(self, profile_id: str) -> Path | None:
@@ -224,6 +287,27 @@ class VoiceProfileStore:
             or sha256(reference_bytes).hexdigest() != profile.sha256
         ):
             raise VoiceProfileError("reference audio integrity check failed")
+
+    def _routed_profile_id(self, *, base_profile_id: str, text: str) -> str:
+        if not text or not self._style_bindings_path.exists():
+            return base_profile_id
+        try:
+            value = json.loads(
+                self._style_bindings_path.read_text(encoding="utf-8")
+            )
+            if (
+                not isinstance(value, dict)
+                or set(value) != {"base_profile_id", "profiles"}
+                or value["base_profile_id"] != base_profile_id
+                or not isinstance(value["profiles"], dict)
+                or set(value["profiles"]) != VOICE_STYLES
+            ):
+                return base_profile_id
+            profile_id = str(value["profiles"][_infer_voice_style(text)])
+            self._require_profile(profile_id)
+            return profile_id
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            return base_profile_id
 
     def _profile_root(self, profile_id: str) -> Path:
         try:
@@ -254,6 +338,12 @@ class VoiceProfileStore:
                 duration_ms=int(value["duration_ms"]),
                 sample_rate_hz=int(value["sample_rate_hz"]),
                 channels=int(value["channels"]),
+                style=str(value.get("style", "neutral")),
+                reference_text=(
+                    str(value["reference_text"])
+                    if value.get("reference_text") is not None
+                    else None
+                ),
             )
         except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
             raise VoiceProfileError("voice profile metadata is invalid") from error
@@ -267,8 +357,10 @@ class VoiceProfileStore:
             )
             or not _PROFILE_NAME.fullmatch(profile.name)
             or not re.fullmatch(r"[a-f0-9]{64}", profile.sha256 or "")
+            or profile.style not in VOICE_STYLES
         ):
             raise VoiceProfileError("voice profile metadata is invalid")
+        _normalize_reference_text(profile.reference_text)
         return profile
 
     @staticmethod
@@ -304,6 +396,46 @@ def _validate_reference_wav(wav_bytes: bytes) -> tuple[int, int, int]:
     if not MIN_REFERENCE_SECONDS <= duration <= MAX_REFERENCE_SECONDS:
         raise VoiceProfileError("reference WAV duration must be 3 to 30 seconds")
     return sample_rate, channels, round(duration * 1000)
+
+
+def _normalize_reference_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = " ".join(value.split())
+    if (
+        not 1 <= len(normalized) <= MAX_REFERENCE_TEXT_CHARS
+        or not _REFERENCE_TEXT.fullmatch(normalized)
+    ):
+        raise VoiceProfileError("reference transcript is invalid")
+    return normalized
+
+
+def _infer_voice_style(text: str) -> str:
+    normalized = text.casefold()
+    dark_markers = (
+        "오류",
+        "실패",
+        "위험",
+        "문제",
+        "죄송",
+        "불가능",
+        "중단",
+        "복구",
+    )
+    happy_markers = (
+        "완료",
+        "성공",
+        "좋아요",
+        "좋습니다",
+        "축하",
+        "기뻐",
+        "반가",
+    )
+    if any(marker in normalized for marker in dark_markers):
+        return "dark"
+    if "!" in text or any(marker in normalized for marker in happy_markers):
+        return "happy"
+    return "neutral"
 
 
 def _atomic_bytes(path: Path, value: bytes) -> None:

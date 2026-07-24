@@ -147,7 +147,7 @@ class TtsWorkerAdapter:
         self,
         client: UnixJsonWorkerClient,
         *,
-        options_provider: Callable[[], VoiceSynthesisOptions] | None = None,
+        options_provider: Callable[[str], VoiceSynthesisOptions] | None = None,
     ) -> None:
         self._client = client
         self._options_provider = options_provider
@@ -160,7 +160,7 @@ class TtsWorkerAdapter:
             "language": language,
         }
         if self._options_provider is not None:
-            options = self._options_provider()
+            options = self._options_provider(text)
             payload.update(
                 {
                     "voice_profile_id": options.profile_id,
@@ -172,6 +172,8 @@ class TtsWorkerAdapter:
                     "exaggeration": options.exaggeration,
                     "cfg_weight": options.cfg_weight,
                     "temperature": options.temperature,
+                    "reference_text": options.reference_text,
+                    "style": options.style,
                 }
             )
         response = await self._client.request(payload)

@@ -51,6 +51,11 @@ model repositories, and upstream release notes are used for selections.
   inference runtimes. The exact V3 checkpoint passed local Korean synthesis
   and the worker path. Kokoro's official language list does not include
   Korean, so it is not selected as the primary Korean fallback.
+- Qwen3-TTS 12Hz 1.7B Base is Apache-2.0, officially supports Korean and
+  short-reference voice cloning, and passed the local RTX 5090 SDPA path at
+  exact revision `fd4b254…`. The Base variant uses reference audio plus its
+  exact transcript; it does not provide free-form instruction control. It is
+  the selected primary TTS, while Chatterbox remains rollback fallback.
 - PostgreSQL 18.4 is current. SQLAlchemy 2.1 remains beta; stable 2.0.51 is
   selected initially.
 - Hugging Face Hub 1.24.0 is the current stable download client and supports
@@ -86,7 +91,8 @@ model repositories, and upstream release notes are used for selections.
 | VAD | Silero VAD 6.2.1 + ONNX Runtime 1.27.0 | MIT | Language-agnostic, 6000+ language training claim | Authenticated streaming worker passed | CPUExecutionProvider | Selected; 500 ms endpoint avoids splitting the measured Korean sample pause |
 | STT | faster-whisper 1.2.1, `large-v3-turbo` + `small` | MIT | Whisper multilingual | Chunk/partial orchestration required | CUDA 12 + cuDNN 9 or CPU | GPU/CPU benchmark pair; isolate from CUDA 13 |
 | STT alternative | Gemma 4 12B audio understanding / newer runtime ASR | Apache-2.0/model-specific | Yes, measure | Runtime-dependent | GPU | Not the baseline until latency and tool contention are measured |
-| TTS | Chatterbox Multilingual V3, HF `5bb1f6e…`, package 0.1.7 | MIT | Officially listed | Sentence/chunk orchestration | PyTorch pin compatibility gate | Primary quality candidate |
+| TTS | Qwen3-TTS 12Hz 1.7B Base, HF `fd4b254…`, package 0.1.1 | Apache-2.0 | Officially supported | Sentence orchestration; full-array model output | CUDA 13 SDPA/manual PyTorch passed | Selected primary clone engine |
+| TTS fallback | Chatterbox Multilingual V3, HF `5bb1f6e…`, package 0.1.7 | MIT | Officially listed | Sentence/chunk orchestration | Isolated CUDA 13 runtime passed | Retained rollback fallback |
 | TTS fallback | Kokoro 82M | Model/code license requires final inventory | Official list lacks Korean | Fast | CPU/GPU | Rejected as Korean default |
 | Android | Kotlin + Compose, target API 37 | Android licenses | N/A | WebSocket/audio APIs | Device | Android 17 is current; local-network permission must be handled |
 | Browser automation | Playwright Python 1.61.0 + Chrome for Testing 149 | Apache-2.0 / browser notices | N/A | DOM, ARIA, screenshot | CPU | Selected; Windows 11 supported, isolated loopback-only live smoke passed |
@@ -191,6 +197,7 @@ model repositories, and upstream release notes are used for selections.
 - [Silero VAD](https://github.com/snakers4/silero-vad)
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
 - [Chatterbox](https://github.com/resemble-ai/chatterbox)
+- [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS)
 - [Android 17](https://developer.android.com/about/versions/17)
 - [Android foreground-service types](https://developer.android.com/develop/background-work/services/fgs/service-types)
 - [PostgreSQL 18 documentation](https://www.postgresql.org/docs/current/)

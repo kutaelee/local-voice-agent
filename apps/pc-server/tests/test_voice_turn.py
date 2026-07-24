@@ -12,14 +12,14 @@ from local_voice_agent_server.application.voice_turn import (
 )
 
 
-def test_streaming_speech_starts_at_a_long_natural_clause() -> None:
+def test_streaming_speech_does_not_split_at_a_comma() -> None:
     clause = "이 답변은 첫 음성을 더 빠르게 들려주기 위해 충분히 긴 자연스러운 구간에서 나눕니다,"
     ready, pending = _take_complete_speech_units(
         clause + " 다음 구간은 아직 생성 중입니다"
     )
 
-    assert ready == (clause,)
-    assert pending == "다음 구간은 아직 생성 중입니다"
+    assert ready == ()
+    assert pending == clause + " 다음 구간은 아직 생성 중입니다"
 
 
 def test_short_comma_does_not_fragment_streaming_speech() -> None:
