@@ -404,6 +404,25 @@ Do not put tokens in command history or tracked files in normal use.
 
 ### Live voice workers and 12B endpoint
 
+GPU-backed interactive workers must remain under the workstation scheduler
+for their full lifetime. The registered foreground supervisor keeps the
+reservation active while vLLM, STT, and TTS run:
+
+```powershell
+.\scripts\start-gpu-voice-stack.ps1
+gpuq status
+```
+
+The command records the opaque queue job ID under the external runtime status
+root. Stop it gracefully with:
+
+```powershell
+.\scripts\stop-gpu-voice-stack.ps1
+```
+
+Do not launch the GPU workers directly when this workstation scheduler is in
+service.
+
 Use independently generated values of at least 32 characters. The examples
 below are placeholders, not usable credentials:
 
@@ -496,6 +515,42 @@ python scripts/smoke-voice-websocket.py \
   --input-wav /mnt/e/Data/LocalVoiceAgent/runtime/evidence/audio/chatterbox-v3-ko-smoke.wav \
   --evidence /mnt/e/Data/LocalVoiceAgent/runtime/evidence/audio/voice-websocket-e2e.json
 ```
+
+### Browser QA before APK tuning
+
+Start an independent loopback gateway instance after the GPU workers, Tool
+Executor, and PostgreSQL are healthy:
+
+```powershell
+.\scripts\start-server.ps1 `
+  -InstanceName web-qa `
+  -ListenAddress 127.0.0.1 `
+  -Port 46326 `
+  -EnableVoice `
+  -EnableTools
+```
+
+Navigate to `http://127.0.0.1:46326/qa`. Loopback is a browser secure context
+for microphone capture and avoids installing the debug private CA into the
+Windows trust store. The portal covers:
+
+- authenticated pairing through a bounded, single-use WebSocket ticket;
+- continuous VAD turns, STT, streamed model text, scheduled PCM playback, and
+  interruption;
+- tool plans, Level 1/2 approval responses, execution events, and evidence IDs;
+- voice-profile settings and live runtime/worker/agent diagnostics;
+- STT-final, LLM-TTFT, TTS-first-audio, and playback-underrun measurements.
+
+The long-lived pairing token is never placed in a URL or browser storage.
+Stop this instance without disturbing the private-LAN Android gateway:
+
+```powershell
+.\scripts\stop-server.ps1 -InstanceName web-qa
+```
+
+The web portal does not replace physical APK checks for Bluetooth, earpiece,
+foreground service, audio focus, Keystore, rotation, backgrounding, or power
+management.
 
 For the registered loopback PC-server process, start PostgreSQL and apply
 migrations first. Keep every token in the invoking process environment or an

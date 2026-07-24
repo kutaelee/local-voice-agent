@@ -124,6 +124,31 @@ Physical-device acceptance is intentionally separate from emulator evidence;
 use [docs/physical-android-qa.md](docs/physical-android-qa.md) without
 recording pairing tokens or raw audio.
 
+Most server, voice, approval, tool, and latency QA can be completed before an
+APK build in the local web console:
+
+```powershell
+.\scripts\start-gpu-voice-stack.ps1
+.\scripts\start-tool-executor.ps1 -EnableWslNatBinding
+.\scripts\start-server.ps1 `
+  -InstanceName web-qa `
+  -ListenAddress 127.0.0.1 `
+  -Port 46326 `
+  -EnableVoice `
+  -EnableTools
+```
+
+Open `http://127.0.0.1:46326/qa`. The console keeps the pairing token only in
+page memory, exchanges it for a 45-second single-use WebSocket ticket, and
+shows STT, LLM, first-audio, and playback-underrun timing. The dedicated
+46326 listener is loopback-only and does not create a firewall rule. Use
+`scripts\stop-server.ps1 -InstanceName web-qa` and
+`scripts\stop-gpu-voice-stack.ps1` for registered shutdown.
+
+Physical Android QA is still required for foreground-service lifecycle,
+Bluetooth/earpiece routing, audio focus, Keystore persistence, and power
+management.
+
 After setting an untracked `LVA_TOOL_EXECUTOR_TOKEN` with at least 32 random
 characters, the isolated executor can be started and stopped with
 `scripts\start-tool-executor.ps1` and `scripts\stop-tool-executor.ps1`.

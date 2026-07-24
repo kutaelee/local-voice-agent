@@ -119,6 +119,79 @@ def test_health_is_read_only_and_does_not_disclose_secrets() -> None:
     assert TOKEN not in response.text
 
 
+def test_qa_portal_is_local_static_content_without_secrets() -> None:
+    response = client().get("/qa")
+    assert response.status_code == 200
+    assert "Voice QA Console" in response.text
+    assert TOKEN not in response.text
+    assert response.headers["cache-control"] == "no-store"
+    assert "frame-ancestors 'none'" in response.headers[
+        "content-security-policy"
+    ]
+    assert client().get("/qa/app.js").status_code == 200
+    assert client().get("/qa/styles.css").status_code == 200
+    assert client().get("/qa/pcm-worklet.js").status_code == 200
+
+
+def test_qa_websocket_ticket_requires_pairing_token() -> None:
+    response = client().post("/v1/qa/ws-ticket", json={})
+    assert response.status_code == 401
+    assert TOKEN not in response.text
+
+
+def test_qa_runtime_status_is_authenticated_and_bounded() -> None:
+    expected = {
+        "runtime": {
+            "state": "ready",
+            "model_id": "gemma4-12b",
+            "mtp_mode": "off",
+        },
+        "workers": {"vad": True, "stt": True, "tts": True},
+    }
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        qa_runtime_status_provider=lambda: expected,
+    )
+    api = TestClient(app)
+
+    assert api.get("/v1/qa/runtime-status").status_code == 401
+    response = api.get(
+        "/v1/qa/runtime-status",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"schema_version": "1.0", **expected}
+
+
+def test_qa_websocket_ticket_is_single_use() -> None:
+    session_id = uuid4()
+    with client() as api:
+        issued = api.post(
+            "/v1/qa/ws-ticket",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+            json={},
+        )
+        assert issued.status_code == 200
+        ticket = issued.json()["ticket"]
+        assert TOKEN not in issued.text
+        protocols = ["lva.qa.v1", f"lva.ticket.{ticket}"]
+
+        with api.websocket_connect(
+            f"/v1/sessions/{session_id}/events",
+            subprotocols=protocols,
+        ) as websocket:
+            assert websocket.accepted_subprotocol == "lva.qa.v1"
+            assert websocket.receive_json()["type"] == "assistant.state"
+
+        with pytest.raises(WebSocketDisconnect) as rejected:
+            with api.websocket_connect(
+                f"/v1/sessions/{uuid4()}/events",
+                subprotocols=protocols,
+            ):
+                pass
+        assert rejected.value.code == 4401
+
+
 def test_agent_status_requires_pairing_token() -> None:
     response = client().get("/v1/status/agents")
     assert response.status_code == 401

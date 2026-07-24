@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Local Voice Agent · QA Console</title>
+  <link rel="stylesheet" href="/qa/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">LOCAL VOICE AGENT</p>
+      <h1>Voice QA Console</h1>
+    </div>
+    <div class="status-cluster">
+      <span id="connectionBadge" class="badge offline">연결 안 됨</span>
+      <span id="assistantBadge" class="badge muted">대기</span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="card connect-card">
+      <div class="section-heading">
+        <div>
+          <p class="kicker">01 · CONNECTION</p>
+          <h2>로컬 게이트웨이</h2>
+        </div>
+        <button id="diagnoseButton" class="ghost">진단 새로고침</button>
+      </div>
+      <div class="connection-grid">
+        <label>
+          <span>서버 URL</span>
+          <input id="serverUrl" type="url" autocomplete="url" spellcheck="false">
+        </label>
+        <label>
+          <span>페어링 토큰</span>
+          <input id="pairingToken" type="password" autocomplete="off"
+                 placeholder="브라우저에 저장하지 않음">
+        </label>
+        <button id="connectButton" class="primary">연결</button>
+      </div>
+      <div id="diagnostics" class="diagnostics" aria-live="polite">
+        <div><span>Gateway</span><strong>—</strong></div>
+        <div><span>Model</span><strong>—</strong></div>
+        <div><span>Voice</span><strong>—</strong></div>
+        <div><span>Agents</span><strong>—</strong></div>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <article class="card conversation-card">
+        <div class="section-heading">
+          <div>
+            <p class="kicker">02 · LIVE TURN</p>
+            <h2>대화 스트림</h2>
+          </div>
+          <label class="toggle">
+            <input id="autoContinue" type="checkbox" checked>
+            <span>응답 후 자동 듣기</span>
+          </label>
+        </div>
+
+        <div id="conversation" class="conversation" aria-live="polite">
+          <div class="empty-state">
+            연결한 뒤 시작을 누르면 VAD가 발화 끝을 감지합니다.
+          </div>
+        </div>
+
+        <div class="voice-controls">
+          <button id="startButton" class="call" disabled>
+            <span class="call-dot"></span>
+            대화 시작
+          </button>
+          <button id="stopButton" class="secondary" disabled>듣기 중지</button>
+          <button id="interruptButton" class="danger" disabled>응답 중단</button>
+        </div>
+        <p id="statusLine" class="status-line">서버 연결을 기다리는 중입니다.</p>
+      </article>
+
+      <aside class="side-stack">
+        <section class="card metrics-card">
+          <div class="section-heading compact">
+            <div>
+              <p class="kicker">03 · LATENCY</p>
+              <h2>체감 지연</h2>
+            </div>
+            <button id="resetMetricsButton" class="icon-button" title="초기화">↺</button>
+          </div>
+          <div class="metric-grid">
+            <div><span>STT final</span><strong id="sttMetric">—</strong></div>
+            <div><span>LLM TTFT</span><strong id="llmMetric">—</strong></div>
+            <div><span>TTS first audio</span><strong id="ttsMetric">—</strong></div>
+            <div><span>Playback gap</span><strong id="gapMetric">—</strong></div>
+          </div>
+          <div class="meter-row">
+            <span>마이크</span>
+            <div class="meter"><i id="micMeter"></i></div>
+          </div>
+        </section>
+
+        <section class="card settings-card">
+          <div class="section-heading compact">
+            <div>
+              <p class="kicker">04 · VOICE</p>
+              <h2>음성 설정</h2>
+            </div>
+          </div>
+          <label>
+            <span>프로필</span>
+            <select id="voiceProfile" disabled></select>
+          </label>
+          <label>
+            <span>재생 속도 <output id="rateValue">1.00×</output></span>
+            <input id="playbackRate" type="range" min="0.85" max="1.25"
+                   step="0.01" value="1">
+          </label>
+          <label>
+            <span>감정 강도 <output id="emotionValue">0.50</output></span>
+            <input id="exaggeration" type="range" min="0.25" max="1"
+                   step="0.05" value="0.5">
+          </label>
+          <label>
+            <span>CFG <output id="cfgValue">0.50</output></span>
+            <input id="cfgWeight" type="range" min="0" max="1"
+                   step="0.05" value="0.5">
+          </label>
+          <label>
+            <span>Temperature <output id="temperatureValue">0.80</output></span>
+            <input id="temperature" type="range" min="0.5" max="1.2"
+                   step="0.05" value="0.8">
+          </label>
+          <button id="saveVoiceButton" class="secondary wide" disabled>설정 저장</button>
+          <p class="hint">재생 속도는 웹 플레이어에 즉시 적용됩니다. 현재 Qwen3 합성에는 Temperature가 반영되며 감정 강도·CFG는 Chatterbox 호환 설정으로만 보관됩니다.</p>
+        </section>
+      </aside>
+    </section>
+
+    <section id="approvalCard" class="card approval-card hidden">
+      <div class="section-heading">
+        <div>
+          <p class="kicker warning">APPROVAL REQUIRED</p>
+          <h2 id="approvalTitle">도구 실행 승인</h2>
+        </div>
+        <span id="riskBadge" class="risk">LEVEL —</span>
+      </div>
+      <dl id="approvalDetails"></dl>
+      <pre id="approvalArguments"></pre>
+      <div class="approval-actions">
+        <button id="rejectButton" class="secondary">거부</button>
+        <button id="approveButton" class="primary">승인 후 실행</button>
+      </div>
+    </section>
+
+    <section class="card event-card">
+      <div class="section-heading">
+        <div>
+          <p class="kicker">05 · EVIDENCE</p>
+          <h2>이벤트 타임라인</h2>
+        </div>
+        <button id="clearEventsButton" class="ghost">지우기</button>
+      </div>
+      <div id="events" class="events"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/qa/app.js"></script>
+</body>
+</html>

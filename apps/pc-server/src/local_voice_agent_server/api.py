@@ -7,15 +7,20 @@ from collections import OrderedDict, deque
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
+from hashlib import sha256
 import hmac
 import json
 import logging
 import os
 from pathlib import Path
+import secrets
+import stat
+import time
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from .protocol.envelope import EventEnvelope
@@ -213,6 +218,104 @@ def _authorized_request(request: Request, expected_token: str) -> bool:
     return hmac.compare_digest(authorization, f"Bearer {expected_token}")
 
 
+@dataclass(frozen=True, slots=True)
+class _QaWebSocketTicket:
+    digest: bytes
+    client_fingerprint: str
+    expires_at: float
+
+
+class _QaWebSocketTicketStore:
+    """Bounded, single-use browser tickets that keep pairing tokens out of URLs."""
+
+    def __init__(self, *, ttl_seconds: float = 45, capacity: int = 128) -> None:
+        if not 5 <= ttl_seconds <= 120:
+            raise ValueError("QA ticket TTL is invalid")
+        if not 8 <= capacity <= 1_024:
+            raise ValueError("QA ticket capacity is invalid")
+        self._ttl_seconds = ttl_seconds
+        self._capacity = capacity
+        self._secret = secrets.token_bytes(32)
+        self._tickets: OrderedDict[bytes, _QaWebSocketTicket] = OrderedDict()
+        self._lock = asyncio.Lock()
+
+    @property
+    def ttl_seconds(self) -> float:
+        return self._ttl_seconds
+
+    def _digest(self, token: str) -> bytes:
+        return hmac.digest(self._secret, token.encode("ascii"), "sha256")
+
+    async def issue(self, *, client_fingerprint: str) -> str:
+        token = secrets.token_urlsafe(32)
+        digest = self._digest(token)
+        now = time.monotonic()
+        async with self._lock:
+            self._expire(now)
+            self._tickets[digest] = _QaWebSocketTicket(
+                digest=digest,
+                client_fingerprint=client_fingerprint,
+                expires_at=now + self._ttl_seconds,
+            )
+            while len(self._tickets) > self._capacity:
+                self._tickets.popitem(last=False)
+        return token
+
+    async def consume(
+        self,
+        token: str,
+        *,
+        client_fingerprint: str,
+    ) -> bool:
+        if not token or len(token) > 128:
+            return False
+        try:
+            digest = self._digest(token)
+        except UnicodeEncodeError:
+            return False
+        now = time.monotonic()
+        async with self._lock:
+            self._expire(now)
+            ticket = self._tickets.pop(digest, None)
+        if ticket is None:
+            return False
+        return (
+            ticket.expires_at >= now
+            and hmac.compare_digest(
+                ticket.client_fingerprint,
+                client_fingerprint,
+            )
+        )
+
+    def _expire(self, now: float) -> None:
+        expired = [
+            digest
+            for digest, ticket in self._tickets.items()
+            if ticket.expires_at < now
+        ]
+        for digest in expired:
+            self._tickets.pop(digest, None)
+
+
+def _client_fingerprint(
+    *,
+    host: str | None,
+    user_agent: str,
+) -> str:
+    value = f"{host or 'unknown'}\n{user_agent[:512]}"
+    return sha256(value.encode("utf-8")).hexdigest()
+
+
+def _qa_ticket_from_subprotocol(websocket: WebSocket) -> str | None:
+    encoded = websocket.headers.get("sec-websocket-protocol", "")
+    prefix = "lva.ticket."
+    for item in encoded.split(","):
+        protocol = item.strip()
+        if protocol.startswith(prefix):
+            return protocol[len(prefix) :]
+    return None
+
+
 def create_app(
     settings: ServerSettings,
     *,
@@ -221,6 +324,9 @@ def create_app(
     state_store: PostgresStateStore | None = None,
     model_switch_coordinator: ModelSwitchCoordinator | None = None,
     voice_profile_store: VoiceProfileStore | None = None,
+    qa_runtime_status_provider: (
+        Callable[[], dict[str, object]] | None
+    ) = None,
     reconnect_grace_seconds: float = 120,
 ) -> FastAPI:
     if not 0.01 <= reconnect_grace_seconds <= 600:
@@ -233,6 +339,8 @@ def create_app(
     session_states: OrderedDict[UUID, _SessionReplayState] = OrderedDict()
     session_states_lock = asyncio.Lock()
     disconnect_cleanup_tasks: dict[UUID, asyncio.Task[None]] = {}
+    qa_ticket_store = _QaWebSocketTicketStore()
+    qa_root = Path(__file__).with_name("web_qa")
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -258,6 +366,76 @@ def create_app(
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok", "component": "pc-server"}
+
+    def qa_file(name: str, media_type: str) -> FileResponse:
+        path = qa_root / name
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail="QA portal is unavailable")
+        return FileResponse(
+            path,
+            media_type=media_type,
+            headers={
+                "Cache-Control": "no-store",
+                "Content-Security-Policy": (
+                    "default-src 'self'; connect-src 'self' ws: wss:; "
+                    "script-src 'self'; style-src 'self'; img-src 'self' data:; "
+                    "media-src 'self' blob:; object-src 'none'; "
+                    "base-uri 'none'; frame-ancestors 'none'"
+                ),
+                "Referrer-Policy": "no-referrer",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    @app.get("/qa", include_in_schema=False)
+    async def qa_portal() -> FileResponse:
+        return qa_file("index.html", "text/html")
+
+    @app.get("/qa/app.js", include_in_schema=False)
+    async def qa_javascript() -> FileResponse:
+        return qa_file("app.js", "text/javascript")
+
+    @app.get("/qa/styles.css", include_in_schema=False)
+    async def qa_styles() -> FileResponse:
+        return qa_file("styles.css", "text/css")
+
+    @app.get("/qa/pcm-worklet.js", include_in_schema=False)
+    async def qa_audio_worklet() -> FileResponse:
+        return qa_file("pcm-worklet.js", "text/javascript")
+
+    @app.post("/v1/qa/ws-ticket")
+    async def qa_websocket_ticket(request: Request) -> dict[str, object]:
+        if not _authorized_request(request, settings.pairing_token):
+            raise HTTPException(status_code=401, detail="invalid pairing token")
+        client_host = request.client.host if request.client is not None else None
+        fingerprint = _client_fingerprint(
+            host=client_host,
+            user_agent=request.headers.get("user-agent", ""),
+        )
+        ticket = await qa_ticket_store.issue(client_fingerprint=fingerprint)
+        return {
+            "schema_version": "1.0",
+            "ticket": ticket,
+            "expires_in_seconds": qa_ticket_store.ttl_seconds,
+        }
+
+    @app.get("/v1/qa/runtime-status")
+    async def qa_runtime_status(request: Request) -> dict[str, object]:
+        if not _authorized_request(request, settings.pairing_token):
+            raise HTTPException(status_code=401, detail="invalid pairing token")
+        if qa_runtime_status_provider is None:
+            raise HTTPException(
+                status_code=503,
+                detail="runtime status provider is unavailable",
+            )
+        try:
+            status = await asyncio.to_thread(qa_runtime_status_provider)
+        except Exception as error:
+            raise HTTPException(
+                status_code=503,
+                detail="runtime status observation failed",
+            ) from error
+        return {"schema_version": "1.0", **status}
 
     @app.get("/v1/status/agents")
     async def agent_status(request: Request) -> dict[str, object]:
@@ -453,7 +631,34 @@ def create_app(
 
     @app.websocket("/v1/sessions/{session_id}/events")
     async def session_events(websocket: WebSocket, session_id: UUID) -> None:
-        if not _authorized(websocket, settings.pairing_token):
+        selected_subprotocol: str | None = None
+        authorized = _authorized(websocket, settings.pairing_token)
+        if not authorized:
+            ticket = _qa_ticket_from_subprotocol(websocket)
+            client_host = (
+                websocket.client.host
+                if websocket.client is not None
+                else None
+            )
+            if ticket is not None:
+                authorized = await qa_ticket_store.consume(
+                    ticket,
+                    client_fingerprint=_client_fingerprint(
+                        host=client_host,
+                        user_agent=websocket.headers.get("user-agent", ""),
+                    ),
+                )
+                if authorized:
+                    requested_protocols = {
+                        item.strip()
+                        for item in websocket.headers.get(
+                            "sec-websocket-protocol",
+                            "",
+                        ).split(",")
+                    }
+                    if "lva.qa.v1" in requested_protocols:
+                        selected_subprotocol = "lva.qa.v1"
+        if not authorized:
             await websocket.close(code=4401, reason="invalid pairing token")
             return
 
@@ -537,7 +742,7 @@ def create_app(
             return
 
         assert replay_state is not None
-        await websocket.accept()
+        await websocket.accept(subprotocol=selected_subprotocol)
         send_lock = asyncio.Lock()
         background_tasks: set[asyncio.Task[None]] = set()
         for replayed in replay:
@@ -777,7 +982,74 @@ def create_app_from_environment() -> FastAPI:
         state_store=state_store,
         model_switch_coordinator=model_switch_coordinator,
         voice_profile_store=voice_profile_store,
+        qa_runtime_status_provider=_qa_runtime_status_provider_from_environment(),
     )
+
+
+def _qa_runtime_status_provider_from_environment(
+) -> Callable[[], dict[str, object]]:
+    status_path = Path(
+        os.environ.get(
+            "LVA_VLLM_STATUS_PATH",
+            "/mnt/e/Data/LocalVoiceAgent/runtime/status/vllm.json",
+        )
+    )
+    socket_paths = {
+        "vad": Path(
+            os.environ.get(
+                "LVA_VAD_SOCKET",
+                "/home/kutae/.local/share/local-voice-agent/run/vad.sock",
+            )
+        ),
+        "stt": Path(
+            os.environ.get(
+                "LVA_STT_SOCKET",
+                "/home/kutae/.local/share/local-voice-agent/run/stt.sock",
+            )
+        ),
+        "tts": Path(
+            os.environ.get(
+                "LVA_TTS_SOCKET",
+                "/home/kutae/.local/share/local-voice-agent/run/tts.sock",
+            )
+        ),
+    }
+
+    def observe() -> dict[str, object]:
+        runtime: dict[str, object] = {
+            "state": "unavailable",
+            "model_id": None,
+            "mtp_mode": None,
+        }
+        if status_path.is_file():
+            value = json.loads(status_path.read_text(encoding="utf-8"))
+            pid = value.get("pid")
+            if (
+                value.get("component") == "vllm"
+                and value.get("state") == "ready"
+                and isinstance(pid, int)
+                and Path(f"/proc/{pid}").is_dir()
+            ):
+                runtime = {
+                    "state": "ready",
+                    "model_id": str(value.get("model_id", ""))[:128],
+                    "mtp_mode": str(value.get("mtp_mode", ""))[:32],
+                }
+        workers = {}
+        for name, path in socket_paths.items():
+            try:
+                workers[name] = (
+                    path.is_socket()
+                    and stat.S_ISSOCK(path.stat().st_mode)
+                )
+            except OSError:
+                workers[name] = False
+        return {
+            "runtime": runtime,
+            "workers": workers,
+        }
+
+    return observe
 
 
 def _model_switch_coordinator_from_environment(
@@ -1005,6 +1277,9 @@ def _event_handler_from_environment(
             conversation=conversation,
             tts=tts,
             vad=vad,
+            output_tail_silence_ms=int(
+                os.environ.get("LVA_TTS_OUTPUT_TAIL_SILENCE_MS", "80")
+            ),
         )
 
     return VoiceSessionEventHandler(

@@ -3,6 +3,9 @@ param(
     [ValidateRange(1024, 65535)]
     [int]$Port = 46321,
 
+    [ValidatePattern('^[a-z0-9-]+$')]
+    [string]$InstanceName = 'pc-server',
+
     [string]$ListenAddress = '127.0.0.1',
 
     [string]$TlsCertificatePath,
@@ -20,7 +23,7 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = 'C:\Dev\Repos\local-voice-agent'
 $runtimeRoot = 'E:\Data\LocalVoiceAgent\runtime'
-$statusPath = Join-Path $runtimeRoot 'status\pc-server.json'
+$statusPath = Join-Path $runtimeRoot "status\$InstanceName.json"
 $logDirectory = Join-Path $runtimeRoot 'logs'
 $passwordFile = 'E:\Data\LocalVoiceAgent\secrets\postgres-password'
 $pairingTokenFile = 'E:\Data\LocalVoiceAgent\secrets\pairing-token'
@@ -320,6 +323,7 @@ try {
     [ordered]@{
         schema_version = '1.0'
         component = 'pc-server'
+        instance_name = $InstanceName
         state = 'running'
         host = $ListenAddress
         port = $Port

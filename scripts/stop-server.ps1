@@ -1,8 +1,11 @@
 [CmdletBinding()]
-param()
+param(
+    [ValidatePattern('^[a-z0-9-]+$')]
+    [string]$InstanceName = 'pc-server'
+)
 
 $ErrorActionPreference = 'Stop'
-$statusPath = 'E:\Data\LocalVoiceAgent\runtime\status\pc-server.json'
+$statusPath = "E:\Data\LocalVoiceAgent\runtime\status\$InstanceName.json"
 
 if (-not (Test-Path -LiteralPath $statusPath -PathType Leaf)) {
     Write-Output 'No registered Local Voice Agent server status file exists; nothing was stopped.'

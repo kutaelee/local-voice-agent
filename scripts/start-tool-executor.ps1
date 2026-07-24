@@ -32,22 +32,37 @@ function Set-RestrictedSecretAcl {
     $userSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
     $systemSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
     $acl = Get-Acl -LiteralPath $LiteralPath
-    $acl.SetAccessRuleProtection($true, $false)
-    foreach ($rule in @($acl.Access)) {
-        [void]$acl.RemoveAccessRuleSpecific($rule)
+    $expectedSids = @($userSid.Value, $systemSid.Value)
+    $rules = @($acl.Access)
+    $alreadyRestricted = (
+        $acl.AreAccessRulesProtected -and
+        $rules.Count -eq 2 -and
+        @($rules | Where-Object {
+            $_.IdentityReference.Translate(
+                [System.Security.Principal.SecurityIdentifier]
+            ).Value -notin $expectedSids -or
+            $_.AccessControlType -ne
+                [System.Security.AccessControl.AccessControlType]::Allow -or
+            $_.FileSystemRights -ne
+                [System.Security.AccessControl.FileSystemRights]::FullControl -or
+            $_.IsInherited
+        }).Count -eq 0
+    )
+    if ($alreadyRestricted) {
+        return
     }
-    foreach ($sid in @($userSid, $systemSid)) {
-        [void]$acl.AddAccessRule(
-            [System.Security.AccessControl.FileSystemAccessRule]::new(
-                $sid,
-                [System.Security.AccessControl.FileSystemRights]::FullControl,
-                [System.Security.AccessControl.InheritanceFlags]::None,
-                [System.Security.AccessControl.PropagationFlags]::None,
-                [System.Security.AccessControl.AccessControlType]::Allow
-            )
-        )
+
+    # Set-Acl can request SeSecurityPrivilege when Windows supplies a SACL
+    # after reboot. icacls changes only the owner-controlled DACL here.
+    $result = & icacls.exe `
+        $LiteralPath `
+        '/inheritance:r' `
+        '/grant:r' `
+        "*$($userSid.Value):(F)" `
+        "*$($systemSid.Value):(F)" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to restrict the Tool Executor token ACL: $result"
     }
-    Set-Acl -LiteralPath $LiteralPath -AclObject $acl
 }
 
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
