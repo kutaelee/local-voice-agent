@@ -103,6 +103,73 @@ def test_tool_requests_disable_thinking_for_low_latency_json() -> None:
     assert payload["chat_template_kwargs"] == {"enable_thinking": False}
 
 
+def test_tool_schema_selection_keeps_system_status_prompt_bounded() -> None:
+    conversation, _ = agent([])
+
+    payload = conversation._request_payload(
+        [{"role": "user", "content": "컴퓨터 상태 알려줘."}]
+    )
+    names = {
+        tool["function"]["name"]
+        for tool in payload["tools"]
+    }
+
+    assert names == {
+        "check_port",
+        "inspect_cpu",
+        "inspect_disk",
+        "inspect_gpu",
+        "inspect_memory",
+        "inspect_network",
+        "inspect_process",
+        "inspect_service",
+        "list_processes",
+        "list_services",
+    }
+    assert payload["tool_choice"] == "required"
+
+
+def test_tool_schema_selection_combines_requested_domains() -> None:
+    conversation, _ = agent([])
+
+    payload = conversation._request_payload(
+        [{"role": "user", "content": "이 저장소 테스트 실패를 수정해 줘."}]
+    )
+    names = {
+        tool["function"]["name"]
+        for tool in payload["tools"]
+    }
+
+    assert {"git_status", "run_tests", "apply_patch", "read_file"} <= names
+    assert "browser_launch" not in names
+    assert payload["tool_choice"] == "required"
+
+
+def test_ordinary_conversation_keeps_automatic_tool_choice() -> None:
+    conversation, _ = agent([])
+
+    payload = conversation._request_payload(
+        [{"role": "user", "content": "안녕하세요."}]
+    )
+
+    assert payload["tool_choice"] == "auto"
+
+
+def test_english_keyword_matching_does_not_match_word_fragments() -> None:
+    conversation, _ = agent([])
+
+    payload = conversation._request_payload(
+        [{"role": "user", "content": "Report computer status."}]
+    )
+    names = {
+        tool["function"]["name"]
+        for tool in payload["tools"]
+    }
+
+    assert "inspect_gpu" in names
+    assert "git_status" not in names
+
+
 def test_level_zero_tool_executes_and_returns_verified_result() -> None:
     conversation, port = agent(
         [

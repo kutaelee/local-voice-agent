@@ -6,6 +6,7 @@ import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import re
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -70,6 +71,168 @@ EXECUTOR_TOOL_NAMES = frozenset(
         "ui_type_text",
         "write_file",
     }
+)
+SYSTEM_TOOL_NAMES = frozenset(
+    {
+        "check_port",
+        "inspect_cpu",
+        "inspect_disk",
+        "inspect_gpu",
+        "inspect_memory",
+        "inspect_network",
+        "inspect_process",
+        "inspect_service",
+        "list_processes",
+        "list_services",
+    }
+)
+FILE_TOOL_NAMES = frozenset(
+    {
+        "calculate_hash",
+        "list_files",
+        "list_recent_files",
+        "read_file",
+        "read_file_range",
+        "search_files",
+    }
+)
+GIT_TOOL_NAMES = frozenset(
+    {
+        "git_blame",
+        "git_branch",
+        "git_diff",
+        "git_diff_stat",
+        "git_log",
+        "git_show",
+        "git_status",
+    }
+)
+DEVELOPMENT_TOOL_NAMES = frozenset(
+    {"inspect_test_log", "run_tests"}
+)
+BROWSER_TOOL_NAMES = frozenset(
+    name for name in EXECUTOR_TOOL_NAMES if name.startswith("browser_")
+)
+UI_TOOL_NAMES = frozenset(
+    name for name in EXECUTOR_TOOL_NAMES if name.startswith("ui_")
+)
+MUTATION_TOOL_NAMES = frozenset(
+    {"apply_patch", "rollback_file_change", "write_file"}
+)
+SYSTEM_TOOL_KEYWORDS = (
+    "computer status",
+    "running program",
+    "process",
+    "service",
+    "cpu",
+    "gpu",
+    "memory",
+    "disk",
+    "network",
+    "port",
+    "컴퓨터 상태",
+    "실행 중",
+    "프로그램",
+    "프로세스",
+    "서비스",
+    "메모리",
+    "디스크",
+    "네트워크",
+    "포트",
+)
+DOMAIN_TOOL_KEYWORDS = (
+    (
+        FILE_TOOL_NAMES,
+        (
+            "file",
+            "folder",
+            "directory",
+            "path",
+            "readme",
+            "파일",
+            "폴더",
+            "디렉터리",
+            "경로",
+            "최근 수정",
+            "찾아",
+        ),
+    ),
+    (
+        GIT_TOOL_NAMES,
+        (
+            "git",
+            "repository",
+            "repo",
+            "diff",
+            "commit",
+            "branch",
+            "깃",
+            "저장소",
+            "레포",
+            "커밋",
+            "브랜치",
+        ),
+    ),
+    (
+        DEVELOPMENT_TOOL_NAMES,
+        (
+            "test",
+            "build",
+            "lint",
+            "format",
+            "테스트",
+            "빌드",
+            "린트",
+            "포맷",
+            "개발 서버",
+        ),
+    ),
+    (
+        BROWSER_TOOL_NAMES,
+        (
+            "browser",
+            "website",
+            "web page",
+            "playwright",
+            "브라우저",
+            "웹사이트",
+            "웹 페이지",
+            "사이트",
+        ),
+    ),
+    (
+        UI_TOOL_NAMES,
+        (
+            "window",
+            "screen",
+            "screenshot",
+            "click",
+            "type",
+            "화면",
+            "창",
+            "윈도우",
+            "스크린샷",
+            "클릭",
+            "입력",
+        ),
+    ),
+    (
+        MUTATION_TOOL_NAMES | FILE_TOOL_NAMES,
+        (
+            "modify",
+            "change",
+            "write",
+            "patch",
+            "rollback",
+            "수정",
+            "변경",
+            "작성",
+            "생성",
+            "패치",
+            "적용",
+            "롤백",
+        ),
+    ),
 )
 MAX_TOOL_ROUNDS = 4
 MAX_MODEL_RESPONSE_BYTES = 2 * 1024 * 1024
@@ -444,14 +607,57 @@ class ToolAgentConversation:
         return {
             "model": self._model,
             "messages": messages,
-            "tools": self._tools,
-            "tool_choice": "auto",
+            "tools": self._tools_for_messages(messages),
+            "tool_choice": (
+                "required" if self._requires_tool(messages) else "auto"
+            ),
             "parallel_tool_calls": False,
             "temperature": 0.1,
             "max_tokens": 512,
             "stream": False,
             "chat_template_kwargs": {"enable_thinking": False},
         }
+
+    def _tools_for_messages(
+        self,
+        messages: list[dict[str, object]],
+    ) -> tuple[dict[str, object], ...]:
+        user_text = " ".join(
+            str(message.get("content", ""))
+            for message in messages
+            if message.get("role") == "user"
+        ).casefold()
+        selected = set(SYSTEM_TOOL_NAMES)
+        for tool_names, keywords in DOMAIN_TOOL_KEYWORDS:
+            if any(self._has_keyword(user_text, keyword) for keyword in keywords):
+                selected.update(tool_names)
+        return tuple(
+            tool
+            for tool in self._tools
+            if tool["function"]["name"] in selected
+        )
+
+    @staticmethod
+    def _requires_tool(messages: list[dict[str, object]]) -> bool:
+        user_text = " ".join(
+            str(message.get("content", ""))
+            for message in messages
+            if message.get("role") == "user"
+        ).casefold()
+        return any(
+            ToolAgentConversation._has_keyword(user_text, keyword)
+            for keyword in SYSTEM_TOOL_KEYWORDS
+        ) or any(
+            ToolAgentConversation._has_keyword(user_text, keyword)
+            for _, keywords in DOMAIN_TOOL_KEYWORDS
+            for keyword in keywords
+        )
+
+    @staticmethod
+    def _has_keyword(text: str, keyword: str) -> bool:
+        if keyword.isascii():
+            return re.search(rf"\b{re.escape(keyword)}\b", text) is not None
+        return keyword in text
 
     def _post(self, payload: dict[str, object]) -> dict[str, object]:
         encoded = json.dumps(payload, separators=(",", ":")).encode("utf-8")
