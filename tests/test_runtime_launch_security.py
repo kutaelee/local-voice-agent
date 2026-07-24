@@ -70,6 +70,17 @@ def test_windows_wrappers_bridge_only_variable_names() -> None:
     assert "LVA_VLLM_EXPECTED_MODEL_SIZE/u" in stop_vllm
 
 
+def test_pc_server_voice_mode_is_explicit_and_self_contained() -> None:
+    start = script("start-server.ps1")
+
+    assert "[switch]$EnableVoice" in start
+    assert "Required audio worker socket is unavailable" in start
+    assert "$env:LVA_VOICE_ENABLED = '1'" in start
+    assert "$env:LVA_VLLM_MODEL = 'gemma4-12b'" in start
+    assert "$env:LVA_VLLM_BASE_URL = 'http://127.0.0.1:46322/v1'" in start
+    assert "voice_enabled = $env:LVA_VOICE_ENABLED -eq '1'" in start
+
+
 def test_shared_sglang_benchmark_yields_to_comfyui() -> None:
     shared = script("run-shared-sglang-mtp-benchmark.ps1")
 

@@ -11,7 +11,9 @@ param(
 
     [switch]$EnablePrivateNetwork,
 
-    [switch]$EnableTools
+    [switch]$EnableTools,
+
+    [switch]$EnableVoice
 )
 
 $ErrorActionPreference = 'Stop'
@@ -169,6 +171,25 @@ $env:LVA_DATABASE_URL = (
     'postgresql+asyncpg://local_voice_agent:{0}@127.0.0.1:46324/local_voice_agent' -f
         [Uri]::EscapeDataString($taskPassword)
 )
+if ($EnableVoice) {
+    foreach ($socketPath in @(
+        '/home/kutae/.local/share/local-voice-agent/run/vad.sock',
+        '/home/kutae/.local/share/local-voice-agent/run/stt.sock',
+        '/home/kutae/.local/share/local-voice-agent/run/tts.sock'
+    )) {
+        wsl.exe -d Ubuntu -- test -S $socketPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Required audio worker socket is unavailable: $socketPath"
+        }
+    }
+    if (-not $env:LVA_VLLM_MODEL) {
+        $env:LVA_VLLM_MODEL = 'gemma4-12b'
+    }
+    if (-not $env:LVA_VLLM_BASE_URL) {
+        $env:LVA_VLLM_BASE_URL = 'http://127.0.0.1:46322/v1'
+    }
+    $env:LVA_VOICE_ENABLED = '1'
+}
 if ($EnableTools) {
     if (-not (Test-Path -LiteralPath $toolTokenFile -PathType Leaf)) {
         throw 'Tool Executor token is unavailable. Start the Tool Executor first.'
@@ -304,6 +325,8 @@ try {
         port = $Port
         protocol = if ($tlsEnabled) { 'https' } else { 'http' }
         tls_enabled = $tlsEnabled
+        voice_enabled = $env:LVA_VOICE_ENABLED -eq '1'
+        tools_enabled = $env:LVA_TOOLS_ENABLED -eq '1'
         launcher_pid = $process.Id
         launcher_executable = $process.Path
         linux_pid = [int]$linuxPidText.Trim()
