@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import dev.localvoiceagent.android.audio.AudioOutputRoute
 
 @Composable
 fun LocalVoiceAgentApp(
@@ -155,6 +156,23 @@ private fun VoiceScreen(
 ) {
     Text("Voice conversation", style = MaterialTheme.typography.headlineSmall)
     Text(if (state.conversationActive) "Call active" else "Call paused")
+    Text("Audio output")
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        AudioOutputRoute.entries.forEach { route ->
+            TextButton(
+                onClick = { onAction(AppAction.SetAudioOutputRoute(route)) },
+                enabled = state.audioOutputRoute != route,
+            ) {
+                Text(
+                    if (state.audioOutputRoute == route) {
+                        "✓ ${route.label}"
+                    } else {
+                        route.label
+                    },
+                )
+            }
+        }
+    }
     Spacer(Modifier.height(12.dp))
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {

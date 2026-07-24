@@ -61,7 +61,7 @@ async def run(args: argparse.Namespace) -> int:
         "schema_version": "1.0",
         "generated_at": datetime.now(UTC).isoformat(),
         "status": "passed",
-        "engine": "qwen3-tts-12hz-1.7b-base",
+        "engine": args.engine,
         "profile_style": options.style,
         "reference_transcript_present": True,
         "reference_profile_id_redacted": True,
@@ -93,6 +93,14 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--text", required=True)
+    parser.add_argument(
+        "--engine",
+        choices=(
+            "qwen3-tts-12hz-0.6b-base",
+            "qwen3-tts-12hz-1.7b-base",
+        ),
+        default="qwen3-tts-12hz-1.7b-base",
+    )
     args = parser.parse_args()
     for path in (
         args.socket,

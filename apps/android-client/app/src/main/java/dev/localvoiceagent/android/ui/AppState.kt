@@ -1,5 +1,7 @@
 package dev.localvoiceagent.android.ui
 
+import dev.localvoiceagent.android.audio.AudioOutputRoute
+
 enum class AppDestination(val label: String) {
     PAIRING("Pairing"),
     VOICE("Voice"),
@@ -76,6 +78,7 @@ data class AppUiState(
     val voiceExaggeration: Float = 0.5f,
     val voiceCfgWeight: Float = 0.5f,
     val voiceTemperature: Float = 0.8f,
+    val audioOutputRoute: AudioOutputRoute = AudioOutputRoute.SPEAKER,
     val voiceSettingsBusy: Boolean = false,
     val voiceSettingsMessage: String? = null,
 )
@@ -125,6 +128,7 @@ sealed interface AppAction {
     data class SetVoiceExaggeration(val value: Float) : AppAction
     data class SetVoiceCfgWeight(val value: Float) : AppAction
     data class SetVoiceTemperature(val value: Float) : AppAction
+    data class SetAudioOutputRoute(val route: AudioOutputRoute) : AppAction
     data object SaveVoiceSettings : AppAction
     data class SetVoiceCatalog(
         val profiles: List<VoiceProfileOption>,
@@ -242,6 +246,9 @@ object AppReducer {
         )
         is AppAction.SetVoiceTemperature -> state.copy(
             voiceTemperature = action.value.coerceIn(0.5f, 1.2f),
+        )
+        is AppAction.SetAudioOutputRoute -> state.copy(
+            audioOutputRoute = action.route,
         )
         AppAction.SaveVoiceSettings -> state.copy(
             voiceSettingsBusy = true,

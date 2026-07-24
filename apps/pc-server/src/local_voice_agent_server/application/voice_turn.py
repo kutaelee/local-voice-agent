@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+from contextlib import suppress
 from dataclasses import dataclass, field
 import inspect
 import re
@@ -433,8 +434,29 @@ class VoiceTurnService:
         pending_speech = ""
         synthesis_announced = False
         total_characters = 0
+        speech_queue: asyncio.Queue[str | None] = asyncio.Queue(maxsize=8)
+
+        async def synthesize_queued_speech() -> None:
+            while True:
+                speech_unit = await speech_queue.get()
+                try:
+                    if speech_unit is None:
+                        return
+                    await self._synthesize_speech_unit(
+                        events,
+                        state=state,
+                        speech_unit=speech_unit,
+                        language=language,
+                        emit=emit,
+                    )
+                finally:
+                    speech_queue.task_done()
+
+        synthesis_task = asyncio.create_task(synthesize_queued_speech())
         try:
             async for delta in stream:
+                if synthesis_task.done():
+                    await synthesis_task
                 if not isinstance(delta, str):
                     raise ValueError("conversation stream returned invalid text")
                 if not delta:
@@ -463,13 +485,7 @@ class VoiceTurnService:
                     )
                     synthesis_announced = True
                 for speech_unit in ready:
-                    await self._synthesize_speech_unit(
-                        events,
-                        state=state,
-                        speech_unit=speech_unit,
-                        language=language,
-                        emit=emit,
-                    )
+                    await speech_queue.put(speech_unit)
 
             response = "".join(response_parts).strip()
             if not response:
@@ -493,13 +509,9 @@ class VoiceTurnService:
                         ),
                         emit=emit,
                     )
-                await self._synthesize_speech_unit(
-                    events,
-                    state=state,
-                    speech_unit=remaining,
-                    language=language,
-                    emit=emit,
-                )
+                await speech_queue.put(remaining)
+            await speech_queue.put(None)
+            await synthesis_task
             await self._end_audio_output(
                 events,
                 state=state,
@@ -507,6 +519,9 @@ class VoiceTurnService:
                 emit=emit,
             )
         except asyncio.CancelledError:
+            synthesis_task.cancel()
+            with suppress(asyncio.CancelledError, Exception):
+                await synthesis_task
             await self._close_partial_output(
                 state,
                 emit=emit,
@@ -514,6 +529,9 @@ class VoiceTurnService:
             )
             raise
         except Exception:
+            synthesis_task.cancel()
+            with suppress(asyncio.CancelledError, Exception):
+                await synthesis_task
             await self._close_partial_output(state, emit=emit, reason="error")
             raise
         return events
@@ -636,6 +654,10 @@ _HARD_SPEECH_BOUNDARY = re.compile(
     r"(?:(?<=[.!?\u3002\uff01\uff1f])\s+|\n{2,})"
 )
 _STREAM_SPEECH_BOUNDARY = _HARD_SPEECH_BOUNDARY
+_CLAUSE_SPEECH_BOUNDARY = re.compile(r"[,，、;；:：]\s*")
+_WORD_SPEECH_BOUNDARY = re.compile(r"\s+")
+_MIN_STREAM_UNIT_CHARACTERS = 18
+_MAX_STREAM_UNIT_CHARACTERS = 52
 
 
 def _speech_units(text: str) -> tuple[str, ...]:
@@ -657,4 +679,22 @@ def _take_complete_speech_units(text: str) -> tuple[tuple[str, ...], str]:
         if unit:
             units.append(unit)
             start = boundary.end()
-    return tuple(units), text[start:]
+    pending = text[start:]
+    while len(pending.strip()) >= _MAX_STREAM_UNIT_CHARACTERS:
+        split_at = None
+        for pattern in (_CLAUSE_SPEECH_BOUNDARY, _WORD_SPEECH_BOUNDARY):
+            for boundary in pattern.finditer(
+                pending,
+                _MIN_STREAM_UNIT_CHARACTERS,
+                _MAX_STREAM_UNIT_CHARACTERS + 1,
+            ):
+                split_at = boundary.end()
+            if split_at is not None:
+                break
+        if split_at is None:
+            split_at = _MAX_STREAM_UNIT_CHARACTERS
+        unit = pending[:split_at].strip()
+        if unit:
+            units.append(unit)
+        pending = pending[split_at:]
+    return tuple(units), pending

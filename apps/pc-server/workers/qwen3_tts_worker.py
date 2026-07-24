@@ -41,6 +41,12 @@ def main() -> int:
     voice_profiles_root = args.voice_profiles_root.resolve(strict=True)
     profiles_root = (voice_profiles_root / "profiles").resolve(strict=True)
     token = require_token()
+    if "qwen3-tts-12hz-0.6b-base" in str(args.model).lower():
+        engine_name = "qwen3-tts-12hz-0.6b-base"
+    elif "qwen3-tts-12hz-1.7b-base" in str(args.model).lower():
+        engine_name = "qwen3-tts-12hz-1.7b-base"
+    else:
+        raise ValueError("Qwen3-TTS model variant is not registered")
     model = Qwen3TTSModel.from_pretrained(
         str(args.model),
         device_map="cuda:0",
@@ -132,7 +138,7 @@ def main() -> int:
                 text=text,
                 language="Korean",
                 voice_clone_prompt=prompt,
-                non_streaming_mode=True,
+                non_streaming_mode=False,
                 temperature=temperature,
                 max_new_tokens=2_048,
             )
@@ -152,7 +158,7 @@ def main() -> int:
             "pcm_base64": base64.b64encode(pcm).decode("ascii"),
             "sample_rate_hz": int(sample_rate),
             "channels": 1,
-            "engine": "qwen3-tts-12hz-1.7b-base",
+            "engine": engine_name,
             "style": style,
             "tail_silence_ms": args.tail_silence_ms,
         }
@@ -164,13 +170,14 @@ def main() -> int:
             handler=handle,
             startup={
                 "worker": "tts",
-                "engine": "qwen3-tts-12hz-1.7b-base",
+                "engine": engine_name,
                 "model_path": str(args.model.resolve(strict=True)),
                 "voice_profiles": True,
                 "voice_profiles_root": str(voice_profiles_root),
                 "reference_transcript_required": True,
                 "prompt_cache_entries": args.max_cached_prompts,
                 "tail_silence_ms": args.tail_silence_ms,
+                "dual_track_input": True,
                 "device": "cuda",
             },
         )

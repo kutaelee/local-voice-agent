@@ -156,7 +156,7 @@ models:
     profile_data_root: 'E:\Data\LocalVoiceAgent\voice-profiles'
     downloaded_at: "2026-07-24T00:30:00+09:00"
     validation_status: sha256_offline_korean_and_consented_reference_voice_smokes_passed
-  - role: primary_tts
+  - role: quality_tts
     model_id: Qwen/Qwen3-TTS-12Hz-1.7B-Base
     repository: https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base
     revision: fd4b254389122332181a7c3db7f27e918eec64e3
@@ -181,6 +181,31 @@ models:
     profile_data_root: 'E:\Data\LocalVoiceAgent\voice-profiles'
     downloaded_at: "2026-07-24T14:23:00+09:00"
     validation_status: sha256_offline_korean_clone_tail_and_sentence_style_routes_passed
+  - role: primary_tts
+    model_id: Qwen/Qwen3-TTS-12Hz-0.6B-Base
+    repository: https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base
+    revision: 5d83992436eae1d760afd27aff78a71d676296fc
+    license: Apache-2.0
+    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\tts\qwen3-tts-12hz-0.6b-base\5d83992436eae1d760afd27aff78a71d676296fc'
+    weight_format: safetensors
+    variant: Base voice cloning
+    languages: [ko]
+    size_bytes: 2516106051
+    file_count: 13
+    primary_weights:
+      - filename: model.safetensors
+        size_bytes: 1829344272
+        sha256: 180b3b10eb1c9f1b4db7806d5475bae3071c0243c299d49926bab1da3b6946f6
+      - filename: speech_tokenizer/model.safetensors
+        size_bytes: 682293092
+        sha256: 836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258
+    runtime_candidates: [qwen-tts-0.1.1]
+    voice_cloning_enabled: true
+    reference_transcript_required: true
+    voice_cloning_policy: explicit_rights_and_local_processing_consent_only
+    profile_data_root: 'E:\Data\LocalVoiceAgent\voice-profiles'
+    downloaded_at: "2026-07-24T15:58:45+09:00"
+    validation_status: sha256_offline_korean_clone_cold_warm_and_first_unit_passed
   - role: stt_gpu_candidate
     model_id: mobiuslabsgmbh/faster-whisper-large-v3-turbo
     repository: https://huggingface.co/mobiuslabsgmbh/faster-whisper-large-v3-turbo

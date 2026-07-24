@@ -12,14 +12,14 @@ from local_voice_agent_server.application.voice_turn import (
 )
 
 
-def test_streaming_speech_does_not_split_at_a_comma() -> None:
+def test_streaming_speech_splits_a_long_clause_at_a_comma() -> None:
     clause = "이 답변은 첫 음성을 더 빠르게 들려주기 위해 충분히 긴 자연스러운 구간에서 나눕니다,"
     ready, pending = _take_complete_speech_units(
         clause + " 다음 구간은 아직 생성 중입니다"
     )
 
-    assert ready == ()
-    assert pending == clause + " 다음 구간은 아직 생성 중입니다"
+    assert ready == (clause,)
+    assert pending == "다음 구간은 아직 생성 중입니다"
 
 
 def test_short_comma_does_not_fragment_streaming_speech() -> None:
@@ -230,7 +230,7 @@ def test_streamed_tts_failure_terminates_the_open_audio_stream() -> None:
     asyncio.run(scenario())
 
 
-def test_streamed_llm_emits_text_deltas_and_first_audio_without_waiting() -> None:
+def test_streamed_llm_continues_while_first_audio_is_synthesized() -> None:
     timeline: list[str] = []
 
     class StreamingConversation:
@@ -292,7 +292,7 @@ def test_streamed_llm_emits_text_deltas_and_first_audio_without_waiting() -> Non
             timeline.append(f"event:{event.type}{suffix}")
 
         assert await service.finish(stream_id=stream_id, emit=emit) == []
-        assert timeline.index("event:audio.output.chunk") < timeline.index(
+        assert timeline.index("event:audio.output.chunk") > timeline.index(
             "event:assistant.text.delta:두 번째 "
         )
         assert [

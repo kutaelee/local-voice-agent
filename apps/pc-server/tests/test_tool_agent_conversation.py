@@ -62,7 +62,7 @@ def agent(
 
     return (
         ToolAgentConversation(
-            base_url="http://127.0.0.1:8766/v1",
+            base_url="http://127.0.0.1:46322/v1",
             model="gemma4-12b",
             api_key=API_KEY,
             session_id=uuid4(),
@@ -93,6 +93,14 @@ def tool_message(
             }
         ],
     }
+
+
+def test_tool_requests_disable_thinking_for_low_latency_json() -> None:
+    conversation, _ = agent([])
+
+    payload = conversation._request_payload([])
+
+    assert payload["chat_template_kwargs"] == {"enable_thinking": False}
 
 
 def test_level_zero_tool_executes_and_returns_verified_result() -> None:

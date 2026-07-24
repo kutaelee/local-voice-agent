@@ -6,6 +6,7 @@ run_root="/home/kutae/.local/share/local-voice-agent/run"
 log_root="/mnt/e/Data/LocalVoiceAgent/runtime/logs"
 stt_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1/.venv"
 tts_engine="${LVA_TTS_ENGINE:-qwen3}"
+qwen3_tts_size="${LVA_QWEN3_TTS_SIZE:-0.6b}"
 vad_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/vad-silero-6.2.1/.venv"
 stt_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/stt/faster-whisper-large-v3-turbo/0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf"
 voice_profiles_root="/mnt/e/Data/LocalVoiceAgent/voice-profiles"
@@ -14,10 +15,14 @@ tts_socket="${run_root}/tts.sock"
 vad_socket="${run_root}/vad.sock"
 
 worker_token="${LVA_AUDIO_WORKER_TOKEN:-}"
+if [[ -z "${worker_token}" && -f /mnt/e/Data/LocalVoiceAgent/secrets/audio-worker-token ]]; then
+  worker_token="$(< /mnt/e/Data/LocalVoiceAgent/secrets/audio-worker-token)"
+fi
 [[ "${#worker_token}" -ge 32 ]] || {
   echo "LVA_AUDIO_WORKER_TOKEN must contain at least 32 characters." >&2
   exit 3
 }
+export LVA_AUDIO_WORKER_TOKEN="${worker_token}"
 mkdir -p "${run_root}" "${log_root}" "${voice_profiles_root}/profiles"
 chmod 700 "${run_root}"
 chmod 700 "${voice_profiles_root}" "${voice_profiles_root}/profiles"
@@ -25,7 +30,18 @@ chmod 700 "${voice_profiles_root}" "${voice_profiles_root}/profiles"
 case "${tts_engine}" in
   qwen3)
     tts_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/tts-qwen3-1.7b/.venv"
-    tts_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/tts/qwen3-tts-12hz-1.7b-base/fd4b254389122332181a7c3db7f27e918eec64e3"
+    case "${qwen3_tts_size}" in
+      0.6b)
+        tts_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/tts/qwen3-tts-12hz-0.6b-base/5d83992436eae1d760afd27aff78a71d676296fc"
+        ;;
+      1.7b)
+        tts_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/tts/qwen3-tts-12hz-1.7b-base/fd4b254389122332181a7c3db7f27e918eec64e3"
+        ;;
+      *)
+        echo "LVA_QWEN3_TTS_SIZE must be 0.6b or 1.7b." >&2
+        exit 3
+        ;;
+    esac
     tts_worker="${repo}/apps/pc-server/workers/qwen3_tts_worker.py"
     tts_extra_args=(--tail-silence-ms 160 --max-cached-prompts 4)
     ;;
@@ -142,4 +158,4 @@ if ! wait_for_health "${tts_socket}" 120; then
 fi
 
 trap - ERR
-echo "Audio workers ready: vad_pid=${vad_pid} stt_pid=${stt_pid} tts_pid=${tts_pid} tts_engine=${tts_engine}"
+echo "Audio workers ready: vad_pid=${vad_pid} stt_pid=${stt_pid} tts_pid=${tts_pid} tts_engine=${tts_engine} qwen3_size=${qwen3_tts_size}"

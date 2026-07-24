@@ -117,6 +117,7 @@ class VllmConversationAdapter:
             "temperature": 0.2,
             "max_tokens": 512,
             "stream": stream,
+            "chat_template_kwargs": {"enable_thinking": False},
         }
         if stream:
             payload["stream_options"] = {"include_usage": True}

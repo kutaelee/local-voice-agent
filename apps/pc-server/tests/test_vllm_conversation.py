@@ -43,6 +43,7 @@ def test_stream_yields_ordered_deltas_and_requests_usage() -> None:
     assert _collect(adapter) == ["현재 ", "상태는 ", "정상입니다."]
     assert payloads[0]["stream"] is True
     assert payloads[0]["stream_options"] == {"include_usage": True}
+    assert payloads[0]["chat_template_kwargs"] == {"enable_thinking": False}
 
 
 def test_stream_rejects_empty_content() -> None:

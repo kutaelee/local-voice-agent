@@ -7,8 +7,12 @@ log_root="/mnt/e/Data/LocalVoiceAgent/runtime/logs"
 status_root="/mnt/e/Data/LocalVoiceAgent/runtime/status"
 pid_file="${run_root}/vllm.pid"
 status_file="${status_root}/vllm.json"
-port="${LVA_VLLM_PORT:-8766}"
+port="${LVA_VLLM_PORT:-46322}"
 api_key="${LVA_VLLM_API_KEY:-}"
+if [[ -z "${api_key}" && -f /mnt/e/Data/LocalVoiceAgent/secrets/vllm-api-key ]]; then
+  api_key="$(< /mnt/e/Data/LocalVoiceAgent/secrets/vllm-api-key)"
+  export LVA_VLLM_API_KEY="${api_key}"
+fi
 model_size="${LVA_VLLM_MODEL_SIZE:-12b}"
 mtp_mode="${LVA_VLLM_MTP_MODE:-off}"
 
@@ -89,12 +93,12 @@ startup_timeout_seconds="${LVA_VLLM_STARTUP_TIMEOUT_SECONDS:-360}"
 
 export \
   VLLM_SMOKE_PORT="${port}" \
-  VLLM_SMOKE_GPU_MEMORY_UTILIZATION="0.45" \
+  VLLM_SMOKE_GPU_MEMORY_UTILIZATION="0.36" \
   VLLM_SMOKE_MAX_MODEL_LEN="4096" \
   VLLM_SMOKE_MAX_NUM_SEQS="1" \
   VLLM_SMOKE_ENFORCE_EAGER="0" \
   VLLM_SMOKE_LANGUAGE_MODEL_ONLY="0" \
-  VLLM_SMOKE_KV_CACHE_MEMORY_BYTES="" \
+  VLLM_SMOKE_KV_CACHE_MEMORY_BYTES="1610612736" \
   VLLM_USE_V2_MODEL_RUNNER="0"
 if [[ "${model_size}" == "12b" && "${mtp_mode}" != "off" ]]; then
   export \

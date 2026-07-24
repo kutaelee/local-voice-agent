@@ -4,7 +4,10 @@ mtp_candidate: vllm-b2b8f679d058-cu130
 comparison: sglang-0.5.15.post1
 fallback: llama-cpp-b10092
 startup:
-  gpu_memory_utilization_initial: 0.75
+  gpu_memory_utilization_initial: 0.36
+  kv_cache_memory_bytes: 1610612736
+  max_model_len: 4096
+  max_num_seqs: 1
   health_timeout_seconds: 300
   model_load_timeout_seconds: 900
   require_gemma4_mtp_log_path: true
@@ -37,6 +40,6 @@ windows_fallback:
   runtime: llama-cpp-b10092
   model: gemma4-12b-fallback
   listener: 127.0.0.1
-  port: 8769
+  port: 46327
   cpu_only_during_gpu_contention: true
   capabilities: [text, simple_tool_call, structured_output, recovery_diagnostics]

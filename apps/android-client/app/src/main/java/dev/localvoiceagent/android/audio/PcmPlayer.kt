@@ -2,12 +2,14 @@ package dev.localvoiceagent.android.audio
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.media.PlaybackParams
 import android.os.SystemClock
+import android.os.Build
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -25,6 +27,7 @@ class PcmPlayer(
     private val playbackGeneration = PlaybackGeneration()
     @Volatile private var track: AudioTrack? = null
     @Volatile private var playbackRate = 1.0f
+    @Volatile private var outputRoute = AudioOutputRoute.SPEAKER
     private var format: PlaybackFormat? = null
     private var focusRequest: AudioFocusRequest? = null
     private var writtenFrames = 0L
@@ -77,6 +80,13 @@ class PcmPlayer(
         playbackRate = validatedPlaybackRate(value)
         track?.let { activeTrack ->
             runCatching { activeTrack.playbackParams = playbackParameters(playbackRate) }
+        }
+    }
+
+    fun setOutputRoute(route: AudioOutputRoute) {
+        outputRoute = route
+        if (track != null) {
+            applyOutputRoute()
         }
     }
 
@@ -169,6 +179,7 @@ class PcmPlayer(
             return
         }
         audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+        applyOutputRoute()
         focusRequest = request
         val created = AudioTrack.Builder()
             .setAudioAttributes(attributes)
@@ -217,7 +228,45 @@ class PcmPlayer(
         }
         focusRequest?.let(audioManager::abandonAudioFocusRequest)
         focusRequest = null
+        if (Build.VERSION.SDK_INT >= 31) {
+            runCatching { audioManager.clearCommunicationDevice() }
+        } else {
+            @Suppress("DEPRECATION")
+            runCatching { audioManager.isSpeakerphoneOn = false }
+        }
         audioManager.mode = AudioManager.MODE_NORMAL
+    }
+
+    private fun applyOutputRoute() {
+        if (Build.VERSION.SDK_INT >= 31) {
+            val preferredTypes = when (outputRoute) {
+                AudioOutputRoute.SPEAKER -> setOf(AudioDeviceInfo.TYPE_BUILTIN_SPEAKER)
+                AudioOutputRoute.EARPIECE -> setOf(AudioDeviceInfo.TYPE_BUILTIN_EARPIECE)
+                AudioOutputRoute.BLUETOOTH -> setOf(
+                    AudioDeviceInfo.TYPE_BLE_HEADSET,
+                    AudioDeviceInfo.TYPE_HEARING_AID,
+                    AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+                )
+            }
+            val device = runCatching {
+                audioManager.availableCommunicationDevices.firstOrNull {
+                    it.type in preferredTypes
+                }
+            }.getOrNull()
+            if (device == null || !runCatching {
+                    audioManager.setCommunicationDevice(device)
+                }.getOrDefault(false)
+            ) {
+                onError("${outputRoute.label} audio output is unavailable")
+            }
+            return
+        }
+        @Suppress("DEPRECATION")
+        runCatching {
+            audioManager.isSpeakerphoneOn = outputRoute == AudioOutputRoute.SPEAKER
+        }.onFailure {
+            onError("${outputRoute.label} audio output is unavailable")
+        }
     }
 
     private sealed interface Command {

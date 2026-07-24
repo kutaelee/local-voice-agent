@@ -138,6 +138,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             AppAction.RefreshVoiceProfiles -> refreshVoiceProfiles()
             is AppAction.RegisterVoiceProfile -> registerVoiceProfile(action)
             AppAction.SaveVoiceSettings -> saveVoiceSettings()
+            is AppAction.SetAudioOutputRoute -> {
+                player.setOutputRoute(action.route)
+                reduce(action)
+            }
             else -> reduce(action)
         }
     }

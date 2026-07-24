@@ -1,5 +1,6 @@
 package dev.localvoiceagent.android.ui
 
+import dev.localvoiceagent.android.audio.AudioOutputRoute
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -155,5 +156,17 @@ class AppReducerTest {
 
         assertEquals(1.25f, tooExpressive.voicePlaybackRate)
         assertEquals(1.0f, tooExpressive.voiceExaggeration)
+    }
+
+    @Test
+    fun audioOutputDefaultsToSpeakerAndCanSelectEarpiece() {
+        val initial = AppUiState()
+        val updated = AppReducer.reduce(
+            initial,
+            AppAction.SetAudioOutputRoute(AudioOutputRoute.EARPIECE),
+        )
+
+        assertEquals(AudioOutputRoute.SPEAKER, initial.audioOutputRoute)
+        assertEquals(AudioOutputRoute.EARPIECE, updated.audioOutputRoute)
     }
 }

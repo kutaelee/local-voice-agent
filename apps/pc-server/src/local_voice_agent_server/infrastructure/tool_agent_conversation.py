@@ -450,6 +450,7 @@ class ToolAgentConversation:
             "temperature": 0.1,
             "max_tokens": 512,
             "stream": False,
+            "chat_template_kwargs": {"enable_thinking": False},
         }
 
     def _post(self, payload: dict[str, object]) -> dict[str, object]:

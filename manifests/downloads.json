@@ -150,6 +150,28 @@
       "validation_status": "sha256_and_offline_voice_clone_passed"
     },
     {
+      "model_id": "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+      "revision": "5d83992436eae1d760afd27aff78a71d676296fc",
+      "license": "Apache-2.0",
+      "size_bytes": 2516106051,
+      "file_count": 13,
+      "weight_files": [
+        {
+          "path": "model.safetensors",
+          "size_bytes": 1829344272,
+          "sha256": "180b3b10eb1c9f1b4db7806d5475bae3071c0243c299d49926bab1da3b6946f6"
+        },
+        {
+          "path": "speech_tokenizer/model.safetensors",
+          "size_bytes": 682293092,
+          "sha256": "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258"
+        }
+      ],
+      "requires_credential": false,
+      "downloaded_at": "2026-07-24T15:58:45+09:00",
+      "validation_status": "sha256_and_offline_korean_clone_passed"
+    },
+    {
       "model_id": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
       "revision": "0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf",
       "license": "MIT",
