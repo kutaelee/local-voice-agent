@@ -457,9 +457,9 @@ bounded regression samples rather than p50/p95 results.
 
 The previous worker could miss the codec end token and continue until the
 generic 2,048-token limit. The production worker now bounds codec generation
-to the smaller of 256 tokens or a length-derived limit. It also removes the
+to the smaller of 384 tokens or a length-derived limit. It also removes the
 guaranteed 160 ms silence that had been appended to every speech unit and
-adds only one 80 ms tail after the complete response.
+adds only one 200 ms tail after the complete response.
 
 The two-worker experiment reduced one measured inter-sentence gap by about
 0.64 seconds but made first audio slower and raised total GPU use from about
@@ -475,3 +475,30 @@ External evidence:
 - `E:\Data\LocalVoiceAgent\runtime\evidence\web-qa\voice-warm.json`
 - `E:\Data\LocalVoiceAgent\runtime\evidence\web-qa\voice-bounded-cold.json`
 - `E:\Data\LocalVoiceAgent\runtime\evidence\web-qa\voice-dual-warm.json`
+
+## Web QA playback and voice-stability correction (2026-07-24)
+
+User QA found overlapping/booming playback, abrupt speaker changes, and
+clipped endings. Inspection showed that browser PCM chunks were decoded and
+scheduled concurrently even though WebSocket events were ordered. The portal
+now serializes every chunk through one generation-bound playback chain,
+invalidates queued audio on interruption, and waits until all chunks are
+scheduled before auto-listening resumes.
+
+Production also returns to Qwen3-TTS 1.7B Base, disables heuristic
+neutral/happy/dark reference switching, applies the selected temperature to
+both talker and sub-talker, and raises the bounded codec allowance to 384.
+One final 200 ms silence protects the last phoneme without adding silence
+between sentences.
+
+| Live item | Measured |
+|---|---:|
+| Integrated GPU use after 1.7B load | 20,318 MiB used / 11,870 MiB free |
+| Two-sentence 1.7B synthesis | 13.011 s for 11.600 s audio, RTF 1.122 |
+| Correct UTF-8 sentence, temperature 0.7 | 2.402–2.515 s for 2.400 s audio |
+| Correct UTF-8 sentence, temperature 0.8 | 2.821–2.914 s for 2.880–2.960 s audio |
+| Correct UTF-8 sentence, temperature 0.9 | 2.214–2.709 s for 2.240–2.720 s audio |
+
+These are small live regression samples, not p50/p95 results. Sentence-level
+generation remains selected because synthesizing the whole response delayed
+first audio by the full 13 seconds in the measured two-sentence sample.

@@ -11,6 +11,6 @@ from qwen3_tts_worker import bounded_max_new_tokens  # noqa: E402
 
 
 def test_qwen_code_token_bound_scales_and_caps_runaway_generation() -> None:
-    assert bounded_max_new_tokens("short", 256) == 96
-    assert bounded_max_new_tokens("x" * 30, 256) == 168
-    assert bounded_max_new_tokens("x" * 1_000, 256) == 256
+    assert bounded_max_new_tokens("short", 384) == 128
+    assert bounded_max_new_tokens("x" * 30, 384) == 252
+    assert bounded_max_new_tokens("x" * 1_000, 384) == 384

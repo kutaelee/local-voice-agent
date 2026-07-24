@@ -6,7 +6,7 @@ run_root="/home/kutae/.local/share/local-voice-agent/run"
 log_root="/mnt/e/Data/LocalVoiceAgent/runtime/logs"
 stt_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1/.venv"
 tts_engine="${LVA_TTS_ENGINE:-qwen3}"
-qwen3_tts_size="${LVA_QWEN3_TTS_SIZE:-0.6b}"
+qwen3_tts_size="${LVA_QWEN3_TTS_SIZE:-1.7b}"
 vad_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/vad-silero-6.2.1/.venv"
 stt_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/stt/faster-whisper-large-v3-turbo/0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf"
 voice_profiles_root="/mnt/e/Data/LocalVoiceAgent/voice-profiles"
@@ -48,7 +48,7 @@ case "${tts_engine}" in
     tts_extra_args=(
       --tail-silence-ms 0
       --max-cached-prompts 4
-      --max-code-tokens 256
+      --max-code-tokens 384
     )
     ;;
   chatterbox)

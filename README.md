@@ -53,11 +53,12 @@ registered Notepad windows. The Android 0.6.8 client records and streams PCM,
 plays ordered PCM output, supports client-side interruption, and keeps pairing
 tokens in Android Keystore-backed storage. Its authenticated Voice settings
 screen selects a consented local reference profile and records its exact
-transcript and tone. Qwen3-TTS 0.6B Base is the low-latency primary clone
-engine; the 1.7B Base checkpoint remains a quality comparison option. The
-worker caches four local tone prompts, routes clearly positive/error sentences
-to same-speaker references, and preserves a 160 ms terminal tail. Chatterbox
-V3 is retained as rollback fallback. Reference audio stays under external
+transcript and tone. Qwen3-TTS 1.7B Base is the quality-first primary clone
+engine; the 0.6B Base checkpoint remains a lower-VRAM comparison option. The
+worker caches four local tone prompts but production keeps one selected
+speaker reference stable across sentences. Talker and sub-talker use the same
+temperature, and one 200 ms terminal tail is appended after the complete
+response. Chatterbox V3 is retained as rollback fallback. Reference audio stays under external
 application data and never enters Git or the APK. The
 installed SGLang 0.5.15.post1
 runtime now passes the 12B base text, tool/schema, streaming, image, thinking,

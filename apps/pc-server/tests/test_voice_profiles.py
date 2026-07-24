@@ -182,3 +182,27 @@ def test_qwen_style_profiles_route_only_for_selected_base(tmp_path: Path) -> Non
 
     store.update_settings(VoiceSettings(profile_id=profiles["advert"]))
     assert store.synthesis_options("성공적으로 완료됐어요!").style == "advert"
+
+
+def test_style_routing_can_be_disabled_for_stable_speaker_identity(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "voice-profiles-stable"
+    configured = VoiceProfileStore(root)
+    profiles = {
+        style: create_profile(
+            configured,
+            reference_text=f"{style} reference sentence.",
+            style=style,
+        )
+        for style in ("neutral", "happy", "dark", "advert")
+    }
+    configured.update_settings(VoiceSettings(profile_id=profiles["neutral"]))
+    configured.update_style_bindings(
+        base_profile_id=profiles["neutral"],
+        profile_ids=profiles,
+    )
+
+    stable = VoiceProfileStore(root, enable_style_routing=False)
+    assert stable.synthesis_options("failed recovery").style == "neutral"
+    assert stable.synthesis_options("completed successfully!").style == "neutral"

@@ -1132,7 +1132,10 @@ def _voice_profile_store_from_environment() -> VoiceProfileStore:
                 "LVA_VOICE_PROFILE_ROOT",
                 "/mnt/e/Data/LocalVoiceAgent/voice-profiles",
             )
-        )
+        ),
+        enable_style_routing=(
+            os.environ.get("LVA_AUTO_VOICE_STYLE", "0") == "1"
+        ),
     )
 
 
@@ -1278,7 +1281,7 @@ def _event_handler_from_environment(
             tts=tts,
             vad=vad,
             output_tail_silence_ms=int(
-                os.environ.get("LVA_TTS_OUTPUT_TAIL_SILENCE_MS", "80")
+                os.environ.get("LVA_TTS_OUTPUT_TAIL_SILENCE_MS", "200")
             ),
         )
 

@@ -18,9 +18,9 @@ SUPPORTED_STYLES = frozenset({"neutral", "happy", "dark", "advert"})
 
 
 def bounded_max_new_tokens(text: str, configured_limit: int) -> int:
-    if not text or not 96 <= configured_limit <= 512:
+    if not text or not 128 <= configured_limit <= 512:
         raise ValueError("code token bound input is invalid")
-    return min(configured_limit, max(96, len(text) * 4 + 48))
+    return min(configured_limit, max(128, len(text) * 6 + 72))
 
 
 def main() -> int:
@@ -30,7 +30,7 @@ def main() -> int:
     parser.add_argument("--voice-profiles-root", type=Path, required=True)
     parser.add_argument("--tail-silence-ms", type=int, default=160)
     parser.add_argument("--max-cached-prompts", type=int, default=4)
-    parser.add_argument("--max-code-tokens", type=int, default=256)
+    parser.add_argument("--max-code-tokens", type=int, default=384)
     args = parser.parse_args()
     if not args.model.is_dir():
         parser.error("model directory does not exist")
@@ -40,8 +40,8 @@ def main() -> int:
         parser.error("tail silence must be between 0 and 500 ms")
     if not 1 <= args.max_cached_prompts <= 16:
         parser.error("prompt cache size must be between 1 and 16")
-    if not 96 <= args.max_code_tokens <= 512:
-        parser.error("max code tokens must be between 96 and 512")
+    if not 128 <= args.max_code_tokens <= 512:
+        parser.error("max code tokens must be between 128 and 512")
 
     import numpy as np
     from qwen_tts import Qwen3TTSModel
@@ -150,6 +150,7 @@ def main() -> int:
                 voice_clone_prompt=prompt,
                 non_streaming_mode=False,
                 temperature=temperature,
+                subtalker_temperature=temperature,
                 max_new_tokens=max_new_tokens,
             )
         if len(wavs) != 1:

@@ -55,7 +55,7 @@ vllm_started=1
 
 export \
   LVA_TTS_ENGINE=qwen3 \
-  LVA_QWEN3_TTS_SIZE=0.6b
+  LVA_QWEN3_TTS_SIZE=1.7b
 bash "${repo}/scripts/start-audio-workers.sh"
 audio_started=1
 

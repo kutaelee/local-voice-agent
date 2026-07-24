@@ -57,6 +57,8 @@ const state = {
   captureNode: null,
   captureGain: null,
   playbackSources: new Set(),
+  playbackChain: Promise.resolve(),
+  playbackGeneration: 0,
   nextPlaybackTime: 0,
   playbackEndTimer: null,
   pendingApproval: null,
@@ -384,6 +386,8 @@ async function stopCapture(sendEnd = true, reason = "client_stop") {
 }
 
 function stopPlayback() {
+  state.playbackGeneration += 1;
+  state.playbackChain = Promise.resolve();
   clearTimeout(state.playbackEndTimer);
   for (const source of state.playbackSources) {
     try { source.stop(); } catch {}
@@ -399,8 +403,9 @@ function decodePcm16(encoded) {
   return new Int16Array(bytes.buffer);
 }
 
-async function scheduleAudio(payload) {
+async function scheduleAudio(payload, generation) {
   await ensureAudioContext();
+  if (generation !== state.playbackGeneration) return;
   const pcm = decodePcm16(payload.data_base64);
   const buffer = state.audioContext.createBuffer(
     payload.channels,
@@ -434,6 +439,39 @@ async function scheduleAudio(payload) {
   source.start(startAt);
   state.playbackSources.add(source);
   state.nextPlaybackTime = startAt + buffer.duration / source.playbackRate.value;
+}
+
+function enqueueAudio(payload) {
+  const generation = state.playbackGeneration;
+  state.playbackChain = state.playbackChain
+    .then(() => scheduleAudio(payload, generation))
+    .catch((error) => {
+      if (generation !== state.playbackGeneration) return;
+      setAssistant("error", `오디오 재생 실패: ${error.message}`);
+      addEvent("playback.error", { message: error.message });
+    });
+}
+
+function finishPlayback() {
+  const generation = state.playbackGeneration;
+  state.playbackChain = state.playbackChain.then(() => {
+    if (generation !== state.playbackGeneration) return;
+    const waitMs = Math.max(
+      0,
+      ((state.nextPlaybackTime || 0) - (state.audioContext?.currentTime || 0)) * 1000,
+    );
+    clearTimeout(state.playbackEndTimer);
+    state.playbackEndTimer = setTimeout(() => {
+      if (
+        generation === state.playbackGeneration
+        && ui.autoContinue.checked
+        && !state.manuallyStopped
+        && state.connected
+      ) {
+        startListening();
+      }
+    }, waitMs + 220);
+  });
 }
 
 function updateMetric(name, value) {
@@ -513,21 +551,9 @@ function handleServerEvent(envelope) {
   } else if (type === "assistant.text.final") {
     if (!state.assistantMessage) state.assistantMessage = addMessage("assistant", payload.text);
   } else if (type === "audio.output.chunk") {
-    scheduleAudio(payload).catch((error) => {
-      setAssistant("error", `오디오 재생 실패: ${error.message}`);
-      addEvent("playback.error", { message: error.message });
-    });
+    enqueueAudio(payload);
   } else if (type === "audio.output.end") {
-    const waitMs = Math.max(
-      0,
-      ((state.nextPlaybackTime || 0) - (state.audioContext?.currentTime || 0)) * 1000,
-    );
-    clearTimeout(state.playbackEndTimer);
-    state.playbackEndTimer = setTimeout(() => {
-      if (ui.autoContinue.checked && !state.manuallyStopped && state.connected) {
-        startListening();
-      }
-    }, waitMs + 120);
+    finishPlayback();
   } else if (type === "tool.approval.required") {
     showApproval(payload);
   } else if (type === "error") {

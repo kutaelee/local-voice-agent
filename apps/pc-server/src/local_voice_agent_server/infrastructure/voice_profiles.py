@@ -99,13 +99,19 @@ class VoiceSynthesisOptions:
 class VoiceProfileStore:
     """Stores consented reference clips outside the source repository."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(
+        self,
+        root: Path,
+        *,
+        enable_style_routing: bool = True,
+    ) -> None:
         if not root.is_absolute():
             raise VoiceProfileError("voice profile root must be absolute")
         self._root = root
         self._profiles_root = root / "profiles"
         self._settings_path = root / "settings.json"
         self._style_bindings_path = root / "style-bindings.json"
+        self._enable_style_routing = enable_style_routing
         self._profiles_root.mkdir(parents=True, exist_ok=True, mode=0o700)
 
     @property
@@ -289,7 +295,11 @@ class VoiceProfileStore:
             raise VoiceProfileError("reference audio integrity check failed")
 
     def _routed_profile_id(self, *, base_profile_id: str, text: str) -> str:
-        if not text or not self._style_bindings_path.exists():
+        if (
+            not self._enable_style_routing
+            or not text
+            or not self._style_bindings_path.exists()
+        ):
             return base_profile_id
         try:
             value = json.loads(
