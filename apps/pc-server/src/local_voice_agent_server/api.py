@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import hmac
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal
@@ -65,6 +66,8 @@ from .protocol.client_events import (
     ClientPayload,
     validate_client_payload,
 )
+
+LOGGER = logging.getLogger(__name__)
 
 
 ClientEventType = Literal[
@@ -635,6 +638,12 @@ def create_app(
             except asyncio.CancelledError:
                 return
             except Exception:
+                LOGGER.exception(
+                    "session event handler failed session_id=%s request_id=%s event_type=%s",
+                    session_id,
+                    request_id,
+                    event_type,
+                )
                 await send_error(
                     request_id=request_id,
                     error_code="EVENT_HANDLER_FAILED",
