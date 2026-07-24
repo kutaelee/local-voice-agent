@@ -82,14 +82,16 @@ runtimes:
     gemma4_31b_smoke_evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\vllm-31b-textonly-smoke.json'
     gemma4_31b_smoke_evidence_sha256: 987b979d458ac62b01e82c1f5e38187083e10b0bc3e7bad64c5b08268401126d
     gemma4_mtp_status: blocked_by_embedding_share_regression_fixed_after_release
-    registered_switch_profiles: 12b_and_31b_closed_profiles_unit_validated
-    registered_switch_live_status: pending_shared_gpu_idle_window
+    registered_switch_profiles: 12b_and_31b_closed_profiles_live_validated
+    registered_switch_live_status: stable_vllm_12b_to_31b_to_12b_passed
+    registered_switch_live_evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\model-switch\live-model-switch-20260724T011306766Z.json'
+    registered_switch_live_evidence_sha256: 60de96e58217c042a430083da91872720dfe276b55a07ac787fbf9f86d473d7e
     rollback: retain previous versioned environment and switch config pointer
   - id: vllm-b2b8f679d058-cu130
     role: mtp_fix_candidate
     version: 0.23.1rc1.dev1352+gb2b8f679d
     commit: b2b8f679d0589f0c956f3e734cc70dab07b27b8a
-    status: exact_12b_text_mtp_functional_and_controlled_on_off_latency_passed
+    status: exact_12b_and_31b_text_mtp_functional_and_controlled_on_off_latency_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/vllm-b2b8f679d058-cu130
     python: "3.12.13"
     cuda: "13.0"
@@ -136,7 +138,7 @@ runtimes:
     default_enabled: false
     default_disabled_reason: exact_target_multimodal_blocked_and_31b_mtp_impractical
     gemma4_31b_mtp:
-      status: functional_probe_passed_not_selected_for_production
+      status: functional_and_controlled_on_off_passed_not_selected_for_production
       target_revision: 1e4d8beecacb8b7590c1d8bedd7335f687bf311f
       assistant_revision: 96d4c8ca3cb38c107a8478587878124895d1e844
       cpu_offload_gib: 36
@@ -156,6 +158,29 @@ runtimes:
       evidence_sha256: 5c56bae23506ea32eaabba5f54406d853af686ef632193f7217777640431c0fe
       runtime_log: 'E:\Data\LocalVoiceAgent\runtime\logs\vllm-31b-mtp-probe-20260724T000509Z.log'
       runtime_log_sha256: d3beed68bef252af6341fada064df3bf865a75effcb1dbfe9a9184dd30be57a4
+      controlled_exact_target_mtp_off:
+        successful_samples: 3
+        ttft_ms_p50: 5677.493
+        ttft_ms_p95: 5698.739
+        tpot_ms_p50: 2609.246
+        tpot_ms_p95: 2650.088
+        output_tokens_per_second_mean: 0.407
+        total_ms_mean: 44985.775
+        evidence: 'E:\Data\LocalVoiceAgent\benchmarks\results\vllm-31b-exact-mtp-off-20260724T003133732Z.json'
+        evidence_sha256: 5b6314e02f846c81230edff5f4e4549c7442221f04fa4c6b17e3f895ce14d4d8
+        functional_evidence_sha256: cf78e8d9296bf7cc2e252e94bf58e5e7691d61519ce8c41db198b651f6a848da
+      controlled_exact_target_mtp_on:
+        successful_samples: 3
+        ttft_ms_p50: 5674.851
+        ttft_ms_p95: 5767.266
+        tpot_ms_p50: 1286.360
+        tpot_ms_p95: 1316.968
+        output_tokens_per_second_mean: 0.823
+        total_ms_mean: 25106.414
+        evidence: 'E:\Data\LocalVoiceAgent\benchmarks\results\vllm-31b-exact-mtp-on-s1-20260724T010244662Z.json'
+        evidence_sha256: 106666fc6547e6202ba1673c9f7f71696b2b03036f0a1335118f48b909196c12
+        functional_evidence_sha256: b1f335ba35dc34f0e7a94a5ff85925cfa7021241b5a49a01f602b39de061a400
+      controlled_mtp_output_rate_ratio: 2.022
       selection_reason: functional_but_impractical_latency_and_text_only
     reason: restrict_embedding_width_share_guard_to_eagle_so_gemma4_mtp_shares_target_embeddings
     known_issues: unreleased_commit_and_q4_target_missing_vision_num_soft_tokens_require_full_regression
@@ -179,7 +204,7 @@ runtimes:
     test_client: httpx2-2.7.0
     test_status: 147_passed_including_postgresql_streaming_and_safe_registered_model_switch
     model_switch_coordinator:
-      status: unit_and_authenticated_api_integration_passed_live_gpu_switch_pending
+      status: unit_authenticated_api_and_live_gpu_switch_passed
       lifecycle_tests: 8
       adapter_tests: 6
       active_turn_barrier: capture_response_and_pending_approval_drained_before_stop
@@ -187,6 +212,8 @@ runtimes:
       allowed_models: [gemma4-12b, gemma4-31b]
       status_path: 'E:\Data\LocalVoiceAgent\runtime\status\vllm.json'
       evidence_root: 'E:\Data\LocalVoiceAgent\runtime\evidence\model-switch'
+      live_sequence: [12b, 31b, 12b]
+      live_evidence_sha256: 60de96e58217c042a430083da91872720dfe276b55a07ac787fbf9f86d473d7e
       idempotency_cache_bound: 256
     live_voice_smoke:
       status: passed
@@ -318,7 +345,7 @@ runtimes:
   - id: sglang-0.5.15.post1
     role: comparison_candidate
     version: 0.5.15.post1
-    status: installed_12b_base_and_exact_target_mtp_on_off_latency_passed_functional_on_passed
+    status: installed_12b_comparison_passed_31b_not_selected_after_bounded_failures
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/sglang-0.5.15.post1
     python: "3.12.13"
     cuda: "13.0"
@@ -400,6 +427,19 @@ runtimes:
       default_enabled: false
       default_disabled_reason: exact_target_off_tool_schema_and_multimodal_parity_pending
     mtp_probe: exact_assistant_promoted_to_FROZEN_KV_MTP_and_functional_smoke_passed
+    gemma4_31b:
+      selected: false
+      w4a16_status: failed_compressed_tensors_marlin_repack
+      w4a16_failure: output_width_8608_not_divisible_by_tile_width_64
+      w4a16_log: 'E:\Data\LocalVoiceAgent\runtime\logs\sglang-31b-base.log'
+      w4a16_log_sha256: 40225e7d1b10c815e7a7c3e9f13facceb4ebf3cb51857eb6e6e4a28cac6e42ab
+      exact_target_mtp_off_status: first_request_exceeded_120_second_timeout
+      target_weight_load_seconds: 489.76
+      model_gpu_memory_gib_reported: 23.79
+      kv_cache_gpu_memory_gib_reported: 0.87
+      status_evidence: 'E:\Data\LocalVoiceAgent\runtime\status\sglang-mtp-benchmark-20260724T022237407Z.json'
+      status_evidence_sha256: d8ff534a0d3f0433e6a6c78cd52430c23d69f61b675c7978c37d422560b90237
+      operational_policy: w4a16_fail_fast_use_vllm_for_31b
     rollback: retain previous versioned environment and switch config pointer
   - id: llama-cpp-b10092
     role: windows_native_fallback

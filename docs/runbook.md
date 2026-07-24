@@ -86,6 +86,13 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -Mode mtp -SpeculativeSteps 1
 ```
 
+SGLang is registered only for 12B serving and comparison. Version
+0.5.15.post1 cannot repack the pinned 31B W4A16 checkpoint because Gemma's
+8,608 output width is not divisible by the Marlin tile width 64; the launcher
+rejects that combination before GPU reservation. A diagnostic exact-31B
+target did load with 36 GiB CPU offload but exceeded the bounded 120-second
+first-request timeout. Use the registered stable-vLLM profile for 31B.
+
 The SGLang base and vLLM 12B launchers require at least 22,000 MiB free.
 SGLang MTP requires 28,500 MiB free. SGLang samples twice before launch.
 These gates are collision guards, not VRAM performance claims. If another

@@ -6,7 +6,7 @@ Windows 11 PC with an RTX 5090 32 GB GPU; inference runtimes run in WSL2 and
 the Android client uses Kotlin and Jetpack Compose.
 
 Current status: **core implementation is integrated; final acceptance is in
-progress**. Thirteen of the twenty product criteria are verified and seven
+progress**. Sixteen of the twenty product criteria are verified and four
 remain partial; see [docs/acceptance-status.md](docs/acceptance-status.md).
 The pinned 12B W4A16 model passed text, image, structured-output, streaming,
 and function-calling smoke tests. The exact 12B Q4_0 target/assistant pair
@@ -31,8 +31,8 @@ An authenticated registered-runtime coordinator now serializes fixed
 12B/31B stop, load, health, and fallback actions and broadcasts their phases
 to connected clients. New voice turns are paused during a switch, and active
 capture, response, or approval continuations drain before the source process
-is stopped. Its unit/API integration is complete; a live switch is still
-pending an idle window on the shared ComfyUI/Qwen GPU.
+is stopped. Its unit/API integration and a live 12B-to-31B-to-12B process
+switch both pass.
 Gemma's model-visible tool loop now
 limits itself to 47 implemented tools, validates every call through
 the planner/policy engine, pauses Level 1 work for an exact approval, resumes
@@ -55,13 +55,15 @@ tokens in Android Keystore-backed storage. The installed SGLang 0.5.15.post1
 runtime now passes the 12B base text, tool/schema, streaming, image, thinking,
 and latency smoke set. Its exact 12B target/assistant pair is recognized as
 `FROZEN_KV_MTP` and passes the same functional API checks with 4 GiB CPU
-offload; its fixed-condition MTP latency run is still pending. A pinned native
+offload; its fixed-condition ON/OFF latency comparison passes. SGLang was not
+selected for 31B because W4A16 Marlin repack failed and the CPU-offloaded exact
+target exceeded the bounded request timeout. A pinned native
 Windows llama.cpp Q4_0 fallback also
 passes CPU-only Korean text, tool/schema, and streaming while WSL/GPU work
 continues. The required 24-case failure/security matrix and the bounded
 computer-use smokes pass. No full product acceptance is claimed until the
-remaining MTP/runtime measurements, live model switch, physical-device
-barge-in/audio, and clean-environment reproduction are complete.
+physical-device barge-in/audio and independent clean-environment
+reproduction are complete.
 
 ## Architecture
 

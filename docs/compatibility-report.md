@@ -70,11 +70,11 @@ model repositories, and upstream release notes are used for selections.
 | Gemma MTP target | `google/gemma-4-12B-it-qat-q4_0-unquantized` @ `b6ed862…` | Google HF | Text-only API passed on exact-fix runtime | Yes | N/A | Exact target for 12B assistant; measured 89.6% preliminary acceptance | Text passed; multimodal config blocked | Tool/schema smoke passed; statistical gate required | Q4_0 QAT extracted half precision | Yes, disabled benchmark candidate |
 | Gemma assistant | `google/gemma-4-12B-it-qat-q4_0-unquantized-assistant` @ `1893406…` | Google HF | Exact pair loaded and generated | Yes | N/A | Dedicated assistant detected as `Gemma4MTPModel` | Follows target path; multimodal blocked | Tool/schema smoke passed; statistical gate required | Q4_0 QAT assistant | Yes, disabled exact-pair candidate |
 | Gemma default target | `google/gemma-4-31B-it-qat-w4a16-ct` @ `52f3f65…` | Google HF | Text API passed with explicit KV cache | N/A | Yes | No matching W4A16 assistant selected | Text passed; image pending; no audio | Tool/schema smoke passed | W4A16 compressed-tensors | Yes, on-demand text candidate |
-| Gemma MTP target | `google/gemma-4-31B-it-qat-q4_0-unquantized` @ `1e4d8be…` | Google HF | Both shards SHA-256 passed; CPU-offload feasibility gate remains | N/A | Yes | Exact target for 31B assistant | Text/image, no audio | Output-equivalence test required | Q4_0 QAT extracted half precision | Conditional |
-| Gemma assistant | `google/gemma-4-31B-it-qat-q4_0-unquantized-assistant` @ `96d4c8c…` | Google HF | SHA-256 passed; exact target downloaded | N/A | Yes | Dedicated assistant | Follows target path | Output-equivalence test required | Q4_0 QAT assistant | Yes, exact-pair gated |
+| Gemma MTP target | `google/gemma-4-31B-it-qat-q4_0-unquantized` @ `1e4d8be…` | Google HF | Both shards SHA-256 and constrained CPU-offload ON/OFF runs passed | N/A | Yes | Exact target for 31B assistant | Text passed; image/audio not validated | Tool/schema functional gates passed | Q4_0 QAT extracted half precision | Disabled benchmark candidate |
+| Gemma assistant | `google/gemma-4-31B-it-qat-q4_0-unquantized-assistant` @ `96d4c8c…` | Google HF | Exact pair loaded and generated | N/A | Yes | Dedicated assistant | Text-only validation | Tool/schema functional gates passed | Q4_0 QAT assistant | Disabled exact-pair candidate |
 | vLLM | 0.25.1 stable | vLLM docs/releases | CUDA passed locally | Passed MTP OFF | Text/tool/schema/stream passed | Dispatch passes; embedding share regression blocks stable MTP | 12B image passed; 31B image and audio/video pending | Gemma4 parser + structured outputs passed | compressed-tensors passed | Stable baseline |
-| vLLM MTP fix | commit `b2b8f679d058…`, cu130 wheel | vLLM commit/PR/nightly index | RTX 5090 text MTP passed | Exact-pair text API passed | Conditional | Exact pair loaded; 48 drafted / 43 accepted | Q4 target config blocks multimodal init | Tool + structured-output smoke passed | Exact wheel/package check passed | Disabled pending quality and multimodal gates |
-| SGLang | 0.5.15.post1 stable + kernel 0.4.4 cu130 | SGLang releases/docs | Local CUDA 13/SM 12.0, W4A16, and exact-pair MTP load passed | Text/image/tool/schema/stream/thinking passed; W4A16 base and exact-target MTP ON/OFF 10-sample latency recorded | Official; local load pending | Exact assistant promoted to `FROZEN_KV_MTP`; controlled exact-target ON/OFF measured 1.604× output-rate ratio with 4 GiB CPU offload | 12B red-image smoke passed with base and MTP ON; exact-target OFF parity pending | Gemma4 tool/reasoning parsers passed locally | W4A16 and exact Q4_0 pair passed | Installed comparison candidate; vLLM parity and exact-target OFF functional gate pending |
+| vLLM MTP fix | commit `b2b8f679d058…`, cu130 wheel | vLLM commit/PR/nightly index | RTX 5090 text MTP passed | Controlled exact-pair ON/OFF passed | Controlled exact-pair ON/OFF passed with 36 GiB offload | Dedicated Gemma 4 MTP path measured | Q4 target config blocks multimodal init | Tool + structured-output gates passed | Exact wheel/package check passed | Disabled; stable vLLM selected |
+| SGLang | 0.5.15.post1 stable + kernel 0.4.4 cu130 | SGLang releases/docs | Local CUDA 13/SM 12.0 and 12B paths passed | Text/image/tool/schema/stream/thinking plus ON/OFF measurements passed | W4A16 Marlin repack failed; exact target first request timed out | 12B assistant promoted to `FROZEN_KV_MTP`; controlled ON/OFF measured 1.604x | 12B red-image smoke passed with base and MTP ON | Gemma4 tool/reasoning parsers passed locally | 12B W4A16/exact pair passed; 31B W4A16 failed | Retained 12B comparison only |
 | Transformers | >=5.10.1, lock after runtime resolution | Google Gemma function-calling guide | Wheels/test required | Official | Official | Official MTP guide | Official | `apply_chat_template(tools=…)` | Model dependent | Validation oracle |
 | PyTorch | Runtime-pinned 2.11-class CUDA wheel | vLLM/SGLang release notes | SM 12.0 build must be verified | Yes | Yes | N/A | Yes | N/A | FP8/NVFP4 ecosystem | Per-runtime lock |
 | Windows fallback | llama.cpp b10092 + `ggml-org/gemma-4-12B-it-GGUF` Q4_0 @ `d72ee272…` | Google llama.cpp integration, ggml-org release/model | CPU-only Windows path passed while GPU was occupied; CUDA binary installed, GPU smoke pending | 12B Korean text passed | N/A | Disabled for fallback | Text only guaranteed | Native tool call and strict JSON passed | Q4_0 GGUF, SHA-256 passed | Selected recovery fallback |
@@ -134,34 +134,40 @@ model repositories, and upstream release notes are used for selections.
    The controlled vLLM exact-target 12B ON/OFF runs now pass the same
    functional gate and show a 1.438x output-rate ratio with one MTP token.
    The path remains text-only because the exact target lacks the upstream
-   multimodal configuration field, and the 31B pair remains unvalidated.
-5. Stable releases are preferred. A nightly is allowed only if a reproduced
+   multimodal configuration field. The constrained 31B pair also passed
+   ON/OFF functional and latency gates, showing a 2.022x output-rate ratio,
+   but requires 36 GiB CPU offload and remains operationally impractical.
+5. SGLang 0.5.15.post1 cannot serve the pinned 31B W4A16 checkpoint because
+   its Marlin repack requires output width divisibility by 64 and Gemma's
+   measured width is 8,608. Its exact target loaded but the first request
+   exceeded 120 seconds. The launcher fails fast for the known W4A16
+   combination and vLLM is selected for 31B.
+6. Stable releases are preferred. A nightly is allowed only if a reproduced
    defect blocks a required capability and the exact build/commit and stable
    rollback are recorded.
-6. No Windows-native vLLM deployment is selected. WSL2 is the primary path.
-7. Android 17 requires explicit local-network permission behavior for LAN
+7. No Windows-native vLLM deployment is selected. WSL2 is the primary path.
+8. Android 17 requires explicit local-network permission behavior for LAN
    communication and foreground-service microphone rules.
-8. On this WSL 2 host, vLLM 0.25.1's default V2 Model Runner failed before
+9. On this WSL 2 host, vLLM 0.25.1's default V2 Model Runner failed before
    weight loading with `RuntimeError: UVA is not available`. The documented
    `VLLM_USE_V2_MODEL_RUNNER=0` switch selected the V1 runner, which loaded the
    exact 12B checkpoint and passed health, text, function calling, structured
    output, streaming, and image requests. This is a measured host-specific
    compatibility setting, not a claim that every WSL host lacks UVA.
-9. V1 startup reported failed best-effort multimodal warmups, but an actual
+10. V1 startup reported failed best-effort multimodal warmups, but an actual
    in-memory PNG request returned the correct dominant color. Audio and video
    requests remain separate gates. The default model sampling configuration
    is disabled in repeatable smoke/benchmark launches with
    `--generation-config vllm`; requests specify sampling explicitly.
-10. Chatterbox 0.1.7's Python <3.14 dependency pins torch and torchaudio 2.6.
+11. Chatterbox 0.1.7's Python <3.14 dependency pins torch and torchaudio 2.6.
     The isolated Python 3.14.6 TTS environment instead resolves torch and
     torchaudio 2.11 + CUDA 13.0 and has passed import, CUDA, Korean synthesis,
     and persistent-worker smoke tests. Long-form quality remains a benchmark
     gate. Voice cloning stays disabled.
-11. SGLang 0.5.15.post1 and kernel 0.4.4 cu130 are installed in a versioned
-    WSL environment. Its 194-package check and RTX 5090 CUDA smoke pass.
-    Launching Gemma was deliberately deferred when an unrelated Windows
-    process left only 2,954 MiB VRAM free; no process was killed and no model
-    failure is inferred from this resource gate.
+12. SGLang 0.5.15.post1 and kernel 0.4.4 cu130 are installed in a versioned
+    WSL environment. Its 194-package check, RTX 5090 CUDA smoke, and 12B
+    comparison pass. The bounded 31B failures are recorded separately from
+    shared-GPU admission yields; no foreign process was stopped.
 
 ## Official references
 

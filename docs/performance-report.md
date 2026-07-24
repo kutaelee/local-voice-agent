@@ -1,8 +1,9 @@
 # Performance report
 
-Status: partial fixed-condition benchmark. Matching vLLM and SGLang 12B
-MTP-OFF baselines and controlled exact-target MTP ON/OFF pairs completed;
-31B comparison rows remain open.
+Status: model/runtime selection benchmark complete. Matching vLLM and SGLang
+12B baselines, controlled exact-target 12B ON/OFF pairs, and a constrained
+vLLM 31B ON/OFF pair completed. Physical Android end-to-end voice latency
+remains a separate QA item.
 Shared-GPU SGLang MTP retries on 2026-07-24 were safely yielded when ComfyUI
 reclaimed the device.
 
@@ -150,6 +151,72 @@ Evidence:
 The exact target still lacks the upstream multimodal configuration field
 needed by this runtime path, so both controlled runs were text-only. MTP
 remains disabled in production routing despite the measured latency gain.
+
+## Fixed-condition vLLM 31B exact-target MTP OFF/ON
+
+The exact target revision
+`1e4d8beecacb8b7590c1d8bedd7335f687bf311f` ran with and without its
+matching assistant under the same 36 GiB CPU offload, text-only context,
+temperature 0, concurrency 1, 16-token cap, and three-sample prompt subset.
+Both conditions first passed Korean text, `inspect_gpu({})`, strict structured
+output, and streaming.
+
+| Metric | MTP OFF | MTP ON, one token |
+|---|---:|---:|
+| TTFT p50 / p95 | 5,677.493 / 5,698.739 ms | 5,674.851 / 5,767.266 ms |
+| TPOT p50 / p95 | 2,609.246 / 2,650.088 ms | 1,286.360 / 1,316.968 ms |
+| Mean output rate | 0.407 tokens/s | 0.823 tokens/s |
+| Mean total request | 44,985.775 ms | 25,106.414 ms |
+| Endpoint GPU snapshot | 26,552 MiB | 27,731 MiB |
+| Successful samples | 3 / 3 | 3 / 3 |
+
+One-step MTP raised measured output rate by 2.022x, reduced TPOT p50 by
+50.7%, and reduced mean total request time by 44.2%. TTFT p50 differed by
+only 2.642 ms. Runtime intervals reported acceptance from 0.667 to 1.0, but
+those interval observations are not a request-weighted acceptance benchmark.
+
+Evidence:
+
+- OFF benchmark SHA-256:
+  `5b6314e02f846c81230edff5f4e4549c7442221f04fa4c6b17e3f895ce14d4d8`
+- ON benchmark SHA-256:
+  `106666fc6547e6202ba1673c9f7f71696b2b03036f0a1335118f48b909196c12`
+- OFF functional SHA-256:
+  `cf78e8d9296bf7cc2e252e94bf58e5e7691d61519ce8c41db198b651f6a848da`
+- ON functional SHA-256:
+  `b1f335ba35dc34f0e7a94a5ff85925cfa7021241b5a49a01f602b39de061a400`
+
+The pair is valid comparison evidence but not the production profile: long
+CPU-offloaded load/request latency and the text-only exact target keep MTP
+disabled. The W4A16 31B profile remains the on-demand serving choice.
+
+## SGLang 31B bounded probes
+
+SGLang 0.5.15.post1 did not produce a usable 31B serving row:
+
+- The pinned W4A16 checkpoint failed during the runtime's compressed-tensors
+  Marlin repack because output width 8,608 is not divisible by tile width 64.
+- The exact 31B target loaded with 36 GiB CPU offload in 489.76 seconds and
+  allocated 23.79 GiB for the model plus 0.87 GiB for KV cache, but its first
+  fixed-condition request exceeded the registered 120-second timeout.
+- No OOM occurred in the exact-target attempt. The owned runtime was stopped
+  and no benchmark result was fabricated.
+
+The W4A16 log SHA-256 is
+`40225e7d1b10c815e7a7c3e9f13facceb4ebf3cb51857eb6e6e4a28cac6e42ab`.
+The exact-target status SHA-256 is
+`d8ff534a0d3f0433e6a6c78cd52430c23d69f61b675c7978c37d422560b90237`.
+The launcher now rejects the known-incompatible W4A16/SGLang combination
+before reserving the GPU.
+
+## Live 12B-to-31B-to-12B model switch
+
+The registered stable-vLLM production profiles completed a real
+12B-to-31B-to-12B sequence. Each model was stopped before the next load,
+model identity and a response were verified at every ready state, and the
+final 12B process was stopped only after the return health check passed.
+The evidence SHA-256 is
+`60de96e58217c042a430083da91872720dfe276b55a07ac787fbf9f86d473d7e`.
 
 ## Exact 31B MTP feasibility probe
 

@@ -42,7 +42,7 @@ measurements:
     sglang_cpu_offload_gib: 4
     sglang_health_observed_vram_mib: 28619
     sglang_runtime_available_memory_gib_after_kv: 4.39
-    note: SGLang functional smoke passed; fixed-condition MTP latency remains pending
+    note: SGLang and vLLM fixed-condition 12B MTP ON/OFF measurements passed
   gemma4-31b:
     peak_vram_mib: 27187
     measurement_kind: preliminary_shared_host_poll_not_true_peak
@@ -52,7 +52,13 @@ measurements:
     minimum_observed_free_vram_mib: 5001
     note: first_utilization_based_launch_failed_after_weight_load_due_to_no_available_kv_cache
   gemma4-31b-mtp:
-    peak_vram_mib: null
+    peak_vram_mib: 27731
+    measurement_kind: endpoint_snapshot_not_true_peak
+    cpu_offload_gib: 36
+    max_model_len: 256
+    fixed_condition_samples_per_mode: 3
+    production_enabled: false
+    note: constrained vLLM ON/OFF passed; text-only and operationally too slow
   gemma4-12b-fallback:
     peak_vram_mib: 0
     measurement_kind: cpu_only_recovery_smoke

@@ -11,9 +11,9 @@ live runtime or physical-device test.
 | 1 | Gemma 4 12B runs | VERIFIED | vLLM and SGLang text, tool/schema, streaming, and image smokes passed. |
 | 2 | Gemma 4 31B runs | VERIFIED | vLLM constrained text, tool/schema, and streaming smoke passed. |
 | 3 | Matching MTP assistants run | VERIFIED | Exact 12B assistants run in vLLM and SGLang; the exact 31B target/assistant also passed live vLLM text, tool, schema, and streaming checks. |
-| 4 | MTP ON/OFF measurements exist | PARTIAL | Controlled SGLang and vLLM exact-target 12B ON/OFF pairs exist; 31B ON/OFF rows remain open. |
-| 5 | vLLM/SGLang comparison exists | PARTIAL | Matching 12B W4A16 MTP-OFF and controlled exact-target ON/OFF comparisons exist; 31B comparison remains incomplete. |
-| 6 | 12B/31B switching works | PARTIAL | State-machine, API, drain, cleanup, and recovery tests pass; live GPU process switch remains open. |
+| 4 | MTP ON/OFF measurements exist | VERIFIED | Controlled exact-target ON/OFF pairs exist for vLLM 12B, SGLang 12B, and constrained vLLM 31B. |
+| 5 | vLLM/SGLang comparison exists | VERIFIED | Matching 12B comparisons completed; bounded 31B probes selected vLLM after SGLang's W4A16 repack failure and exact-target request timeout. |
+| 6 | 12B/31B switching works | VERIFIED | The actual stable-vLLM 12B-to-31B-to-12B stop/load/health sequence passed and returned to a verified 12B state. |
 | 7 | Android voice conversation works | PARTIAL | Production WebSocket PCM→STT→12B→TTS smoke and emulator UI/install pass; physical Android microphone/LAN playback remains open. |
 | 8 | User speech interrupts TTS | PARTIAL | Server and Android cancellation paths pass unit/integration tests; physical-device barge-in timing remains open. |
 | 9 | Files and Git state can be read | VERIFIED | Live planner-to-executor file read and Windows/WSL filesystem/Git suites pass. |
@@ -31,8 +31,8 @@ live runtime or physical-device test.
 
 ## Current totals
 
-- Verified: 13
-- Partial: 7
+- Verified: 16
+- Partial: 4
 - Failed: 0
 
 ## Evidence anchors
@@ -43,6 +43,12 @@ live runtime or physical-device test.
   `E:\Data\LocalVoiceAgent\benchmarks\results\vllm-12b-mtp-off-20260723T221500000Z.json`
 - Fixed-condition SGLang 12B MTP-OFF:
   `E:\Data\LocalVoiceAgent\benchmarks\results\sglang-12b-mtp-off-latency.json`
+- Fixed-condition vLLM 31B MTP-OFF:
+  `E:\Data\LocalVoiceAgent\benchmarks\results\vllm-31b-exact-mtp-off-20260724T003133732Z.json`
+- Fixed-condition vLLM 31B MTP-ON:
+  `E:\Data\LocalVoiceAgent\benchmarks\results\vllm-31b-exact-mtp-on-s1-20260724T010244662Z.json`
+- Live model switch:
+  `E:\Data\LocalVoiceAgent\runtime\evidence\model-switch\live-model-switch-20260724T011306766Z.json`
 - Android artifacts:
   `E:\Data\LocalVoiceAgent\artifacts\android\0.6.2-api37`
 - Detailed executed tests: `docs/test-report.md`
@@ -50,12 +56,8 @@ live runtime or physical-device test.
 
 ## Closure order
 
-1. Use an idle shared-GPU window for 12B MTP-ON comparisons.
-2. Attempt and record exact 31B MTP feasibility without affecting foreign
-   ComfyUI/Qwen work.
-3. Run a live 12B→31B→12B process switch.
-4. Install the current APK on a physical Android device and complete
+1. Install the current APK on a physical Android device and complete
    microphone, speaker/earpiece, Bluetooth, reconnect, LAN/TLS, and barge-in
    QA using `docs/physical-android-qa.md`.
-5. Perform an independent documented clean-environment reproduction or record
+2. Perform an independent documented clean-environment reproduction or record
    an explicit scope decision.
