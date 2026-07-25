@@ -310,3 +310,18 @@ invalid cache degrades to the same visible `switching_model` status.
 Structured evidence:
 `E:\Data\LocalVoiceAgent\runtime\evidence\web-qa\model-control-20260725T123023Z.json`
 (SHA-256 `e5731b6f4576e35a45443267a04a0261c0ac62a1d940fafb7a8b5b02ae8bba91`).
+
+## 2026-07-25 Web QA microphone and cancellation recovery
+
+| Check | Result | Evidence |
+|---|---|---|
+| Failure boundary | Passed | The affected tab failed with browser `NotReadableError` before `audio.input.start`; gateway, Gemma, VAD, STT, and TTS remained healthy |
+| Windows capture prerequisites | Passed | Microphone privacy was `Allow`, Windows Audio and Bluetooth services were running, and the only present capture endpoint was `Galaxy Buds Pro Hands-Free` with status `OK` |
+| Bluetooth initialization order | Passed (automated/live) | The portal now acquires `getUserMedia` before opening Web Audio output, with a static ordering regression and explicit permission/device/stale-tab errors |
+| Fresh-tab recovery | Passed (live browser) | A new loopback QA tab entered `듣는 중` and emitted live `audio.input.chunk` events; no raw audio was retained as evidence |
+| Stale response cancellation | Passed (automated) | **응답 중단** is enabled only while a response is interruptible. After `audio.output.end`, local buffered playback may still be stopped, but the portal no longer sends a server cancellation for an operation that already completed |
+| Model-stop race | Passed (automated/live recovery) | The portal now blocks **모델 내리기** during capture, generation, tool execution, or buffered playback. After the stack was available again, a fresh turn reported model ready, entered `듣는 중`, emitted PCM chunks, and showed no `EVENT_HANDLER_FAILED` |
+
+Structured evidence:
+`E:\Data\LocalVoiceAgent\runtime\evidence\web-qa\microphone-recovery-20260725T125744Z.json`
+(SHA-256 `457a3c24f2c501502800d92444e19cf877016a1ab3fd77f805eaccad1bd670e2`).

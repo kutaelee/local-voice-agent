@@ -571,6 +571,18 @@ appear healthy. A submitted job may remain queued while another GPU workload
 is active; refresh diagnostics or wait for the panel to change to **사용
 가능** before starting a voice turn.
 
+If the browser reports that it cannot start the audio source before any
+`audio.input.start` event, the failure is local capture rather than VAD/STT.
+Confirm Windows microphone permission and an active input endpoint. Bluetooth
+headsets should be connected with their Hands-Free input profile before the
+turn starts. A stale in-app browser capture session may survive a page reload;
+open a fresh QA tab and retry. The portal acquires the microphone before
+opening Web Audio output to avoid an A2DP-output/HFP-capture ordering conflict.
+The portal disables **모델 내리기** while capture, generation, tool execution,
+or buffered playback is active. Stop the voice turn first; unloading workers
+under an in-flight request intentionally fails that request rather than
+silently replaying it.
+
 Stop this instance without disturbing the private-LAN Android gateway:
 
 ```powershell

@@ -65,6 +65,9 @@ const state = {
   rejectedInputRequestId: null,
   inputChunkIndex: 0,
   currentRequestId: null,
+  activeResponseRequestId: null,
+  responseInterruptible: false,
+  serverOperationActive: false,
   mediaStream: null,
   audioContext: null,
   captureSource: null,
@@ -179,7 +182,7 @@ function setConnection(connected, label = connected ? "연결됨" : "연결 안 
   ui.connectButton.textContent = connected ? "연결 해제" : "연결";
   ui.startButton.disabled = !connected;
   ui.stopButton.disabled = !connected || !state.listening;
-  ui.interruptButton.disabled = !connected;
+  updateInterruptButton();
   ui.saveVoiceButton.disabled = !connected;
   ui.voiceProfile.disabled = !connected;
   ui.salonStartButton.disabled = !connected || state.salonCallActive;
@@ -190,8 +193,27 @@ function setConnection(connected, label = connected ? "연결됨" : "연결 안 
   updateModelControlButtons();
 }
 
+function updateInterruptButton() {
+  ui.interruptButton.disabled = (
+    !state.connected || !state.responseInterruptible
+  );
+}
+
+function setResponseActivity({
+  interruptible = false,
+  serverActive = false,
+  requestId = null,
+} = {}) {
+  state.responseInterruptible = interruptible;
+  state.serverOperationActive = serverActive;
+  state.activeResponseRequestId = serverActive ? requestId : null;
+  updateInterruptButton();
+  updateModelControlButtons();
+}
+
 function updateModelControlButtons() {
   const unavailable = !state.connected || state.modelControlBusy;
+  const voiceTurnActive = state.listening || state.responseInterruptible;
   ui.modelStartButton.disabled = (
     unavailable
     || ["starting", "ready"].includes(state.modelControlPhase)
@@ -199,6 +221,7 @@ function updateModelControlButtons() {
   ui.modelStopButton.disabled = (
     unavailable
     || state.modelControlPhase === "stopped"
+    || voiceTurnActive
   );
   const labels = {
     stopped: "중지됨",
@@ -249,6 +272,10 @@ function scheduleModelStatusPoll() {
 
 async function controlModel(action) {
   const starting = action === "start";
+  if (!starting && (state.listening || state.responseInterruptible)) {
+    showToast("음성 턴을 먼저 중지한 뒤 모델을 내려 주세요.");
+    return;
+  }
   const approved = window.confirm(
     starting
       ? "Gemma 4 12B와 음성 워커를 gpuq에 22 GiB로 예약해 올립니다. 계속할까요?"
@@ -578,13 +605,29 @@ function bytesToBase64(bytes) {
   return btoa(binary);
 }
 
+function microphoneErrorMessage(error) {
+  if (error?.name === "NotReadableError") {
+    return "이 QA 탭에서 마이크를 시작할 수 없습니다. 새 QA 탭을 열거나 Bluetooth 헤드셋을 다시 연결해 주세요.";
+  }
+  if (error?.name === "NotAllowedError") {
+    return "브라우저의 마이크 권한을 허용해 주세요.";
+  }
+  if (error?.name === "NotFoundError") {
+    return "사용 가능한 마이크를 찾지 못했습니다.";
+  }
+  return error?.message || "마이크 입력을 시작하지 못했습니다.";
+}
+
 async function startListening() {
   if (!state.connected || state.listening) return;
   state.manuallyStopped = false;
   stopPlayback();
+  let media = null;
   try {
-    await ensureAudioContext();
-    const media = await navigator.mediaDevices.getUserMedia({
+    // Acquire the capture profile before opening Web Audio output. Bluetooth
+    // headsets can reject HFP capture when an A2DP output context is opened
+    // first, and a fresh tab can recover a stale browser capture session.
+    media = await navigator.mediaDevices.getUserMedia({
       audio: {
         channelCount: 1,
         echoCancellation: true,
@@ -592,6 +635,7 @@ async function startListening() {
         autoGainControl: true,
       },
     });
+    await ensureAudioContext();
     const streamId = crypto.randomUUID();
     const requestId = crypto.randomUUID();
     if (!send("audio.input.start", {
@@ -637,11 +681,18 @@ async function startListening() {
     ui.startButton.textContent = " 듣는 중";
     ui.startButton.prepend(Object.assign(document.createElement("span"), { className: "call-dot" }));
     ui.stopButton.disabled = false;
+    updateModelControlButtons();
     setAssistant("listening");
   } catch (error) {
+    media?.getTracks().forEach((track) => track.stop());
     await stopCapture(false);
-    showToast(error.message);
-    setAssistant("error", error.message);
+    const message = microphoneErrorMessage(error);
+    addEvent("capture.error", {
+      name: error?.name || "Error",
+      message,
+    });
+    showToast(message);
+    setAssistant("error", message);
   }
 }
 
@@ -662,6 +713,7 @@ async function stopCapture(sendEnd = true, reason = "client_stop") {
   ui.startButton.classList.remove("active");
   ui.startButton.innerHTML = '<span class="call-dot"></span>대화 시작';
   ui.stopButton.disabled = true;
+  updateModelControlButtons();
   if (sendEnd && streamId && requestId) {
     state.turn.audioEndedAt = performance.now();
     send("audio.input.end", { audio_stream_id: streamId, reason }, requestId);
@@ -678,6 +730,7 @@ function stopPlayback() {
   state.playbackSources.clear();
   state.nextPlaybackTime = state.audioContext?.currentTime || 0;
   state.outputAudioStreamId = null;
+  setResponseActivity();
 }
 
 function decodePcm16(encoded) {
@@ -753,6 +806,7 @@ function finishPlayback() {
     );
     clearTimeout(state.playbackEndTimer);
     state.playbackEndTimer = setTimeout(() => {
+      setResponseActivity();
       if (
         generation === state.playbackGeneration
         && ui.autoContinue.checked
@@ -833,6 +887,26 @@ function handleServerEvent(envelope) {
   }
   addEvent(`← ${type}`, payload);
   if (type === "assistant.state") {
+    const activeStates = new Set([
+      "recognizing",
+      "thinking",
+      "selecting_tool",
+      "waiting_approval",
+      "executing",
+      "verifying",
+      "synthesizing",
+      "speaking",
+      "switching_model",
+    ]);
+    if (activeStates.has(payload.state)) {
+      setResponseActivity({
+        interruptible: true,
+        serverActive: true,
+        requestId: envelope.request_id,
+      });
+    } else if (["idle", "listening", "interrupted", "error"].includes(payload.state)) {
+      setResponseActivity();
+    }
     if (payload.state === "connecting" && payload.detail === "authenticated") {
       setAssistant("idle", "연결됨. 통화를 시작할 수 있습니다.");
     } else {
@@ -847,6 +921,11 @@ function handleServerEvent(envelope) {
     addMessage("user", payload.text);
     state.assistantMessage = null;
   } else if (type === "assistant.text.delta") {
+    setResponseActivity({
+      interruptible: true,
+      serverActive: true,
+      requestId: envelope.request_id,
+    });
     if (!state.turn.firstTextAt) {
       state.turn.firstTextAt = performance.now();
       updateMetric("llm", state.turn.firstTextAt - state.turn.transcriptAt);
@@ -881,8 +960,17 @@ function handleServerEvent(envelope) {
     setSalonCall(false, "종료");
     setAssistant("idle", "예약 전화가 종료됐습니다.");
   } else if (type === "audio.output.chunk") {
+    setResponseActivity({
+      interruptible: true,
+      serverActive: true,
+      requestId: envelope.request_id,
+    });
     enqueueAudio(payload);
   } else if (type === "audio.output.end") {
+    setResponseActivity({
+      interruptible: true,
+      serverActive: false,
+    });
     finishPlayback();
   } else if (type === "tool.approval.required") {
     showApproval(payload);
@@ -972,16 +1060,22 @@ function syncSliderLabels() {
 }
 
 function interrupt() {
+  if (!state.responseInterruptible) return;
+  const cancelRequestId = (
+    state.serverOperationActive
+      ? state.activeResponseRequestId
+      : null
+  );
   state.manuallyStopped = true;
   stopCapture(false);
   stopPlayback();
-  if (state.currentRequestId) {
+  if (cancelRequestId) {
     send("operation.cancel.requested", {
       target_kind: "assistant_response",
-      target_id: state.currentRequestId,
+      target_id: cancelRequestId,
       reason: "user_request",
       idempotency_key: crypto.randomUUID(),
-    }, state.currentRequestId);
+    }, cancelRequestId);
   }
   setAssistant("interrupted");
 }

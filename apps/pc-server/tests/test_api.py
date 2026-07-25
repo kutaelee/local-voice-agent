@@ -148,6 +148,21 @@ def test_qa_portal_is_local_static_content_without_secrets() -> None:
     assert 'controlModel("start")' in app_script.text
     assert 'controlModel("stop")' in app_script.text
     assert "gpuq에 22 GiB" in app_script.text
+    start_listening = app_script.text.split(
+        "async function startListening()",
+        maxsplit=1,
+    )[1].split("async function stopCapture", maxsplit=1)[0]
+    assert start_listening.index("getUserMedia") < start_listening.index(
+        "ensureAudioContext"
+    )
+    assert "새 QA 탭을 열거나 Bluetooth 헤드셋을 다시 연결" in app_script.text
+    assert 'addEvent("capture.error"' in app_script.text
+    assert "!state.responseInterruptible" in app_script.text
+    assert "state.serverOperationActive" in app_script.text
+    assert "state.activeResponseRequestId" in app_script.text
+    assert "if (cancelRequestId)" in app_script.text
+    assert "state.listening || state.responseInterruptible" in app_script.text
+    assert "음성 턴을 먼저 중지한 뒤 모델을 내려" in app_script.text
     assert client().get("/qa/styles.css").status_code == 200
     assert client().get("/qa/pcm-worklet.js").status_code == 200
 
