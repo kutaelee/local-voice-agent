@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import date, datetime
 import json
 from pathlib import Path
 
@@ -42,6 +42,7 @@ def test_model_drives_turn_with_persona_context_and_closed_schema() -> None:
                 "service_id": "haircut",
                 "staff_id": "",
                 "starts_at": "",
+                "requested_date": "",
                 "customer_name": "",
                 "phone": "",
                 "reservation_code": "",
@@ -110,6 +111,65 @@ def test_tool_result_is_narrated_by_model_without_code_authored_sentence() -> No
     assert "RESULT_CONTEXT=" in captured["messages"][1]["content"]
 
 
+def test_verbose_availability_reply_is_regenerated_for_phone() -> None:
+    replies = iter(
+        [
+            {
+                "reply": (
+                    "7월 28일 화요일에는 오전 열 시부터 열한 시 삼십 분까지 가능합니다. "
+                    "담당자는 가능한 분으로 배정해 드릴 수 있습니다. "
+                    "성함과 전화번호도 함께 말씀해 주세요."
+                )
+            },
+            {
+                "reply": (
+                    "화요일은 오전 열 시와 열 시 삼십 분부터 가능해요. "
+                    "어느 시간이 편하실까요?"
+                )
+            },
+        ]
+    )
+    calls = []
+
+    def transport(payload):
+        calls.append(payload)
+        return _response(next(replies))
+
+    adapter = SalonVllmConversationHarness(
+        policy=load_salon_policy(POLICY_PATH),
+        base_url="http://127.0.0.1:46322/v1",
+        model="gemma4-12b",
+        api_key=API_KEY,
+        transport=transport,
+    )
+    reply = asyncio.run(
+        adapter.complete(
+            user_message="화요일 커트 가능한 시간이 언제예요?",
+            state={"action": "availability"},
+            history=(),
+            tool_result={
+                "ok": True,
+                "operation": "availability_by_date",
+                "service_name": "기본 커트",
+                "requested_date": "2026-07-28",
+                "available_slots": [
+                    {
+                        "starts_at": "2026-07-28T10:00:00+09:00",
+                        "available_staff": ["민지"],
+                    }
+                ],
+            },
+        )
+    )
+
+    assert len(calls) == 2
+    assert calls[1]["response_format"]["json_schema"]["name"] == (
+        "salon_tool_reply_retry"
+    )
+    assert "성함" not in reply
+    assert reply.endswith("어느 시간이 편하실까요?")
+
+
 def test_repetitive_scope_refusal_is_regenerated_by_model() -> None:
     replies = iter(
         [
@@ -129,6 +189,7 @@ def test_repetitive_scope_refusal_is_regenerated_by_model() -> None:
                 "service_id": None,
                 "staff_id": None,
                 "starts_at": None,
+                "requested_date": None,
                 "customer_name": None,
                 "phone": None,
                 "reservation_code": None,
@@ -175,6 +236,7 @@ def test_stale_in_scope_reply_is_regenerated_for_latest_question() -> None:
                 "service_id": None,
                 "staff_id": None,
                 "starts_at": None,
+                "requested_date": None,
                 "customer_name": None,
                 "phone": None,
                 "reservation_code": None,
@@ -187,6 +249,7 @@ def test_stale_in_scope_reply_is_regenerated_for_latest_question() -> None:
                 "service_id": "digital_perm",
                 "staff_id": None,
                 "starts_at": "2026-07-29T14:00:00+09:00",
+                "requested_date": None,
                 "customer_name": None,
                 "phone": None,
                 "reservation_code": None,
@@ -239,6 +302,7 @@ def test_internal_planning_text_is_not_exposed_to_customer() -> None:
                 "service_id": "digital_perm",
                 "staff_id": None,
                 "starts_at": "2026-07-29T14:00:00+09:00",
+                "requested_date": None,
                 "customer_name": None,
                 "phone": None,
                 "reservation_code": None,
@@ -251,6 +315,7 @@ def test_internal_planning_text_is_not_exposed_to_customer() -> None:
                 "service_id": "digital_perm",
                 "staff_id": None,
                 "starts_at": "2026-07-29T14:00:00+09:00",
+                "requested_date": None,
                 "customer_name": None,
                 "phone": None,
                 "reservation_code": None,
@@ -297,6 +362,7 @@ def test_internal_planning_text_is_not_exposed_to_customer() -> None:
             "service_id": None,
             "staff_id": None,
             "starts_at": None,
+            "requested_date": None,
             "customer_name": None,
             "phone": None,
             "reservation_code": None,
@@ -324,3 +390,98 @@ def test_invalid_or_unapproved_model_action_fails_closed(
                 now=datetime.fromisoformat("2026-07-25T12:00:00+09:00"),
             )
         )
+
+
+def test_date_only_availability_uses_requested_date_slot() -> None:
+    adapter = SalonVllmConversationHarness(
+        policy=load_salon_policy(POLICY_PATH),
+        base_url="http://127.0.0.1:46322/v1",
+        model="gemma4-12b",
+        api_key=API_KEY,
+        transport=lambda _: _response(
+            {
+                "in_scope": True,
+                "action": "availability",
+                "reply": "다음 주 화요일 커트 가능한 시간을 확인해 볼게요.",
+                "service_id": "haircut",
+                "staff_id": None,
+                "starts_at": None,
+                "requested_date": "2026-07-28",
+                "customer_name": None,
+                "phone": None,
+                "reservation_code": None,
+                "confirmed": False,
+            }
+        ),
+    )
+
+    decision = asyncio.run(
+        adapter.decide(
+            user_message="다음 주 화요일 커트 가능한 시간이 언제예요?",
+            state={},
+            history=(),
+            now=datetime.fromisoformat("2026-07-25T12:00:00+09:00"),
+        )
+    )
+
+    assert decision.action == "availability"
+    assert decision.starts_at is None
+    assert decision.requested_date == date(2026, 7, 28)
+
+
+def test_markdown_reply_is_regenerated_as_spoken_korean() -> None:
+    values = iter(
+        [
+            {
+                "in_scope": True,
+                "action": "respond",
+                "reply": "**커트:** 이만 오천 원입니다.\n- 예약을 도와드릴까요?",
+                "service_id": "haircut",
+                "staff_id": None,
+                "starts_at": None,
+                "requested_date": None,
+                "customer_name": None,
+                "phone": None,
+                "reservation_code": None,
+                "confirmed": False,
+            },
+            {
+                "in_scope": True,
+                "action": "respond",
+                "reply": "커트는 이만 오천 원이에요. 예약도 도와드릴까요?",
+                "service_id": "haircut",
+                "staff_id": None,
+                "starts_at": None,
+                "requested_date": None,
+                "customer_name": None,
+                "phone": None,
+                "reservation_code": None,
+                "confirmed": False,
+            },
+        ]
+    )
+    calls = []
+
+    def transport(payload):
+        calls.append(payload)
+        return _response(next(values))
+
+    adapter = SalonVllmConversationHarness(
+        policy=load_salon_policy(POLICY_PATH),
+        base_url="http://127.0.0.1:46322/v1",
+        model="gemma4-12b",
+        api_key=API_KEY,
+        transport=transport,
+    )
+
+    decision = asyncio.run(
+        adapter.decide(
+            user_message="커트 가격이 얼마예요?",
+            state={},
+            history=(),
+            now=datetime.fromisoformat("2026-07-25T12:00:00+09:00"),
+        )
+    )
+
+    assert len(calls) == 2
+    assert decision.reply == "커트는 이만 오천 원이에요. 예약도 도와드릴까요?"

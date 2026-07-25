@@ -39,6 +39,7 @@ from .application.model_switch import (
 )
 from .application.salon_calls import SalonCallCoordinator
 from .application.salon_speech import SalonSpeechService
+from .application.salon_voice import SalonVoiceConversation
 from .application.tool_execution_lifecycle import DurableToolExecutionLifecycle
 from .application.tool_planner import ToolPlanner
 from .application.voice_turn import VoiceTurnService
@@ -1044,6 +1045,7 @@ def create_app(
                         payload=payload,
                         emit=emit,
                     )
+                salon_speech_requests: list[tuple[str, Literal["listening", "idle"]]] = []
                 for item in outbound:
                     if item.type != "salon.owner.notification":
                         await emit(item)
@@ -1051,37 +1053,19 @@ def create_app(
                             item.type == "salon.assistant.message"
                             and salon_speech_service is not None
                         ):
-                            resume_state = (
-                                "idle"
-                                if any(
-                                    event.type == "salon.call.ended"
-                                    for event in outbound
-                                )
-                                else "listening"
-                            )
-                            try:
-                                speech_events = (
-                                    await salon_speech_service.synthesize(
-                                        str(item.payload["text"]),
-                                        resume_state=resume_state,
-                                    )
-                                )
-                            except Exception:
-                                LOGGER.exception(
-                                    "salon TTS failed session_id=%s request_id=%s",
-                                    session_id,
-                                    request_id,
-                                )
-                                await send_error(
-                                    request_id=request_id,
-                                    error_code="SALON_TTS_FAILED",
-                                    message=(
-                                        "The text reply succeeded but speech synthesis failed."
+                            salon_speech_requests.append(
+                                (
+                                    str(item.payload["text"]),
+                                    (
+                                        "idle"
+                                        if any(
+                                            event.type == "salon.call.ended"
+                                            for event in outbound
+                                        )
+                                        else "listening"
                                     ),
                                 )
-                            else:
-                                for speech_event in speech_events:
-                                    await emit(speech_event)
+                            )
                         continue
                     async with salon_notification_subscribers_lock:
                         subscribers = tuple(salon_notification_subscribers)
@@ -1098,6 +1082,27 @@ def create_app(
                         async with salon_notification_subscribers_lock:
                             for subscriber in failed:
                                 salon_notification_subscribers.discard(subscriber)
+                for speech_text, resume_state in salon_speech_requests:
+                    try:
+                        assert salon_speech_service is not None
+                        await salon_speech_service.synthesize(
+                            speech_text,
+                            resume_state=resume_state,
+                            emit=emit,
+                        )
+                    except Exception:
+                        LOGGER.exception(
+                            "salon TTS failed session_id=%s request_id=%s",
+                            session_id,
+                            request_id,
+                        )
+                        await send_error(
+                            request_id=request_id,
+                            error_code="SALON_TTS_FAILED",
+                            message=(
+                                "The text reply succeeded but speech synthesis failed."
+                            ),
+                        )
             except asyncio.CancelledError:
                 return
             except Exception:
@@ -1246,6 +1251,7 @@ def create_app_from_environment() -> FastAPI:
             model_switch_coordinator=model_switch_coordinator,
             model_activity_barrier=model_activity_barrier,
             voice_profile_store=voice_profile_store,
+            salon_call_coordinator=salon_call_coordinator,
         ),
         agent_status_provider=_agent_status_provider_from_environment(),
         state_store=state_store,
@@ -1460,10 +1466,13 @@ def _salon_speech_service_from_environment(
     return SalonSpeechService(
         tts=tts,
         release_fade_ms=int(
-            os.environ.get("LVA_TTS_OUTPUT_RELEASE_FADE_MS", "24")
+            os.environ.get("LVA_TTS_OUTPUT_RELEASE_FADE_MS", "0")
+        ),
+        unit_silence_ms=int(
+            os.environ.get("LVA_TTS_OUTPUT_UNIT_SILENCE_MS", "100")
         ),
         final_silence_ms=int(
-            os.environ.get("LVA_SALON_TTS_FINAL_SILENCE_MS", "200")
+            os.environ.get("LVA_SALON_TTS_FINAL_SILENCE_MS", "300")
         ),
     )
 
@@ -1506,6 +1515,7 @@ def _event_handler_from_environment(
     model_switch_coordinator: ModelSwitchCoordinator | None = None,
     model_activity_barrier: ModelActivityBarrier | None = None,
     voice_profile_store: VoiceProfileStore | None = None,
+    salon_call_coordinator: SalonCallCoordinator | None = None,
 ) -> SessionEventHandler:
     if os.environ.get("LVA_VOICE_ENABLED", "0") != "1":
         return UnavailableSessionEventHandler()
@@ -1613,6 +1623,14 @@ def _event_handler_from_environment(
             default=vllm_model,
         )
         if (
+            salon_call_coordinator is not None
+            and salon_call_coordinator.is_active(session_id)
+        ):
+            conversation = SalonVoiceConversation(
+                coordinator=salon_call_coordinator,
+                session_id=session_id,
+            )
+        elif (
             tools_enabled
             and registry is not None
             and planner is not None
@@ -1642,13 +1660,13 @@ def _event_handler_from_environment(
             tts=tts,
             vad=vad,
             output_tail_silence_ms=int(
-                os.environ.get("LVA_TTS_OUTPUT_TAIL_SILENCE_MS", "110")
+                os.environ.get("LVA_TTS_OUTPUT_TAIL_SILENCE_MS", "300")
             ),
             output_unit_silence_ms=int(
-                os.environ.get("LVA_TTS_OUTPUT_UNIT_SILENCE_MS", "90")
+                os.environ.get("LVA_TTS_OUTPUT_UNIT_SILENCE_MS", "100")
             ),
             output_release_fade_ms=int(
-                os.environ.get("LVA_TTS_OUTPUT_RELEASE_FADE_MS", "24")
+                os.environ.get("LVA_TTS_OUTPUT_RELEASE_FADE_MS", "0")
             ),
         )
 

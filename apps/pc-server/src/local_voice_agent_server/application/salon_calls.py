@@ -47,6 +47,7 @@ class SalonTurnDecision:
     service_id: str | None = None
     staff_id: str | None = None
     starts_at: datetime | None = None
+    requested_date: date | None = None
     customer_name: str | None = None
     phone: str | None = None
     reservation_code: str | None = None
@@ -87,6 +88,7 @@ class SalonCallState:
     service_id: str | None = None
     staff_id: str | None = None
     starts_at: datetime | None = None
+    requested_date: date | None = None
     customer_name: str | None = None
     phone: str | None = None
     reservation_code: str | None = None
@@ -98,6 +100,7 @@ class SalonCallState:
         self.service_id = None
         self.staff_id = None
         self.starts_at = None
+        self.requested_date = None
         self.customer_name = None
         self.phone = None
         self.reservation_code = None
@@ -142,6 +145,11 @@ class SalonCallCoordinator:
     async def disconnect(self, session_id: UUID) -> None:
         async with self._lock:
             self._calls.pop(session_id, None)
+
+    def is_active(self, session_id: UUID) -> bool:
+        """Return whether this authenticated session owns an active salon call."""
+
+        return session_id in self._calls
 
     def reservation_snapshot(self) -> list[dict[str, object]]:
         return [
@@ -417,14 +425,26 @@ class SalonCallCoordinator:
         self,
         state: SalonCallState,
     ) -> dict[str, object]:
-        if state.service_id is None or state.starts_at is None:
+        if state.service_id is None:
             return {
                 "ok": False,
                 "operation": "availability",
                 "error_code": "MISSING_FIELDS",
-                "message": "시술과 희망 날짜 및 시간이 더 필요합니다.",
+                "message": "확인할 세부 시술이 더 필요합니다.",
             }
         service = self.policy.service(state.service_id)
+        if state.starts_at is None:
+            if state.requested_date is None:
+                return {
+                    "ok": False,
+                    "operation": "availability",
+                    "error_code": "MISSING_FIELDS",
+                    "message": "확인할 날짜가 더 필요합니다.",
+                }
+            return self._model_daily_availability_result(
+                service_id=state.service_id,
+                requested_date=state.requested_date,
+            )
         staff = self._reservations.available_staff(
             service_id=state.service_id,
             starts_at=state.starts_at,
@@ -439,6 +459,70 @@ class SalonCallCoordinator:
                 "예약 가능한 담당자가 있습니다."
                 if staff
                 else "해당 시간에는 예약 가능한 담당자가 없습니다."
+            ),
+        }
+
+    def _model_daily_availability_result(
+        self,
+        *,
+        service_id: str,
+        requested_date: date,
+    ) -> dict[str, object]:
+        service = self.policy.service(service_id)
+        hours = self.policy.business_hours[requested_date.weekday()]
+        if hours is None:
+            return {
+                "ok": False,
+                "operation": "availability_by_date",
+                "service_name": service.name,
+                "requested_date": requested_date.isoformat(),
+                "error_code": "SALON_CLOSED",
+                "available_slots": [],
+                "message": "선택한 날짜는 정기 휴무일입니다.",
+            }
+        candidate = local_datetime(
+            requested_date,
+            hours.opens_at,
+            self.policy.timezone_name,
+        )
+        closes_at = local_datetime(
+            requested_date,
+            hours.closes_at,
+            self.policy.timezone_name,
+        )
+        slots: list[dict[str, object]] = []
+        while candidate + timedelta(minutes=service.duration_minutes) <= closes_at:
+            try:
+                staff = self._reservations.available_staff(
+                    service_id=service_id,
+                    starts_at=candidate,
+                )
+            except SalonBookingError as error:
+                if error.code in {
+                    "RESERVATION_IN_PAST",
+                    "BOOKING_HORIZON_EXCEEDED",
+                }:
+                    candidate += timedelta(minutes=self.policy.slot_minutes)
+                    continue
+                raise
+            if staff:
+                slots.append(
+                    {
+                        "starts_at": candidate.isoformat(),
+                        "available_staff": [member.name for member in staff],
+                    }
+                )
+            candidate += timedelta(minutes=self.policy.slot_minutes)
+        return {
+            "ok": bool(slots),
+            "operation": "availability_by_date",
+            "service_name": service.name,
+            "requested_date": requested_date.isoformat(),
+            "available_slots": slots,
+            "message": (
+                "예약 가능한 시간이 있습니다."
+                if slots
+                else "선택한 날짜에는 예약 가능한 시간이 없습니다."
             ),
         }
 
@@ -515,6 +599,10 @@ class SalonCallCoordinator:
             state.staff_id = decision.staff_id
         if decision.starts_at is not None:
             state.starts_at = decision.starts_at.astimezone(self.policy.timezone)
+            state.requested_date = state.starts_at.date()
+        elif decision.requested_date is not None:
+            state.requested_date = decision.requested_date
+            state.starts_at = None
         if decision.customer_name is not None:
             state.customer_name = decision.customer_name
         if decision.phone is not None:
@@ -529,6 +617,11 @@ class SalonCallCoordinator:
             "staff_id": state.staff_id,
             "starts_at": (
                 state.starts_at.isoformat() if state.starts_at is not None else None
+            ),
+            "requested_date": (
+                state.requested_date.isoformat()
+                if state.requested_date is not None
+                else None
             ),
             "customer_name": state.customer_name,
             "phone": state.phone,

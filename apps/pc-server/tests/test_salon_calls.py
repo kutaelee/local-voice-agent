@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -152,6 +152,50 @@ def test_conversation_model_drives_natural_reply_instead_of_echo(
             text="커트하고 싶은데요",
         )
         assert _texts(events) == ["좋아요. 언제 방문하시면 편하실까요?"]
+
+    asyncio.run(scenario())
+
+
+def test_model_date_only_availability_returns_real_schedule_slots(
+    tmp_path: Path,
+) -> None:
+    captured = {}
+
+    class Harness:
+        async def decide(self, **kwargs) -> SalonTurnDecision:
+            return SalonTurnDecision(
+                in_scope=True,
+                action="availability",
+                service_id="haircut",
+                requested_date=date(2026, 7, 28),
+                reply="다음 주 화요일 커트 가능한 시간을 확인해 볼게요.",
+            )
+
+        async def complete(self, **kwargs) -> str:
+            captured.update(kwargs["tool_result"])
+            return "화요일 오전 열 시와 열 시 삼십 분부터 가능해요. 어느 시간이 편하세요?"
+
+    async def scenario() -> None:
+        coordinator = _coordinator(
+            tmp_path,
+            conversation_responder=Harness(),
+        )
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        events = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="다음 주 화요일 커트 가능한 시간이 언제예요?",
+        )
+
+        assert captured["operation"] == "availability_by_date"
+        assert captured["requested_date"] == "2026-07-28"
+        slots = captured["available_slots"]
+        assert isinstance(slots, list)
+        assert slots[0]["starts_at"].startswith("2026-07-28T10:00:00")
+        assert _texts(events) == [
+            "화요일 오전 열 시와 열 시 삼십 분부터 가능해요. 어느 시간이 편하세요?"
+        ]
 
     asyncio.run(scenario())
 

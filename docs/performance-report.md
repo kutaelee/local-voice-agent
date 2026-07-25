@@ -550,3 +550,41 @@ as `7` is synthesized as the complete phrase `7입니다.` while the displayed
 assistant transcript remains unchanged. These changes passed deterministic PCM
 release, list-marker, numeric-expansion, and full PC-server regression tests.
 Subjective breath timing remains listening QA.
+
+## Salon voice latency and end-of-utterance correction (2026-07-25)
+
+A live browser turn using the model-backed salon persona measured 2,976 ms to
+the final text response, 8,678 ms to first audio, and an 886 ms inter-unit
+playback gap. These are single observations, not p50 or p95 measurements.
+
+Inspection of the installed official Qwen3-TTS wrapper confirmed that
+`non_streaming_mode=False` simulates streamed text input but still returns only
+a complete waveform. It therefore cannot reduce first-audio latency through
+incremental audio delivery in this integration and can weaken end-of-sequence
+context. The worker now uses full-text prefill for each bounded semantic unit,
+while the gateway emits each completed unit immediately and continues with the
+next. Release fade is disabled and the final playback guard is 300 ms.
+
+The replacement worker is queued through the shared `gpuq` scheduler. Its live
+first-audio result and subjective Korean `요`/`다` ending quality remain
+pending; no improvement claim is made until listening QA.
+
+A bounded TTS-only follow-up then loaded the real Qwen3-TTS 1.7B clone model
+through `gpuq` job `ea2aae5f-540c-4a25-9a0a-0eb4d8606685`. Two samples
+completed in 8,083.008 ms and 4,967.985 ms, producing 5,963 ms and 4,842 ms of
+24 kHz mono audio. Peak total GPU use was 17,730 MiB. This confirms the worker
+path and full-text prefill mode, but it is not listening evidence and is not a
+latency distribution.
+
+The first integrated restart produced the greeting as two independent acoustic
+generations: first audio arrived in 6,594 ms, followed by a measured 2,096 ms
+playback underrun. The salon projection now keeps normal one- or two-sentence
+replies of at most 72 non-whitespace characters in one Qwen generation. After
+restart, the same greeting reached first audio in 8,508 ms with no playback-gap
+event. A real model-backed availability reply reached text in 2,531 ms and
+first audio in 11,190 ms, also with no playback-gap event.
+
+This deliberately trades 1.9 seconds of greeting first-audio latency for
+continuous speaker identity, prosody, and sentence transitions. The remaining
+latency is a known limitation of the installed wrapper's complete-waveform
+API. End-phoneme quality still requires listening confirmation.

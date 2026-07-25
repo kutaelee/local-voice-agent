@@ -38,7 +38,7 @@ class FakeConversation:
 
 class FakeTts:
     async def synthesize(self, text: str, **_: object) -> SynthesizedAudio:
-        assert text == "확인했습니다."
+        assert text == "확인했습니다…"
         return SynthesizedAudio(b"\x00\x00" * 120, 24_000)
 
 
@@ -399,7 +399,7 @@ def test_pending_tool_approval_resumes_same_voice_turn() -> None:
                 text: str,
                 **_: object,
             ) -> SynthesizedAudio:
-                assert text == "승인된 작업을 완료했습니다."
+                assert text == "승인된 작업을 완료했습니다…"
                 return SynthesizedAudio(b"\x00\x00" * 120, 24_000)
 
         def approval_factory(*_: object) -> VoiceTurnService:

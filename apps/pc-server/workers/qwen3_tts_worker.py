@@ -156,7 +156,10 @@ def main() -> int:
                 text=text,
                 language="Korean",
                 voice_clone_prompt=prompt,
-                non_streaming_mode=False,
+                # The qwen-tts Python wrapper returns a complete WAV either way.
+                # False only simulates streamed text input and does not expose
+                # audio chunks, so use full-text prefill for faster, cleaner EOS.
+                non_streaming_mode=True,
                 temperature=temperature,
                 subtalker_temperature=temperature,
                 max_new_tokens=max_new_tokens,

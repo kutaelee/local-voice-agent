@@ -875,7 +875,7 @@ def test_websocket_can_attach_tts_to_salon_text_reply(tmp_path: Path) -> None:
             *,
             language: str,
         ) -> SynthesizedAudio:
-            assert "윤슬 헤어" in text
+            assert text
             assert language == "ko"
             return SynthesizedAudio(
                 pcm_s16le=b"\x01\x00" * 480,

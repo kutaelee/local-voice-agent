@@ -223,3 +223,19 @@ firewall change was made.
 | Salon menu/seed regression | Passed | PC-server: 235 collected, 233 passed and two environment-dependent cases skipped. Root script suite: 31/31 passed using the isolated TLS dependency path. Repository validators: 10/10 passed. |
 | Repository validators | Passed | 10/10 validators; 32 protocol events and 75 tool contracts |
 | User listening and physical notification QA | Not run | Deliberately deferred until all automated regressions and deployment startup are complete |
+
+## 2026-07-25 salon voice routing and ending regression
+
+| Check | Result | Evidence |
+|---|---|---|
+| PC-server suite | Passed | 242 collected: 240 passed and two environment-dependent cases skipped |
+| Repository root suite | Passed | 31/31 tests passed using the isolated PC-server runner and TLS dependency path |
+| Repository validators | Passed | 10/10 validators passed |
+| Voice-to-salon routing | Passed (automated) | An active salon call now sends recognized speech through the same Gemma persona, guarded booking actions, conversation state, and reservation table as typed QA instead of the generic assistant path |
+| Date-specific availability | Passed (automated/live text) | Date-only questions enumerate real business-day slots after service duration, staff capability, and prefilled reservations are applied |
+| Phone-response guard | Passed (automated/live text) | Markdown, internal action leakage, premature contact requests, repetitive replies, and overlong phone responses are rejected and regenerated |
+| Live model reply | Passed with latency limitation | “다음 주 화요일 기본 커트 가능한 시간이 언제예요?” returned the actual July 28 slots in two concise customer-service sentences; observed text delay was 2,976 ms |
+| Semantic-unit TTS stream | Passed (automated; listening recheck pending) | Text is projected into natural speech units, one ordered audio stream is emitted as each unit completes, and failures close the stream explicitly |
+| Korean sentence ending | Automated guards passed; listening recheck pending | TTS-only text receives a soft terminal continuation cue, release fade is disabled, and 300 ms final PCM silence protects playback. The Qwen wrapper now uses full-text prefill because its exposed API returns only a complete WAV; the restarted GPU worker must be heard before this is accepted |
+| Qwen full-text prefill smoke | Passed | `gpuq` job `ea2aae5f-540c-4a25-9a0a-0eb4d8606685` loaded the real 1.7B clone model and completed two ordered 24 kHz PCM streams in 8,083.008 ms and 4,967.985 ms. Both streams closed with `reason=completed`; peak total GPU use was 17,730 MiB |
+| Normal salon reply continuity | Passed (automated/live transport; listening confirmation pending) | Normal one- or two-sentence replies up to 72 spoken characters now use one acoustic generation. The greeting changed from two generations with a measured 2,096 ms playback underrun to one 8,508 ms first-audio generation with no playback-gap event. A real two-sentence availability answer also had no playback-gap event; subjective `요`/`다` completion remains user QA |

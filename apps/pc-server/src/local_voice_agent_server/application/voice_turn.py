@@ -742,11 +742,15 @@ _HARD_SPEECH_BOUNDARY = re.compile(
 _STREAM_SPEECH_BOUNDARY = _HARD_SPEECH_BOUNDARY
 _CLAUSE_SPEECH_BOUNDARY = re.compile(r"[,，、;；:：]\s*")
 _WORD_SPEECH_BOUNDARY = re.compile(r"\s+")
-_MIN_STREAM_UNIT_CHARACTERS = 40
-_MIN_HARD_STREAM_UNIT_CHARACTERS = 32
-_MAX_STREAM_UNIT_CHARACTERS = 96
+_MIN_STREAM_UNIT_CHARACTERS = 22
+_MIN_HARD_STREAM_UNIT_CHARACTERS = 18
+_MAX_STREAM_UNIT_CHARACTERS = 72
 _LIST_PREFIX = re.compile(r"^(\d{1,3})[.)](?:\s+|$)")
 _STANDALONE_NUMBER = re.compile(r"^(\d{1,3})[.)]?$")
+_MARKDOWN_LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
+_MARKDOWN_DECORATION = re.compile(r"[*_`#]+")
+_BULLET_PREFIX = re.compile(r"(?m)^\s*[-•]\s*")
+_STATEMENT_END = re.compile(r"[.。,，、]+$")
 
 
 def _speech_units(text: str) -> tuple[str, ...]:
@@ -768,13 +772,24 @@ def _speech_units(text: str) -> tuple[str, ...]:
 
 
 def _prepare_tts_text(text: str) -> str:
-    stripped = text.strip()
+    stripped = _MARKDOWN_LINK.sub(r"\1", text)
+    stripped = _BULLET_PREFIX.sub("", stripped)
+    stripped = _MARKDOWN_DECORATION.sub("", stripped)
+    stripped = " ".join(stripped.strip().split())
     if not stripped:
         raise ValueError("speech unit is empty")
     standalone = _STANDALONE_NUMBER.fullmatch(stripped)
     if standalone is not None:
-        return f"{standalone.group(1)}입니다."
-    return _LIST_PREFIX.sub(r"\1번, ", stripped, count=1)
+        stripped = f"{standalone.group(1)}입니다."
+    else:
+        stripped = _LIST_PREFIX.sub(r"\1번, ", stripped, count=1)
+    if _STATEMENT_END.search(stripped):
+        return _STATEMENT_END.sub("…", stripped)
+    if stripped.endswith(("?", "!", "？", "！")):
+        return f"{stripped}…"
+    if not stripped.endswith("…"):
+        return f"{stripped}…"
+    return stripped
 
 
 def _take_complete_speech_units(text: str) -> tuple[tuple[str, ...], str]:

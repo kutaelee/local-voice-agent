@@ -43,23 +43,23 @@ def test_short_first_sentence_is_coalesced_to_avoid_playback_gap() -> None:
     assert pending == ""
 
 
-def test_short_korean_apology_is_coalesced_with_following_sentence() -> None:
+def test_two_short_korean_sentences_release_one_low_latency_unit() -> None:
     ready, pending = _take_complete_speech_units(
         "죄송합니다. 바로 다시 확인하겠습니다. "
     )
 
-    assert ready == ()
-    assert pending == "죄송합니다. 바로 다시 확인하겠습니다. "
+    assert ready == ("죄송합니다. 바로 다시 확인하겠습니다.",)
+    assert pending == ""
 
 
-def test_multiple_short_sentences_form_one_natural_speech_unit() -> None:
+def test_multiple_sentences_release_natural_units_without_waiting_for_all_text() -> None:
     ready, pending = _take_complete_speech_units(
         "죄송합니다. 바로 다시 확인하겠습니다. "
         "현재 상태를 처음부터 차분하게 다시 점검하고 있습니다. "
     )
 
     assert ready == (
-        "죄송합니다. 바로 다시 확인하겠습니다. "
+        "죄송합니다. 바로 다시 확인하겠습니다.",
         "현재 상태를 처음부터 차분하게 다시 점검하고 있습니다.",
     )
     assert pending == ""
@@ -74,11 +74,14 @@ def test_non_streamed_short_sentences_and_list_marker_stay_together() -> None:
 
 
 def test_tts_text_expands_isolated_numbers_and_list_prefixes() -> None:
-    assert _prepare_tts_text("7") == "7입니다."
+    assert _prepare_tts_text("7") == "7입니다…"
     assert _prepare_tts_text("1. 첫 번째 항목입니다.") == (
-        "1번, 첫 번째 항목입니다."
+        "1번, 첫 번째 항목입니다…"
     )
-    assert _prepare_tts_text("버전 1.2입니다.") == "버전 1.2입니다."
+    assert _prepare_tts_text("버전 1.2입니다.") == "버전 1.2입니다…"
+    assert _prepare_tts_text("**가격:** 25,000원\n- 예약 가능") == (
+        "가격: 25,000원 예약 가능…"
+    )
 
 
 def test_pcm_speech_unit_gets_a_release_and_natural_pause() -> None:
@@ -128,7 +131,7 @@ class FakeConversation:
 
 class FakeTts:
     async def synthesize(self, text: str, *, language: str) -> SynthesizedAudio:
-        assert text == "현재 상태를 확인하겠습니다."
+        assert text == "현재 상태를 확인하겠습니다…"
         assert language == "ko"
         return SynthesizedAudio(b"\x01\x02" * 100, sample_rate_hz=24_000)
 
@@ -229,7 +232,7 @@ def test_voice_turn_emits_first_sentence_audio_before_synthesizing_next() -> Non
         returned = await service.finish(stream_id=stream_id, emit=emit)
         assert returned == []
         assert [item for item in timeline if item.startswith("tts:")] == [
-            "tts:첫 문장입니다. 두 번째 문장입니다.",
+            "tts:첫 문장입니다. 두 번째 문장입니다…",
         ]
         chunks = [
             event
@@ -392,8 +395,8 @@ def test_streamed_llm_continues_while_first_audio_is_synthesized() -> None:
             "두 번째 문장입니다."
         )
         assert [item for item in timeline if item.startswith("tts:")] == [
-            "tts:첫 번째 설명은 충분히 길어서 다음 합성 중에도 자연스럽게 먼저 음성으로 재생됩니다.",
-            "tts:두 번째 문장입니다.",
+            "tts:첫 번째 설명은 충분히 길어서 다음 합성 중에도 자연스럽게 먼저 음성으로 재생됩니다…",
+            "tts:두 번째 문장입니다…",
         ]
         assert emitted[-1].type == "audio.output.end"
         assert emitted[-1].payload["reason"] == "completed"

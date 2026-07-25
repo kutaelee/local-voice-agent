@@ -70,6 +70,7 @@ const state = {
   playbackChain: Promise.resolve(),
   playbackGeneration: 0,
   nextPlaybackTime: 0,
+  outputAudioStreamId: null,
   playbackEndTimer: null,
   pendingApproval: null,
   assistantMessage: null,
@@ -319,6 +320,7 @@ async function disconnect() {
 
 function startSalonCall() {
   if (!state.connected || state.salonCallActive) return;
+  beginSalonTextTurn();
   state.currentRequestId = crypto.randomUUID();
   if (send(
     "salon.call.start",
@@ -334,12 +336,23 @@ function sendSalonMessage(event) {
   event.preventDefault();
   const text = ui.salonMessageInput.value.trim();
   if (!text || !state.salonCallActive) return;
+  beginSalonTextTurn();
   const requestId = crypto.randomUUID();
   if (send("salon.call.message", { text }, requestId)) {
     addMessage("user", text);
     ui.salonMessageInput.value = "";
     state.assistantMessage = null;
   }
+}
+
+function beginSalonTextTurn() {
+  const now = performance.now();
+  state.turn = { startedAt: now, transcriptAt: now };
+  state.outputAudioStreamId = null;
+  state.nextPlaybackTime = state.audioContext?.currentTime || 0;
+  updateMetric("llm", null);
+  updateMetric("tts", null);
+  updateMetric("gap", null);
 }
 
 function endSalonCall() {
@@ -560,6 +573,7 @@ function stopPlayback() {
   }
   state.playbackSources.clear();
   state.nextPlaybackTime = state.audioContext?.currentTime || 0;
+  state.outputAudioStreamId = null;
 }
 
 function decodePcm16(encoded) {
@@ -585,6 +599,11 @@ async function scheduleAudio(payload, generation) {
     }
   }
   const now = state.audioContext.currentTime;
+  if (state.outputAudioStreamId !== payload.audio_stream_id) {
+    state.outputAudioStreamId = payload.audio_stream_id;
+    state.nextPlaybackTime = now;
+    state.turn.maxGapMs = 0;
+  }
   if (!state.turn.firstAudioAt) {
     state.turn.firstAudioAt = performance.now();
     updateMetric("tts", state.turn.firstAudioAt - (state.turn.firstTextAt || state.turn.transcriptAt || state.turn.audioEndedAt));
@@ -599,7 +618,9 @@ async function scheduleAudio(payload, generation) {
   }
   const source = state.audioContext.createBufferSource();
   source.buffer = buffer;
-  source.playbackRate.value = Number(ui.playbackRate.value);
+  source.playbackRate.value = (
+    state.turn.playbackRate || Number(ui.playbackRate.value)
+  );
   source.connect(state.audioContext.destination);
   source.onended = () => state.playbackSources.delete(source);
   source.start(startAt);
@@ -715,11 +736,20 @@ function handleServerEvent(envelope) {
     state.assistantMessage.textContent += payload.text;
     ui.conversation.scrollTop = ui.conversation.scrollHeight;
   } else if (type === "assistant.text.final") {
+    state.turn.playbackRate = responsePlaybackRate(payload.text);
     if (!state.assistantMessage) state.assistantMessage = addMessage("assistant", payload.text);
   } else if (type === "salon.call.started") {
     state.salonCallId = payload.call_id;
     setSalonCall(true, "통화 중");
   } else if (type === "salon.assistant.message") {
+    if (!state.turn.firstTextAt) {
+      state.turn.firstTextAt = performance.now();
+      updateMetric(
+        "llm",
+        state.turn.firstTextAt - (state.turn.transcriptAt || state.turn.startedAt),
+      );
+    }
+    state.turn.playbackRate = responsePlaybackRate(payload.text);
     addMessage("assistant", payload.text);
     setAssistant("listening", "예약 전화를 텍스트로 상담 중입니다.");
   } else if (type === "salon.reservation.updated") {
@@ -741,6 +771,12 @@ function handleServerEvent(envelope) {
     setAssistant("error", `${payload.error_code}: ${payload.message}`);
     showToast(payload.message);
   }
+}
+
+function responsePlaybackRate(text) {
+  const base = Number(ui.playbackRate.value);
+  const spokenLength = String(text || "").replace(/\s+/g, "").length;
+  return spokenLength >= 90 ? Math.min(1.25, base * 1.05) : base;
 }
 
 async function refreshDiagnostics() {
