@@ -25,11 +25,13 @@ class SalonService:
     duration_minutes: int
     price_won: int
     aliases: tuple[str, ...] = ()
+    category: str = ""
 
     def __post_init__(self) -> None:
         if (
             not self.service_id
             or not self.name
+            or not self.category
             or not 10 <= self.duration_minutes <= 480
             or not 0 <= self.price_won <= 10_000_000
         ):

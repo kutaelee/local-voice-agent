@@ -145,8 +145,25 @@ class SalonCallCoordinator:
 
     def reservation_snapshot(self) -> list[dict[str, object]]:
         return [
-            _reservation_payload(item)
+            self._reservation_view(item)
             for item in self._reservations.list_reservations()
+        ]
+
+    def menu_snapshot(self) -> list[dict[str, object]]:
+        return [
+            {
+                "service_id": service.service_id,
+                "category": service.category,
+                "name": service.name,
+                "duration_minutes": service.duration_minutes,
+                "price_won": service.price_won,
+                "staff": [
+                    member.name
+                    for member in self.policy.staff
+                    if service.service_id in member.service_ids
+                ],
+            }
+            for service in self.policy.services
         ]
 
     def _start(self, session_id: UUID) -> list[SalonEvent]:
@@ -435,7 +452,7 @@ class SalonCallCoordinator:
     ) -> list[SalonEvent]:
         service = self.policy.service(reservation.service_id)
         staff = self.policy.staff_member(reservation.staff_id)
-        payload = _reservation_payload(reservation)
+        payload = self._reservation_view(reservation)
         tool_result = {
             "ok": True,
             "operation": change_type,
@@ -729,7 +746,7 @@ class SalonCallCoordinator:
             f"{_format_datetime(reservation.starts_at)} {service.name}, "
             f"담당 {staff.name}입니다."
         )
-        event_payload = _reservation_payload(reservation)
+        event_payload = self._reservation_view(reservation)
         return [
             SalonEvent("salon.assistant.message", {"text": summary}),
             SalonEvent(
@@ -772,6 +789,12 @@ class SalonCallCoordinator:
         if value.tzinfo is None:
             return value.replace(tzinfo=self.policy.timezone)
         return value.astimezone(self.policy.timezone)
+
+    def _reservation_view(self, item: Reservation) -> dict[str, object]:
+        payload = _reservation_payload(item)
+        payload["service_name"] = self.policy.service(item.service_id).name
+        payload["staff_name"] = self.policy.staff_member(item.staff_id).name
+        return payload
 
 
 def _detect_action(text: str) -> SalonAction | None:

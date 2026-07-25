@@ -169,6 +169,7 @@ def _system_prompt(policy: SalonPolicy) -> str:
         },
         "services": [
             {
+                "category": service.category,
                 "name": service.name,
                 "duration_minutes": service.duration_minutes,
                 "price_won": service.price_won,

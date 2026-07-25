@@ -161,8 +161,9 @@ management.
 The same portal also exposes a text-first **예약 전화 시뮬레이션**.
 Starting that conversation represents an incoming salon call. It exercises
 the Gemma-led receptionist persona, committed hours/services policy,
-confirmation-bound reservation changes, masked file-backed schedule, and
-connected-app owner notifications without starting VAD, STT, or TTS. See
+confirmation-bound reservation changes, an isolated prefilled QA schedule,
+ten detailed cut/color/perm/clinic menus, and connected-app owner
+notifications without starting VAD, STT, or TTS. See
 [docs/salon-receptionist.md](docs/salon-receptionist.md).
 The independently gated Qwen3-TTS projection can be enabled for final QA;
 neither model receives reservation mutation authority.

@@ -174,6 +174,21 @@ $env:LVA_DATABASE_URL = (
     'postgresql+asyncpg://local_voice_agent:{0}@127.0.0.1:46324/local_voice_agent' -f
         [Uri]::EscapeDataString($taskPassword)
 )
+if ($InstanceName -eq 'web-qa') {
+    if (-not $env:LVA_SALON_RESERVATIONS_PATH) {
+        $env:LVA_SALON_RESERVATIONS_PATH = (
+            '/mnt/e/Data/LocalVoiceAgent/salon/qa-reservations.json'
+        )
+    }
+    if (-not $env:LVA_SALON_BACKUP_ROOT) {
+        $env:LVA_SALON_BACKUP_ROOT = (
+            '/mnt/d/LocalBackup/LocalVoiceAgent/salon-qa'
+        )
+    }
+    if (-not $env:LVA_SALON_QA_SEED) {
+        $env:LVA_SALON_QA_SEED = '1'
+    }
+}
 if ($EnableVoice) {
     foreach ($socketPath in @(
         '/home/kutae/.local/share/local-voice-agent/run/vad.sock',
@@ -241,6 +256,7 @@ $bridgeNames = @(
     'LVA_SALON_POLICY_PATH',
     'LVA_SALON_RESERVATIONS_PATH',
     'LVA_SALON_BACKUP_ROOT',
+    'LVA_SALON_QA_SEED',
     'LVA_SALON_LLM_ENABLED',
     'LVA_SALON_LLM_TIMEOUT_SECONDS',
     'LVA_SALON_TTS_ENABLED',

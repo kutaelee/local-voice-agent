@@ -21,6 +21,10 @@ The committed demonstration policy is
 [`configs/salon-booking.json`](../configs/salon-booking.json). It contains no
 real customer data and can be replaced with another closed-schema policy.
 Business rules stay in the domain service rather than the prompt or browser.
+The demonstration menu contains ten priced services grouped into cut, color,
+perm, and clinic categories. Each service declares its duration, aliases, and
+qualified staff so availability answers are calculated from the same policy
+shown in the QA portal.
 
 ## Flow
 
@@ -48,12 +52,20 @@ truth for:
 - overlapping bookings, duplicate phone/time bookings, and staff selection;
 - reservation-code and phone verification for changes and cancellation.
 
+The harness keeps recent dialogue as bounded context while making the latest
+caller utterance the only active user turn. It rejects replies that expose
+internal action/slot markers or closely repeat a recent assistant response,
+then allows one bounded model retry. This varies refusals without replacing
+model-authored conversation with code-authored templates.
+
 ## Storage and recovery
 
 | Purpose | Windows path | WSL path |
 |---|---|---|
 | Active reservation table | `E:\Data\LocalVoiceAgent\salon\reservations.json` | `/mnt/e/Data/LocalVoiceAgent/salon/reservations.json` |
 | Local fast-recovery copies | `D:\LocalBackup\LocalVoiceAgent\salon\<timestamp>` | `/mnt/d/LocalBackup/LocalVoiceAgent/salon/<timestamp>` |
+| Web QA reservation table | `E:\Data\LocalVoiceAgent\salon\qa-reservations.json` | `/mnt/e/Data/LocalVoiceAgent/salon/qa-reservations.json` |
+| Web QA recovery copies | `D:\LocalBackup\LocalVoiceAgent\salon-qa\<timestamp>` | `/mnt/d/LocalBackup/LocalVoiceAgent/salon-qa/<timestamp>` |
 | Policy | `C:\Dev\Repos\local-voice-agent\configs\salon-booking.json` | `/mnt/c/Dev/Repos/local-voice-agent/configs/salon-booking.json` |
 
 The active table is a versioned JSON document written through same-directory
@@ -61,6 +73,13 @@ atomic replacement. Before every mutation, the store writes an append-only
 timestamped copy and a recovery manifest containing the recoverable time,
 source path, size, and SHA-256 digest. Existing backup containers are never
 overwritten or automatically pruned.
+
+The `web-qa` launcher never points at the active table by default. It seeds an
+empty file named exactly `qa-reservations.json` with three reproducible,
+fictitious, domain-validated reservations covering cut, color, and perm. A
+non-empty QA table is left unchanged. The seed fails closed if enabled for any
+other filename, so browser testing cannot populate the active reservation
+table accidentally.
 
 Latest local recovery point: inspect the newest successful
 `recovery-manifest.json` under the D: root. Before the first reservation

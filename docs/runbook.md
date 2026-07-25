@@ -543,7 +543,8 @@ covers:
 - voice-profile settings and live runtime/worker/agent diagnostics;
 - STT-final, LLM-TTFT, TTS-first-audio, and playback-underrun measurements;
 - a Gemma-led text salon-call simulation, confirmation-bound reservation
-  changes, the masked reservation table, and owner notifications.
+  changes, the masked reservation table, owner notifications, and a detailed
+  ten-service menu with duration, price, and qualified staff.
 
 The bootstrap rejects non-loopback and cross-origin requests, binds its
 short-lived credential to the client address and user agent, and keeps it
@@ -583,9 +584,14 @@ $env:LVA_SALON_TTS_ENABLED = '0'
   -Port 46326
 ```
 
-The launcher defaults the immutable policy to the repository config, active
-reservation data to `E:\Data\LocalVoiceAgent\salon\reservations.json`, and
-pre-mutation fast-recovery copies to
+For `InstanceName web-qa`, the launcher defaults the immutable policy to the
+repository config, QA reservation data to
+`E:\Data\LocalVoiceAgent\salon\qa-reservations.json`, and pre-mutation
+fast-recovery copies to `D:\LocalBackup\LocalVoiceAgent\salon-qa`. It seeds
+only an empty QA table with three fictitious reservations spanning cut, color,
+and perm. The seed is rejected unless the data filename is exactly
+`qa-reservations.json`. Other server instances continue to use
+`E:\Data\LocalVoiceAgent\salon\reservations.json` and
 `D:\LocalBackup\LocalVoiceAgent\salon`. Override these only with the
 `LVA_SALON_*` environment variables for an isolated test. The newest verified
 D: recovery manifest is the current local recovery point. Off-machine backup

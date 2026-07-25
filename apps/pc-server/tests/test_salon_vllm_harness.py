@@ -110,6 +110,181 @@ def test_tool_result_is_narrated_by_model_without_code_authored_sentence() -> No
     assert "RESULT_CONTEXT=" in captured["messages"][1]["content"]
 
 
+def test_repetitive_scope_refusal_is_regenerated_by_model() -> None:
+    replies = iter(
+        [
+            "그 내용은 안내해 드리기 어렵고, 미용실 예약 관련 도움만 드릴 수 있어요.",
+            "날씨는 제가 확인할 수 없네요. 방문하실 날짜를 정하는 건 같이 도와드릴까요?",
+        ]
+    )
+    calls = []
+
+    def transport(payload):
+        calls.append(payload)
+        return _response(
+            {
+                "in_scope": False,
+                "action": "respond",
+                "reply": next(replies),
+                "service_id": None,
+                "staff_id": None,
+                "starts_at": None,
+                "customer_name": None,
+                "phone": None,
+                "reservation_code": None,
+                "confirmed": False,
+            }
+        )
+
+    adapter = SalonVllmConversationHarness(
+        policy=load_salon_policy(POLICY_PATH),
+        base_url="http://127.0.0.1:46322/v1",
+        model="gemma4-12b",
+        api_key=API_KEY,
+        transport=transport,
+    )
+    decision = asyncio.run(
+        adapter.decide(
+            user_message="내일 비 와요?",
+            state={"awaiting_confirmation": False},
+            history=(
+                {
+                    "role": "assistant",
+                    "content": (
+                        "그 내용은 안내해 드리기 어렵고, "
+                        "미용실 예약 관련 도움만 드릴 수 있어요."
+                    ),
+                },
+            ),
+            now=datetime.fromisoformat("2026-07-25T12:00:00+09:00"),
+        )
+    )
+
+    assert len(calls) == 2
+    assert "날씨는 제가 확인할 수 없네요" in decision.reply
+    assert calls[1]["response_format"]["json_schema"]["name"] == "salon_turn_retry"
+
+
+def test_stale_in_scope_reply_is_regenerated_for_latest_question() -> None:
+    values = iter(
+        [
+            {
+                "in_scope": True,
+                "action": "respond",
+                "reply": "커트, 염색, 펌의 세부 메뉴를 차례로 안내해 드릴게요.",
+                "service_id": None,
+                "staff_id": None,
+                "starts_at": None,
+                "customer_name": None,
+                "phone": None,
+                "reservation_code": None,
+                "confirmed": False,
+            },
+            {
+                "in_scope": True,
+                "action": "availability",
+                "reply": "7월 29일 오후 두 시 디지털 펌 가능 여부를 확인해 볼게요.",
+                "service_id": "digital_perm",
+                "staff_id": None,
+                "starts_at": "2026-07-29T14:00:00+09:00",
+                "customer_name": None,
+                "phone": None,
+                "reservation_code": None,
+                "confirmed": False,
+            },
+        ]
+    )
+    calls = []
+
+    def transport(payload):
+        calls.append(payload)
+        return _response(next(values))
+
+    adapter = SalonVllmConversationHarness(
+        policy=load_salon_policy(POLICY_PATH),
+        base_url="http://127.0.0.1:46322/v1",
+        model="gemma4-12b",
+        api_key=API_KEY,
+        transport=transport,
+    )
+    decision = asyncio.run(
+        adapter.decide(
+            user_message="7월 29일 오후 2시에 디지털 펌 가능해요?",
+            state={"awaiting_confirmation": False},
+            history=(
+                {
+                    "role": "assistant",
+                    "content": "커트, 염색, 펌의 세부 메뉴를 차례로 안내해 드릴게요.",
+                },
+            ),
+            now=datetime.fromisoformat("2026-07-25T12:00:00+09:00"),
+        )
+    )
+
+    assert len(calls) == 2
+    assert decision.action == "availability"
+    assert decision.service_id == "digital_perm"
+
+
+def test_internal_planning_text_is_not_exposed_to_customer() -> None:
+    values = iter(
+        [
+            {
+                "in_scope": True,
+                "action": "book",
+                "reply": (
+                    "예약 가능해요. (action: book, service_id: digital_perm, "
+                    "confirmed: false) [Note: proceed]"
+                ),
+                "service_id": "digital_perm",
+                "staff_id": None,
+                "starts_at": "2026-07-29T14:00:00+09:00",
+                "customer_name": None,
+                "phone": None,
+                "reservation_code": None,
+                "confirmed": False,
+            },
+            {
+                "in_scope": True,
+                "action": "availability",
+                "reply": "그 시간에 가능한 담당자를 확인해 볼게요.",
+                "service_id": "digital_perm",
+                "staff_id": None,
+                "starts_at": "2026-07-29T14:00:00+09:00",
+                "customer_name": None,
+                "phone": None,
+                "reservation_code": None,
+                "confirmed": False,
+            },
+        ]
+    )
+    calls = []
+
+    def transport(payload):
+        calls.append(payload)
+        return _response(next(values))
+
+    adapter = SalonVllmConversationHarness(
+        policy=load_salon_policy(POLICY_PATH),
+        base_url="http://127.0.0.1:46322/v1",
+        model="gemma4-12b",
+        api_key=API_KEY,
+        transport=transport,
+    )
+    decision = asyncio.run(
+        adapter.decide(
+            user_message="7월 29일 오후 2시에 디지털 펌 가능해요?",
+            state={},
+            history=(),
+            now=datetime.fromisoformat("2026-07-25T12:00:00+09:00"),
+        )
+    )
+
+    assert len(calls) == 2
+    assert decision.action == "availability"
+    assert "action:" not in decision.reply
+
+
 @pytest.mark.parametrize(
     "turn",
     [

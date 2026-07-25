@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timedelta, tzinfo
+from difflib import SequenceMatcher
 import json
 import re
 from typing import Callable
@@ -73,6 +74,8 @@ class SalonVllmConversationHarness:
             "now": now.isoformat(),
             "relative_date_reference": _relative_date_reference(now),
             "conversation_state": state,
+            "recent_dialogue": history[-12:],
+            "latest_user_message": normalized,
         }
         messages: list[dict[str, str]] = [
             {"role": "system", "content": self._persona_prompt},
@@ -82,7 +85,6 @@ class SalonVllmConversationHarness:
                 + json.dumps(context, ensure_ascii=False, separators=(",", ":")),
             },
         ]
-        messages.extend(history[-12:])
         messages.append({"role": "user", "content": normalized})
         raw = await self._call(
             messages=messages,
@@ -90,7 +92,33 @@ class SalonVllmConversationHarness:
             schema=_TURN_SCHEMA,
             max_tokens=384,
         )
-        return _parse_turn(raw, timezone=self._timezone)
+        decision = _parse_turn(raw, timezone=self._timezone)
+        if _repeats_recent_reply(decision.reply, history) or _reply_leaks_internal_state(
+            decision.reply
+        ):
+            messages.insert(
+                -1,
+                {
+                    "role": "system",
+                    "content": (
+                        "방금 만든 답은 최근 답변과 표현이나 내용이 너무 비슷해 최신 고객 "
+                        "질문에 답하지 못했다. 가장 최근 user 메시지를 다시 읽고 그 질문의 "
+                        "의도와 필요한 action을 새로 판단한다. 안전 범위는 그대로 지키되 "
+                        "이전 답을 요약하거나 반복하지 않는다. 거절이라면 정형적인 사과나 "
+                        "'예약 관련 안내만'이라는 문구도 반복하지 않는다. reply에는 고객에게 "
+                        "직접 말할 자연스러운 한국어만 쓰고 action, 슬롯, JSON, Note, 판단 "
+                        "과정을 절대 노출하지 않는다."
+                    ),
+                },
+            )
+            raw = await self._call(
+                messages=messages,
+                schema_name="salon_turn_retry",
+                schema=_TURN_SCHEMA,
+                max_tokens=384,
+            )
+            decision = _parse_turn(raw, timezone=self._timezone)
+        return decision
 
     async def complete(
         self,
@@ -102,6 +130,7 @@ class SalonVllmConversationHarness:
     ) -> str:
         context = {
             "conversation_state": state,
+            "recent_dialogue": history[-12:],
             "tool_result": tool_result,
             "latest_user_message": user_message,
         }
@@ -112,12 +141,14 @@ class SalonVllmConversationHarness:
                 "content": (
                     "도구 실행 결과를 고객에게 자연스럽게 전달한다. "
                     "성공이나 실패를 도구 결과와 다르게 말하지 않는다. "
-                    "고객 문장을 따라 하지 말고 한두 문장으로 말한다.\nRESULT_CONTEXT="
+                    "고객 문장을 따라 하지 말고 한두 문장으로 말한다. availability 결과면 "
+                    "확인된 시술, 날짜와 시간, available_staff를 구체적으로 알려 주고 예약을 "
+                    "진행할지 자연스럽게 묻는다. 이미 받은 시술이나 시간을 다시 확인하거나 "
+                    "묻지 않는다. 내부 필드명, JSON, 판단 과정은 말하지 않는다.\nRESULT_CONTEXT="
                     + json.dumps(context, ensure_ascii=False, separators=(",", ":"))
                 ),
             },
         ]
-        messages.extend(history[-12:])
         raw = await self._call(
             messages=messages,
             schema_name="salon_tool_reply",
@@ -344,6 +375,7 @@ def _persona_prompt(policy: SalonPolicy) -> str:
         "services": [
             {
                 "service_id": item.service_id,
+                "category": item.category,
                 "name": item.name,
                 "aliases": list(item.aliases),
                 "duration_minutes": item.duration_minutes,
@@ -366,13 +398,21 @@ def _persona_prompt(policy: SalonPolicy) -> str:
         "고객 문장을 그대로 되풀이하거나 단순히 바꿔 말하지 않는다. "
         "이미 받은 정보를 다시 묻지 않고, 한 번에 질문 하나만 한다. "
         "미용실 예약·변경·취소와 제공된 매장 정보만 답한다. 범위 밖 질문은 짧게 선을 긋고 "
-        "예약 관련 도움으로 돌아온다. 사실을 만들지 않는다.\n"
+        "예약 관련 도움으로 돌아온다. 이때 최근에 사용한 거절 문구와 문장 구조를 반복하지 "
+        "않는다. 매번 '죄송합니다'로 시작하거나 같은 기능 제한을 낭독하지 말고, 고객 말의 "
+        "의도나 감정을 짧게 받아 준 뒤 현재 통화 흐름에 어울리는 질문으로 자연스럽게 "
+        "전환한다. 공격적인 표현에는 맞받아치거나 훈계하지 말고 차분하게 경계를 세운다. "
+        "범위 밖 주제의 실제 답은 제공하지 않으며 사실을 만들지 않는다.\n"
         "action은 현재 턴의 목적이다. 단순 대화나 안내는 respond, 예약 가능 시간 조회는 "
         "availability, 신규 예약은 book, 변경은 modify, 취소는 cancel이다. "
+        "'가능해요', '자리 있어요', '시간 돼요'처럼 가능 여부를 묻는 발화는 반드시 "
+        "availability다. 실제로 예약해 달라는 의사가 있을 때만 book이다. "
         "현재 대화에서 명확히 얻은 슬롯만 채우며 추측하지 않는다. 날짜는 반드시 시간대가 포함된 "
         "ISO 8601로 바꾼다. 날짜만 있고 시간이 없으면 starts_at을 채우지 않는다. "
         "CURRENT_CONTEXT의 relative_date_reference가 상대 날짜 표현의 유일한 기준이다. "
         "요일과 날짜를 직접 계산하지 말고 그 표의 날짜를 그대로 사용한다. "
+        "CURRENT_CONTEXT의 recent_dialogue는 참고 문맥이고 latest_user_message가 반드시 "
+        "이번에 답해야 하는 유일한 최신 발화다. 이전 질문에 다시 답하지 않는다. "
         "신규 예약의 필수 정보는 시술, 정확한 날짜와 시간, 이름, 전화번호이며 이 순서로 "
         "부족한 정보를 한 번에 하나씩 묻는다. 담당자 선택은 선택사항이므로 필수 정보보다 먼저 "
         "묻지 않고, 고객이 지정하지 않으면 가능한 담당자로 배정된다고 안내한다. "
@@ -402,3 +442,45 @@ def _relative_date_reference(now: datetime) -> dict[str, str]:
         reference[f"다음 {label}"] = next_occurrence.isoformat()
         reference[f"다음주 {label}"] = (next_week + timedelta(days=index)).isoformat()
     return reference
+
+
+def _repeats_recent_reply(
+    reply: str,
+    history: tuple[dict[str, str], ...],
+) -> bool:
+    candidate = _comparison_text(reply)
+    if len(candidate) < 20:
+        return False
+    recent_assistant = (
+        item.get("content", "")
+        for item in reversed(history)
+        if item.get("role") == "assistant"
+    )
+    for previous in recent_assistant:
+        normalized = _comparison_text(previous)
+        if len(normalized) < 20:
+            continue
+        if candidate == normalized:
+            return True
+        if SequenceMatcher(None, candidate, normalized).ratio() >= 0.78:
+            return True
+    return False
+
+
+def _comparison_text(value: str) -> str:
+    return re.sub(r"[\W_]+", "", value).casefold()
+
+
+def _reply_leaks_internal_state(reply: str) -> bool:
+    lowered = reply.casefold()
+    return any(
+        marker in lowered
+        for marker in (
+            "(action:",
+            "service_id:",
+            "starts_at:",
+            "confirmed:",
+            "[note:",
+            "json schema",
+        )
+    )

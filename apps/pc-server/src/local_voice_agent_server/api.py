@@ -63,6 +63,7 @@ from .infrastructure.tool_registry import ToolRegistry
 from .infrastructure.persistence import PostgresStateStore
 from .infrastructure.file_reservations import FileReservationStore
 from .infrastructure.salon_config import load_salon_policy
+from .infrastructure.salon_qa_seed import seed_salon_qa_reservations
 from .infrastructure.salon_vllm_harness import SalonVllmConversationHarness
 from .infrastructure.voice_profiles import (
     VOICE_STYLES,
@@ -622,6 +623,7 @@ def create_app(
             reservations = await asyncio.to_thread(
                 salon_call_coordinator.reservation_snapshot
             )
+            menu = salon_call_coordinator.menu_snapshot()
         except Exception as error:
             raise HTTPException(
                 status_code=503,
@@ -630,6 +632,7 @@ def create_app(
         return {
             "schema_version": "1.0",
             "reservations": reservations,
+            "menu": menu,
         }
 
     @app.get("/v1/models/status")
@@ -1402,6 +1405,16 @@ def _salon_call_coordinator_from_environment() -> SalonCallCoordinator | None:
         backup_root=backup_root,
     )
     store.initialize()
+    reservation_service = SalonReservationService(
+        policy=policy,
+        repository=store,
+    )
+    if os.environ.get("LVA_SALON_QA_SEED", "0") == "1":
+        if data_path.name != "qa-reservations.json":
+            raise RuntimeError(
+                "salon QA seed requires the isolated qa-reservations.json path"
+            )
+        seed_salon_qa_reservations(reservation_service)
     conversation_responder = None
     if os.environ.get("LVA_SALON_LLM_ENABLED", "0") == "1":
         conversation_responder = SalonVllmConversationHarness(
@@ -1417,10 +1430,7 @@ def _salon_call_coordinator_from_environment() -> SalonCallCoordinator | None:
             ),
         )
     return SalonCallCoordinator(
-        reservations=SalonReservationService(
-            policy=policy,
-            repository=store,
-        ),
+        reservations=reservation_service,
         conversation_responder=conversation_responder,
     )
 

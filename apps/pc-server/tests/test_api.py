@@ -860,7 +860,11 @@ def test_websocket_runs_salon_text_call_without_voice_or_model(
         headers={"Authorization": f"Bearer {TOKEN}"},
     )
     assert table.status_code == 200
-    assert table.json() == {"schema_version": "1.0", "reservations": []}
+    body = table.json()
+    assert body["schema_version"] == "1.0"
+    assert body["reservations"] == []
+    assert {item["category"] for item in body["menu"]} >= {"커트", "염색", "펌"}
+    assert all(item["staff"] for item in body["menu"])
 
 
 def test_websocket_can_attach_tts_to_salon_text_reply(tmp_path: Path) -> None:

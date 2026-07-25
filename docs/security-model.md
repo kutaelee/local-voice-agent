@@ -165,10 +165,21 @@ copy on D:. Browser snapshots, WebSocket owner notifications, and Android
 notification text mask the customer phone number. Full phone numbers never
 enter Git, application logs, or protocol evidence.
 
+The loopback `web-qa` instance uses a separate
+`qa-reservations.json` table and a separate `salon-qa` recovery root. Its
+optional seed contains only fictitious customers and is accepted only when
+the final data filename is exactly `qa-reservations.json`. This fail-closed
+binding prevents QA startup from seeding or overwriting the active reservation
+table.
+
 The conversation harness connects only to an authenticated loopback vLLM URL,
 disables thinking, requests a strict action/slot/reply object, and bounds both
 input history and output. Unknown actions and identifiers, invalid dates and
 phone numbers, oversized output, and verbatim caller echoes fail closed.
+Recent assistant responses are similarity-checked and internal action/slot
+markers are rejected before customer delivery. A single bounded retry asks
+the model to answer only the latest caller turn with different natural
+wording; application code still does not author customer-facing dialogue.
 Reservation creation, change, or cancellation additionally requires a pending
 proposal and a distinct explicit confirmation turn. The optional TTS
 adapter receives only the already-approved assistant text and selected local

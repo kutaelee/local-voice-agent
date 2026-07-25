@@ -15,6 +15,7 @@ const ui = {
   salonMessageInput: $("salonMessageInput"),
   salonSendButton: $("salonSendButton"),
   salonRefreshButton: $("salonRefreshButton"),
+  salonMenuRows: $("salonMenuRows"),
   salonReservationRows: $("salonReservationRows"),
   autoContinue: $("autoContinue"),
   startButton: $("startButton"),
@@ -355,6 +356,31 @@ async function refreshSalonReservations() {
   if (!state.connected) return;
   try {
     const body = await api("/v1/salon/reservations");
+    ui.salonMenuRows.replaceChildren();
+    for (const service of body.menu || []) {
+      const row = document.createElement("tr");
+      const values = [
+        service.category,
+        service.name,
+        `${service.duration_minutes}분`,
+        `${Number(service.price_won).toLocaleString("ko-KR")}원`,
+        service.staff.join(" · "),
+      ];
+      for (const value of values) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      }
+      ui.salonMenuRows.appendChild(row);
+    }
+    if (!ui.salonMenuRows.children.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 5;
+      cell.textContent = "메뉴 없음";
+      row.appendChild(cell);
+      ui.salonMenuRows.appendChild(row);
+    }
     ui.salonReservationRows.replaceChildren();
     if (!body.reservations.length) {
       const row = document.createElement("tr");
@@ -375,8 +401,8 @@ async function refreshSalonReservations() {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        reservation.service_id,
-        reservation.staff_id,
+        reservation.service_name || reservation.service_id,
+        reservation.staff_name || reservation.staff_id,
         reservation.status === "confirmed" ? "확정" : "취소",
       ];
       for (const value of values) {

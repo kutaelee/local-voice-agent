@@ -64,6 +64,7 @@ def load_salon_policy(path: Path) -> SalonPolicy:
             duration_minutes=_required_int(item, "duration_minutes"),
             price_won=_required_int(item, "price_won"),
             aliases=tuple(_required_string_list(item, "aliases")),
+            category=_required_string(item, "category"),
         )
         for item in services_value
     )

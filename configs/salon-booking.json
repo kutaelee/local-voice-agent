@@ -23,48 +23,111 @@
   "services": [
     {
       "service_id": "haircut",
-      "name": "커트",
+      "category": "커트",
+      "name": "기본 커트",
       "duration_minutes": 45,
       "price_won": 25000,
-      "aliases": ["컷", "남자 커트", "여자 커트"]
+      "aliases": ["커트", "컷", "남자 커트"]
+    },
+    {
+      "service_id": "design_cut",
+      "category": "커트",
+      "name": "디자인 커트",
+      "duration_minutes": 60,
+      "price_won": 35000,
+      "aliases": ["여자 커트", "여성 커트", "레이어드 커트"]
+    },
+    {
+      "service_id": "bang_trim",
+      "category": "커트",
+      "name": "앞머리 커트",
+      "duration_minutes": 20,
+      "price_won": 10000,
+      "aliases": ["앞머리", "앞머리 정리"]
     },
     {
       "service_id": "color",
-      "name": "염색",
+      "category": "염색",
+      "name": "전체 염색",
       "duration_minutes": 120,
       "price_won": 90000,
-      "aliases": ["컬러", "뿌리 염색"]
+      "aliases": ["염색", "컬러", "전체 컬러"]
+    },
+    {
+      "service_id": "root_color",
+      "category": "염색",
+      "name": "뿌리 염색",
+      "duration_minutes": 90,
+      "price_won": 70000,
+      "aliases": ["뿌염", "리터치 염색"]
+    },
+    {
+      "service_id": "bleach",
+      "category": "염색",
+      "name": "탈색",
+      "duration_minutes": 180,
+      "price_won": 140000,
+      "aliases": ["블리치"]
     },
     {
       "service_id": "perm",
-      "name": "펌",
+      "category": "펌",
+      "name": "일반 펌",
       "duration_minutes": 150,
       "price_won": 120000,
-      "aliases": ["파마", "다운펌"]
+      "aliases": ["펌", "파마", "콜드펌"]
+    },
+    {
+      "service_id": "digital_perm",
+      "category": "펌",
+      "name": "디지털 펌",
+      "duration_minutes": 180,
+      "price_won": 160000,
+      "aliases": ["디지털펌", "셋팅펌", "열펌"]
+    },
+    {
+      "service_id": "down_perm",
+      "category": "펌",
+      "name": "다운펌",
+      "duration_minutes": 60,
+      "price_won": 50000,
+      "aliases": ["다운 펌", "옆머리 다운펌"]
     },
     {
       "service_id": "clinic",
-      "name": "클리닉",
+      "category": "클리닉",
+      "name": "모발 클리닉",
       "duration_minutes": 60,
       "price_won": 60000,
-      "aliases": ["트리트먼트", "헤어 클리닉"]
+      "aliases": ["클리닉", "트리트먼트", "헤어 클리닉"]
     }
   ],
   "staff": [
     {
       "staff_id": "minji",
       "name": "민지",
-      "service_ids": ["haircut", "color", "perm", "clinic"]
+      "service_ids": [
+        "haircut", "design_cut", "bang_trim",
+        "color", "root_color", "bleach",
+        "perm", "digital_perm", "down_perm", "clinic"
+      ]
     },
     {
       "staff_id": "jun",
       "name": "준",
-      "service_ids": ["haircut", "color", "perm"]
+      "service_ids": [
+        "haircut", "design_cut", "bang_trim",
+        "color", "root_color", "bleach",
+        "perm", "digital_perm", "down_perm"
+      ]
     },
     {
       "staff_id": "sora",
       "name": "소라",
-      "service_ids": ["haircut", "color", "clinic"]
+      "service_ids": [
+        "haircut", "design_cut", "bang_trim",
+        "color", "root_color", "clinic"
+      ]
     }
   ]
 }
