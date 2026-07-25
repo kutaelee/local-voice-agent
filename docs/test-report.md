@@ -230,9 +230,11 @@ The exact prior availability prompt reached first audio 3,057 ms after text
 with no reported playback gap, versus 11,190 ms on the prior 1.7B observation.
 The 72.7% reduction is a single live A/B observation, not p50/p95. A cold
 0.6B greeting still took 11,177 ms, so startup now warms the selected voice
-profile and discards the warm-up PCM before readiness. Listening QA remains
-pending. The warm-up completed in 4,720 ms without retaining audio. The
-selected shortened greeting then reached first audio in 4,797 ms. A still
+profile before readiness. At the time of this measurement, the warm-up
+completed in 4,720 ms without retaining audio. The startup path now retains
+the bounded PCM as the model-escalation hold notice; that cache behavior has
+unit and WebSocket integration coverage but has not yet received listening
+QA. The selected shortened greeting then reached first audio in 4,797 ms. A still
 shorter identity-only wording was rejected after it took 14,992 ms and
 produced 23 chunks under the same deterministic seed.
 
@@ -257,3 +259,20 @@ running on port 46326 for listening QA.
 | Korean sentence ending | Automated guards passed; listening recheck pending | TTS-only text receives a soft terminal continuation cue, release fade is disabled, and 300 ms final PCM silence protects playback. The Qwen wrapper now uses full-text prefill because its exposed API returns only a complete WAV; the restarted GPU worker must be heard before this is accepted |
 | Qwen full-text prefill smoke | Passed | `gpuq` job `ea2aae5f-540c-4a25-9a0a-0eb4d8606685` loaded the real 1.7B clone model and completed two ordered 24 kHz PCM streams in 8,083.008 ms and 4,967.985 ms. Both streams closed with `reason=completed`; peak total GPU use was 17,730 MiB |
 | Normal salon reply continuity | Passed (automated/live transport; listening confirmation pending) | Normal one- or two-sentence replies up to 72 spoken characters now use one acoustic generation. The greeting changed from two generations with a measured 2,096 ms playback underrun to one 8,508 ms first-audio generation with no playback-gap event. A real two-sentence availability answer also had no playback-gap event; subjective `요`/`다` completion remains user QA |
+
+## 2026-07-25 model-escalation hold notice
+
+The first `saving_state` event now projects one pre-rendered selected-voice
+notice, “잠시만요, 확인해 볼게요.”, before model unload/load work continues.
+The Qwen startup warm-up writes the notice atomically to external runtime
+cache, so escalation does not invoke a second live TTS request. A missing or
+invalid cache degrades to the same visible `switching_model` status.
+
+| Check | Result | Evidence |
+|---|---|---|
+| PC-server suite | Passed | 248 collected; 246 passed and two environment-dependent cases skipped |
+| Model-switch protocol regression | Passed | Cached path emitted one speaking state, ordered PCM chunk/end, then switching state; fallback emitted the status without audio |
+| WAV cache validation | Passed | PCM16/rate/channel/duration/size checks and symlink rejection covered |
+| Repository root suites | Passed | 28 script tests plus three isolated private-CA tests |
+| Repository validators | Passed | Repository orchestrator reported 10/10 validators passed |
+| Listening QA | Not run | The voice stack remained stopped; cache playback will be assessed on the next user-started voice session |

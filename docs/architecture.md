@@ -185,8 +185,14 @@ checkpoint remains an explicit quality-comparison rollback. Qwen reference
 audio and exact transcripts stay in external application data; a bounded
 four-entry prompt cache supports sentence-level neutral/happy/dark/advert
 tone changes. The selected profile is warmed once before the stack is marked
-ready, and the generated warm-up PCM is discarded. Chatterbox V3 remains an
-isolated rollback fallback. VAD consumes ordered
+ready. That same synthesis says “잠시만요, 확인해 볼게요.” and is atomically
+cached outside Git under `E:\Data\LocalVoiceAgent\runtime\cache`. The gateway
+streams this bounded PCM immediately on the first `saving_state` phase of an
+interactive model escalation, while the actual unload/load continues. If the
+cache is missing or invalid, the client still receives the same
+`switching_model` status text and the server does not attempt a slow live TTS
+call during the switch. Chatterbox V3 remains an isolated rollback fallback.
+VAD consumes ordered
 PCM chunks and returns a server endpoint decision; Android then stops capture
 and sends the terminal input event. Voice-response completion runs as a
 background task so a monotonic cancellation event can be processed while

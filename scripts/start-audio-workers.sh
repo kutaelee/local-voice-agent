@@ -4,6 +4,7 @@ set -euo pipefail
 repo="/mnt/c/Dev/Repos/local-voice-agent"
 run_root="/home/kutae/.local/share/local-voice-agent/run"
 log_root="/mnt/e/Data/LocalVoiceAgent/runtime/logs"
+cache_root="/mnt/e/Data/LocalVoiceAgent/runtime/cache"
 stt_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1/.venv"
 tts_engine="${LVA_TTS_ENGINE:-qwen3}"
 qwen3_tts_size="${LVA_QWEN3_TTS_SIZE:-0.6b}"
@@ -23,7 +24,11 @@ fi
   exit 3
 }
 export LVA_AUDIO_WORKER_TOKEN="${worker_token}"
-mkdir -p "${run_root}" "${log_root}" "${voice_profiles_root}/profiles"
+mkdir -p \
+  "${run_root}" \
+  "${log_root}" \
+  "${cache_root}" \
+  "${voice_profiles_root}/profiles"
 chmod 700 "${run_root}"
 chmod 700 "${voice_profiles_root}" "${voice_profiles_root}/profiles"
 
@@ -167,7 +172,8 @@ if [[ "${tts_engine}" == "qwen3" ]]; then
   if ! "${tts_runtime}/bin/python" \
     "${repo}/scripts/warm-qwen3-tts-worker.py" \
     --socket "${tts_socket}" \
-    --voice-profiles-root "${voice_profiles_root}"; then
+    --voice-profiles-root "${voice_profiles_root}" \
+    --cache-output "${cache_root}/model-switch-hold.wav"; then
     echo "Qwen3-TTS warm-up failed; refusing to advertise a cold call path." >&2
     exit 8
   fi

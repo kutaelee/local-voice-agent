@@ -21,6 +21,9 @@ from local_voice_agent_server.application.model_switch import (
     ModelSwitchCoordinator,
     RuntimeActionReceipt,
 )
+from local_voice_agent_server.application.model_switch_hold import (
+    ModelSwitchHold,
+)
 from local_voice_agent_server.application.salon_calls import SalonCallCoordinator
 from local_voice_agent_server.application.salon_speech import SalonSpeechService
 from local_voice_agent_server.application.session_events import OutboundEvent
@@ -388,7 +391,7 @@ def test_model_switch_broadcasts_progress_to_connected_session() -> None:
                     "target_model": "gemma4-31b",
                 },
             )
-            progress = [websocket.receive_json() for _ in range(5)]
+            progress = [websocket.receive_json() for _ in range(6)]
 
     assert response.status_code == 200
     assert response.json()["ready_model"] == "gemma4-31b"
@@ -402,13 +405,79 @@ def test_model_switch_broadcasts_progress_to_connected_session() -> None:
     ]
     assert [item["type"] for item in progress] == [
         "model.switch.started",
+        "assistant.state",
         "model.switch.started",
         "model.switch.started",
         "model.switch.started",
         "model.switch.completed",
     ]
     assert all(item["request_id"] == str(request_id) for item in progress)
-    assert [item["sequence"] for item in progress] == [1, 2, 3, 4, 5]
+    assert [item["sequence"] for item in progress] == [1, 2, 3, 4, 5, 6]
+    assert progress[1]["payload"] == {
+        "state": "switching_model",
+        "detail": "잠시만요, 확인해 볼게요.",
+    }
+
+
+def test_model_switch_plays_cached_hold_audio_once() -> None:
+    coordinator, _ = model_coordinator()
+    hold = ModelSwitchHold(
+        SynthesizedAudio(
+            pcm_s16le=b"\x01\x00" * 160,
+            sample_rate_hz=16_000,
+            channels=1,
+        )
+    )
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        model_switch_coordinator=coordinator,
+        model_switch_hold=hold,
+    )
+    session_id = uuid4()
+    request_id = uuid4()
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+
+    with TestClient(app) as api:
+        with api.websocket_connect(
+            f"/v1/sessions/{session_id}/events",
+            headers=headers,
+        ) as websocket:
+            websocket.receive_json()
+            response = api.post(
+                "/v1/models/switch",
+                headers=headers,
+                json={
+                    "request_id": str(request_id),
+                    "idempotency_key": str(uuid4()),
+                    "target_model": "gemma4-31b",
+                },
+            )
+            progress = [websocket.receive_json() for _ in range(9)]
+
+    assert response.status_code == 200
+    assert [item["type"] for item in progress] == [
+        "model.switch.started",
+        "assistant.state",
+        "audio.output.chunk",
+        "audio.output.end",
+        "assistant.state",
+        "model.switch.started",
+        "model.switch.started",
+        "model.switch.started",
+        "model.switch.completed",
+    ]
+    assert progress[1]["payload"]["state"] == "speaking"
+    assert progress[4]["payload"] == {
+        "state": "switching_model",
+        "detail": "잠시만요, 확인해 볼게요.",
+    }
+    assert len(
+        [
+            item
+            for item in progress
+            if item["type"] == "audio.output.end"
+        ]
+    ) == 1
 
 
 def test_model_switch_rejects_conflicting_idempotency_reuse() -> None:

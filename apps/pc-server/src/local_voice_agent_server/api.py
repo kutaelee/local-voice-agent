@@ -37,6 +37,11 @@ from .application.model_switch import (
     ModelSwitchCoordinator,
     ModelSwitchEvent,
 )
+from .application.model_switch_hold import (
+    DEFAULT_MODEL_SWITCH_HOLD_TEXT,
+    ModelSwitchHold,
+    load_model_switch_hold,
+)
 from .application.salon_calls import SalonCallCoordinator
 from .application.salon_speech import SalonSpeechService
 from .application.salon_voice import SalonVoiceConversation
@@ -441,6 +446,7 @@ def create_app(
     ) = None,
     salon_call_coordinator: SalonCallCoordinator | None = None,
     salon_speech_service: SalonSpeechService | None = None,
+    model_switch_hold: ModelSwitchHold | None = None,
     reconnect_grace_seconds: float = 120,
 ) -> FastAPI:
     if not 0.01 <= reconnect_grace_seconds <= 600:
@@ -969,6 +975,26 @@ def create_app(
                 request_id=request_id,
                 payload=event.payload,
             )
+            if (
+                event.type == "model.switch.started"
+                and event.payload.get("phase") == "saving_state"
+            ):
+                if model_switch_hold is None:
+                    await send_event(
+                        event_type="assistant.state",
+                        request_id=request_id,
+                        payload={
+                            "state": "switching_model",
+                            "detail": DEFAULT_MODEL_SWITCH_HOLD_TEXT,
+                        },
+                    )
+                else:
+                    for hold_event in model_switch_hold.events():
+                        await send_event(
+                            event_type=hold_event.type,
+                            request_id=request_id,
+                            payload=hold_event.payload,
+                        )
 
         async def emit_salon_notification(
             request_id: UUID,
@@ -1244,6 +1270,7 @@ def create_app_from_environment() -> FastAPI:
     salon_speech_service = _salon_speech_service_from_environment(
         voice_profile_store=voice_profile_store,
     )
+    model_switch_hold = _model_switch_hold_from_environment()
     return create_app(
         ServerSettings.from_environment(),
         event_handler=_event_handler_from_environment(
@@ -1260,6 +1287,7 @@ def create_app_from_environment() -> FastAPI:
         qa_runtime_status_provider=_qa_runtime_status_provider_from_environment(),
         salon_call_coordinator=salon_call_coordinator,
         salon_speech_service=salon_speech_service,
+        model_switch_hold=model_switch_hold,
     )
 
 
@@ -1373,6 +1401,27 @@ def _model_switch_coordinator_from_environment(
         runtimes=runtimes,
         activity_barrier=activity_barrier,
     )
+
+
+def _model_switch_hold_from_environment() -> ModelSwitchHold | None:
+    path = Path(
+        os.environ.get(
+            "LVA_MODEL_SWITCH_HOLD_AUDIO_PATH",
+            "/mnt/e/Data/LocalVoiceAgent/runtime/cache/"
+            "model-switch-hold.wav",
+        )
+    )
+    if not path.exists():
+        return None
+    try:
+        return load_model_switch_hold(path)
+    except ValueError as error:
+        LOGGER.warning(
+            "Ignoring invalid model-switch hold audio at %s: %s",
+            path,
+            error,
+        )
+        return None
 
 
 def _state_store_from_environment() -> PostgresStateStore | None:

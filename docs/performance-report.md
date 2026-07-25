@@ -604,15 +604,17 @@ gateway with official Qwen3-TTS 0.6B Base revision `5d839924...`.
 | Largest reported playback gap | none | none |
 | Relative first-audio reduction | baseline | 72.7% |
 | First greeting after worker start | 8,508 ms | 11,177 ms |
-| Selected-profile warm-up before readiness | not measured | 4,720 ms; PCM discarded |
+| Selected-profile warm-up before readiness | not measured | 4,720 ms; PCM was discarded in this measurement |
 | Warm shortened greeting | not measured | 4,797 ms |
 
 These are individual live observations, not a latency distribution. The
 0.6B warm result is materially faster, but its cold greeting shows that model
 load health alone does not warm the codec decoder and selected prompt path.
 The registered startup path now performs one short selected-profile synthesis
-and discards the PCM before reporting readiness. Subjective Korean prosody,
-speaker identity, and final-phoneme quality remain user listening QA. Set
+and atomically caches that PCM as the model-escalation hold notice before
+reporting readiness. This reuse adds no second synthesis to the startup path;
+the cached-notice playback itself remains listening QA. Subjective Korean
+prosody, speaker identity, and final-phoneme quality remain user listening QA. Set
 `LVA_QWEN3_TTS_SIZE=1.7b` before startup to roll back.
 
 An even shorter greeting ending immediately after the receptionist identity

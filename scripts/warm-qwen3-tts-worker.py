@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Warm the selected local Qwen3-TTS voice without retaining audio."""
+"""Warm the selected Qwen3-TTS voice and cache the escalation notice."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import sys
 import time
+import wave
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -49,6 +50,12 @@ async def run(args: argparse.Namespace) -> int:
         * 1_000,
         1,
     )
+    write_pcm_wave(
+        args.cache_output,
+        pcm_s16le=audio.pcm_s16le,
+        sample_rate_hz=audio.sample_rate_hz,
+        channels=audio.channels,
+    )
     print(
         json.dumps(
             {
@@ -56,7 +63,8 @@ async def run(args: argparse.Namespace) -> int:
                 "elapsed_ms": elapsed_ms,
                 "audio_duration_ms": duration_ms,
                 "profile_id_redacted": True,
-                "audio_retained": False,
+                "audio_retained": True,
+                "cache_output": str(args.cache_output),
             },
             separators=(",", ":"),
         )
@@ -64,15 +72,46 @@ async def run(args: argparse.Namespace) -> int:
     return 0
 
 
+def write_pcm_wave(
+    path: Path,
+    *,
+    pcm_s16le: bytes,
+    sample_rate_hz: int,
+    channels: int,
+) -> None:
+    if not path.is_absolute():
+        raise ValueError("cache output path must be absolute")
+    if channels not in {1, 2} or not 8_000 <= sample_rate_hz <= 192_000:
+        raise ValueError("synthesized audio format is invalid")
+    if len(pcm_s16le) % (channels * 2):
+        raise ValueError("synthesized audio is not frame aligned")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with wave.open(str(temporary), "wb") as output:
+            output.setnchannels(channels)
+            output.setsampwidth(2)
+            output.setframerate(sample_rate_hz)
+            output.writeframes(pcm_s16le)
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--socket", type=Path, required=True)
     parser.add_argument("--voice-profiles-root", type=Path, required=True)
-    parser.add_argument("--text", default="네, 확인해 드릴게요.")
+    parser.add_argument("--text", default="잠시만요, 확인해 볼게요.")
+    parser.add_argument("--cache-output", type=Path, required=True)
     parser.add_argument("--timeout-seconds", type=int, default=180)
     args = parser.parse_args()
-    if not args.socket.is_absolute() or not args.voice_profiles_root.is_absolute():
-        parser.error("socket and voice profile paths must be absolute")
+    if (
+        not args.socket.is_absolute()
+        or not args.voice_profiles_root.is_absolute()
+        or not args.cache_output.is_absolute()
+    ):
+        parser.error("socket, voice profile, and cache paths must be absolute")
     if not args.text.strip() or len(args.text) > 40:
         parser.error("warm-up text must contain 1 to 40 characters")
     if not 30 <= args.timeout_seconds <= 300:

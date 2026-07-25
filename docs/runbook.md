@@ -437,8 +437,15 @@ bash scripts/start-vllm.sh
 ```
 
 The audio workers use mode-0600 Unix sockets. The launcher health-checks VAD,
-STT, and the primary Qwen3-TTS worker before returning. A VAD-only process smoke that does not start
-the GPU workers is available while the GPU is occupied:
+STT, and the primary Qwen3-TTS worker before returning. Qwen warm-up also
+atomically writes the selected-voice escalation notice to
+`E:\Data\LocalVoiceAgent\runtime\cache\model-switch-hold.wav`. The PC gateway
+loads only a bounded PCM16 WAV from the absolute
+`LVA_MODEL_SWITCH_HOLD_AUDIO_PATH`; when it is unavailable the model-switch
+status remains visible but no synthetic fallback voice is played.
+
+A VAD-only process smoke that does not start the GPU workers is available
+while the GPU is occupied:
 
 ```bash
 export LVA_AUDIO_WORKER_TOKEN='<random-audio-worker-token>'
