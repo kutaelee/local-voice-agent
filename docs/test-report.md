@@ -294,3 +294,19 @@ invalid cache degrades to the same visible `switching_model` status.
 | Android 0.6.9 artifacts | Passed | Clean debug APK 12,822,182 bytes SHA-256 `bd81dc7463e75ea1d71abf1410c862ada6d5b66c5817867409dae0ffbe2a40c7`; unsigned release APK 9,120,013 bytes SHA-256 `921ff6c7b9b45fb905db31f3427b68139a22fc44227346624d41618240ba1ab2`; version code 17/name 0.6.9 and API 37 verified; debug signature v2 passed and release remained unsigned. A fresh public clone at `9612857` reproduced both APKs byte-for-byte. The prior incremental debug asset had zero downloads, was preserved under `superseded`, and was replaced on the public release |
 | Android build quality | Passed | Clean/unit/lint/debug/release build passed; 30 tests, zero failures, and lint reported no errors or warnings |
 | Physical Android listening/barge-in | Not run | Deliberately remains the final user QA gate |
+
+## 2026-07-25 Web QA GPU voice-stack controls
+
+| Check | Result | Evidence |
+|---|---|---|
+| Registered model control API | Passed | The authenticated exact-same-origin loopback endpoint accepts only the closed `start`/`stop` action schema, launches fixed repository scripts with `shell=False`, serializes requests, and returns redacted failures |
+| Duplicate-start prevention | Passed (live) | Starting while job `e80698db-078c-4559-940d-3df97f3f1bff` was active returned that same job ID; the matching active/queued workload count remained one |
+| Worker readiness accuracy | Passed (automated/live) | Runtime status now performs bounded token-authenticated AF_UNIX health requests and checks worker identity. Stale VAD/STT sockets were rejected and safely cleaned; live VAD, STT, and TTS workers all returned `ok` |
+| Browser model panel | Passed (live browser) | The reloaded loopback portal auto-connected, showed `gemma4-12b · MTP off`, `VAD ✓ · STT ✓ · TTS ✓`, and `사용 가능`; **모델 올리기** was disabled while **모델 내리기** remained enabled |
+| Shared GPU scheduling | Passed (live) | The full stack remained inside `gpuq` job `e80698db-078c-4559-940d-3df97f3f1bff`, requested 22,000 MiB, reached 22,974 MiB peak total GPU use, and remained running for user QA |
+| Stop isolation | Passed (automated; live stop intentionally not run) | Tests cover queued-job cancellation, exact registered-job matching, bounded supervisor shutdown, atomic state updates, and refusal to stop unrelated processes. The live stop was not exercised because the requested final state was model loaded |
+| Regression suites | Passed | Final source state: PC-server 250 passed and two environment-dependent cases skipped; root scripts 31/31 passed; isolated TLS suite 3/3 passed; repository validators 10/10 passed |
+
+Structured evidence:
+`E:\Data\LocalVoiceAgent\runtime\evidence\web-qa\model-control-20260725T123023Z.json`
+(SHA-256 `e5731b6f4576e35a45443267a04a0261c0ac62a1d940fafb7a8b5b02ae8bba91`).

@@ -145,6 +145,9 @@ def test_qa_portal_is_local_static_content_without_secrets() -> None:
     assert app_script.status_code == 200
     assert "state.rejectedInputRequestId === envelope.request_id" in app_script.text
     assert 'stopCapture(false, "server_rejected_stream")' in app_script.text
+    assert 'controlModel("start")' in app_script.text
+    assert 'controlModel("stop")' in app_script.text
+    assert "gpuq에 22 GiB" in app_script.text
     assert client().get("/qa/styles.css").status_code == 200
     assert client().get("/qa/pcm-worklet.js").status_code == 200
 
@@ -285,6 +288,93 @@ def test_qa_runtime_status_is_authenticated_and_bounded() -> None:
     )
     assert response.status_code == 200
     assert response.json() == {"schema_version": "1.0", **expected}
+
+
+def test_qa_model_control_is_same_origin_authenticated_and_closed() -> None:
+    actions: list[str] = []
+
+    def control(action: str) -> dict[str, object]:
+        actions.append(action)
+        return {"action": action, "state": "submitted"}
+
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        qa_model_controller=control,
+    )
+    api = TestClient(
+        app,
+        base_url="http://127.0.0.1:46326",
+        client=("127.0.0.1", 50_000),
+    )
+    authorization = {"Authorization": f"Bearer {TOKEN}"}
+
+    assert api.post(
+        "/v1/qa/model-control",
+        headers=authorization,
+        json={"action": "start"},
+    ).status_code == 403
+    assert api.post(
+        "/v1/qa/model-control",
+        headers={"Origin": "http://127.0.0.1:46326"},
+        json={"action": "start"},
+    ).status_code == 401
+    assert api.post(
+        "/v1/qa/model-control",
+        headers={
+            **authorization,
+            "Origin": "http://example.invalid",
+        },
+        json={"action": "start"},
+    ).status_code == 403
+    assert api.post(
+        "/v1/qa/model-control",
+        headers={
+            **authorization,
+            "Origin": "http://127.0.0.1:46326",
+        },
+        json={"action": "restart"},
+    ).status_code == 422
+
+    for action in ("start", "stop"):
+        response = api.post(
+            "/v1/qa/model-control",
+            headers={
+                **authorization,
+                "Origin": "http://127.0.0.1:46326",
+            },
+            json={"action": action},
+        )
+        assert response.status_code == 200
+        assert response.json()["action"] == action
+
+    assert actions == ["start", "stop"]
+
+
+def test_qa_model_control_failure_is_redacted() -> None:
+    def fail(_: str) -> dict[str, object]:
+        raise RuntimeError("private scheduler detail")
+
+    app = create_app(
+        ServerSettings(pairing_token=TOKEN),
+        qa_model_controller=fail,
+    )
+    api = TestClient(
+        app,
+        base_url="http://127.0.0.1:46326",
+        client=("127.0.0.1", 50_000),
+    )
+    response = api.post(
+        "/v1/qa/model-control",
+        headers={
+            "Authorization": f"Bearer {TOKEN}",
+            "Origin": "http://127.0.0.1:46326",
+        },
+        json={"action": "start"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "registered model control failed"
+    assert "private scheduler detail" not in response.text
 
 
 def test_qa_websocket_ticket_is_single_use() -> None:

@@ -46,6 +46,17 @@
         <div><span>Voice</span><strong>—</strong></div>
         <div><span>Agents</span><strong>—</strong></div>
       </div>
+      <div class="model-lifecycle">
+        <div>
+          <span class="model-lifecycle-label">GPU VOICE STACK</span>
+          <strong id="modelControlStatus">중지됨</strong>
+          <small>Gemma 4 12B · VAD · STT · Qwen3-TTS, gpuq 22 GiB 예약</small>
+        </div>
+        <div class="model-lifecycle-actions">
+          <button id="modelStartButton" class="primary" disabled>모델 올리기</button>
+          <button id="modelStopButton" class="danger" disabled>모델 내리기</button>
+        </div>
+      </div>
     </section>
 
     <section class="workspace">

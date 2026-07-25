@@ -644,3 +644,14 @@ waveforms. The result therefore remains a documented latency limitation, not
 an optimization claim. Evidence:
 `E:\Data\LocalVoiceAgent\runtime\evidence\salon\salon-tts-smoke-20260725T105419.620795062Z.json`
 (SHA-256 `6c986a15bef97fa7e6283bb77b211b8649dababbac20c59deb323751ec8d9c93`).
+
+## Integrated interactive-stack observation (2026-07-25)
+
+The user-requested Web QA stack was launched through `gpuq` job
+`e80698db-078c-4559-940d-3df97f3f1bff` with a 22,000 MiB reservation. Gemma 4
+12B, Silero VAD, faster-whisper STT, and Qwen3-TTS 0.6B all passed their live
+readiness checks. At 2026-07-25T12:30:23Z, `nvidia-smi` reported 22,866 MiB
+used and 9,322 MiB free; scheduler telemetry later recorded 22,974 MiB peak
+total GPU use. These values cover the whole GPU at those instants, not
+per-model attribution. The model remains loaded for user QA, and no new TTS
+latency claim is made from this lifecycle-control check.

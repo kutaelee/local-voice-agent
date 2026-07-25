@@ -20,6 +20,37 @@ if (-not (Test-Path -LiteralPath "$repoRoot\scripts\run-gpu-voice-stack.sh" -Pat
     throw 'GPU voice supervisor is unavailable.'
 }
 
+if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
+    try {
+        $registered = Get-Content -LiteralPath $statusPath -Raw |
+            ConvertFrom-Json
+        $registeredJobId = [Guid]::Empty
+        if (
+            $registered.component -eq 'gpu-voice-stack' -and
+            [Guid]::TryParse(
+                [string]$registered.gpuq_job_id,
+                [ref]$registeredJobId
+            )
+        ) {
+            $scheduler = & $gpuq status | ConvertFrom-Json
+            $pending = @($scheduler.jobs.queued) + @($scheduler.jobs.active)
+            $matching = @(
+                $pending |
+                    Where-Object {
+                        $_.id -eq $registeredJobId.ToString()
+                    }
+            )
+            if ($matching.Count -eq 1) {
+                Write-Output $registeredJobId.ToString()
+                exit 0
+            }
+        }
+    }
+    catch {
+        throw 'Registered GPU voice stack status is invalid.'
+    }
+}
+
 $existing = @(
     wsl.exe -d Ubuntu -- pgrep -f "^bash $supervisor$"
 )

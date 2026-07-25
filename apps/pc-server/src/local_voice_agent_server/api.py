@@ -15,7 +15,8 @@ import logging
 import os
 from pathlib import Path
 import secrets
-import stat
+import socket
+import subprocess
 import time
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal
 from uuid import UUID, uuid4
@@ -150,6 +151,12 @@ class ModelSwitchRequest(BaseModel):
     request_id: UUID
     idempotency_key: UUID
     target_model: Literal["gemma4-12b", "gemma4-31b"]
+
+
+class QaModelControlRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["start", "stop"]
 
 
 class CreateVoiceProfileRequest(BaseModel):
@@ -433,6 +440,59 @@ def _qa_ticket_from_subprotocol(websocket: WebSocket) -> str | None:
     return None
 
 
+def _run_qa_model_control(
+    action: Literal["start", "stop"],
+) -> dict[str, object]:
+    script_name = (
+        "start-gpu-voice-stack.ps1"
+        if action == "start"
+        else "stop-gpu-voice-stack.ps1"
+    )
+    powershell = (
+        "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+    )
+    script = f"C:\\Dev\\Repos\\local-voice-agent\\scripts\\{script_name}"
+    try:
+        completed = subprocess.run(
+            [
+                powershell,
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                script,
+            ],
+            cwd="/mnt/c/Dev/Repos/local-voice-agent",
+            capture_output=True,
+            text=True,
+            timeout=90,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise RuntimeError("registered model control failed") from error
+    if completed.returncode != 0:
+        raise RuntimeError("registered model control was rejected")
+    output = completed.stdout.strip()
+    if action == "start":
+        try:
+            job_id = str(UUID(output.splitlines()[-1]))
+        except (IndexError, ValueError) as error:
+            raise RuntimeError(
+                "registered model control returned an invalid job"
+            ) from error
+        return {
+            "action": action,
+            "state": "submitted",
+            "gpuq_job_id": job_id,
+        }
+    return {
+        "action": action,
+        "state": "stopped",
+        "message": output[-256:] if output else "stop completed",
+    }
+
+
 def create_app(
     settings: ServerSettings,
     *,
@@ -443,6 +503,13 @@ def create_app(
     voice_profile_store: VoiceProfileStore | None = None,
     qa_runtime_status_provider: (
         Callable[[], dict[str, object]] | None
+    ) = None,
+    qa_model_controller: (
+        Callable[
+            [Literal["start", "stop"]],
+            dict[str, object],
+        ]
+        | None
     ) = None,
     salon_call_coordinator: SalonCallCoordinator | None = None,
     salon_speech_service: SalonSpeechService | None = None,
@@ -465,6 +532,7 @@ def create_app(
     disconnect_cleanup_tasks: dict[UUID, asyncio.Task[None]] = {}
     qa_ticket_store = _QaWebSocketTicketStore()
     qa_browser_session_store = _QaBrowserSessionStore()
+    qa_model_control_lock = asyncio.Lock()
     qa_root = Path(__file__).with_name("web_qa")
 
     def request_fingerprint(request: Request) -> str:
@@ -595,6 +663,36 @@ def create_app(
                 detail="runtime status observation failed",
             ) from error
         return {"schema_version": "1.0", **status}
+
+    @app.post("/v1/qa/model-control")
+    async def qa_model_control(
+        command: QaModelControlRequest,
+        request: Request,
+    ) -> dict[str, object]:
+        if not _is_same_origin_loopback_request(request):
+            raise HTTPException(
+                status_code=403,
+                detail="model control requires same-origin loopback QA",
+            )
+        if not await request_authorized(request):
+            raise HTTPException(status_code=401, detail="invalid pairing token")
+        if qa_model_controller is None:
+            raise HTTPException(
+                status_code=503,
+                detail="registered model control is unavailable",
+            )
+        async with qa_model_control_lock:
+            try:
+                result = await asyncio.to_thread(
+                    qa_model_controller,
+                    command.action,
+                )
+            except Exception as error:
+                raise HTTPException(
+                    status_code=503,
+                    detail="registered model control failed",
+                ) from error
+        return {"schema_version": "1.0", **result}
 
     @app.get("/v1/status/agents")
     async def agent_status(request: Request) -> dict[str, object]:
@@ -1285,10 +1383,58 @@ def create_app_from_environment() -> FastAPI:
         model_switch_coordinator=model_switch_coordinator,
         voice_profile_store=voice_profile_store,
         qa_runtime_status_provider=_qa_runtime_status_provider_from_environment(),
+        qa_model_controller=_run_qa_model_control,
         salon_call_coordinator=salon_call_coordinator,
         salon_speech_service=salon_speech_service,
         model_switch_hold=model_switch_hold,
     )
+
+
+def _is_audio_worker_healthy(
+    socket_path: Path,
+    token: str,
+    *,
+    timeout_seconds: float = 0.5,
+    expected_component: str | None = None,
+) -> bool:
+    if len(token) < 32 or not socket_path.is_socket():
+        return False
+    request = (
+        json.dumps(
+            {
+                "operation": "health",
+                "request_id": str(uuid4()),
+                "token": token,
+            },
+            separators=(",", ":"),
+        ).encode("utf-8")
+        + b"\n"
+    )
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.settimeout(timeout_seconds)
+            client.connect(str(socket_path))
+            client.sendall(request)
+            response = bytearray()
+            while b"\n" not in response and len(response) <= 16 * 1024:
+                chunk = client.recv(4096)
+                if not chunk:
+                    break
+                response.extend(chunk)
+        if not response or len(response) > 16 * 1024:
+            return False
+        value = json.loads(bytes(response).split(b"\n", 1)[0])
+        if not isinstance(value, dict) or value.get("status") != "ok":
+            return False
+        observed_component = value.get("component")
+        if not observed_component and isinstance(value.get("worker"), str):
+            observed_component = f"{value['worker']}-worker"
+        return (
+            expected_component is None
+            or observed_component == expected_component
+        )
+    except (OSError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError):
+        return False
 
 
 def _qa_runtime_status_provider_from_environment(
@@ -1319,6 +1465,7 @@ def _qa_runtime_status_provider_from_environment(
             )
         ),
     }
+    worker_token = os.environ.get("LVA_AUDIO_WORKER_TOKEN", "")
 
     def observe() -> dict[str, object]:
         runtime: dict[str, object] = {
@@ -1340,15 +1487,14 @@ def _qa_runtime_status_provider_from_environment(
                     "model_id": str(value.get("model_id", ""))[:128],
                     "mtp_mode": str(value.get("mtp_mode", ""))[:32],
                 }
-        workers = {}
-        for name, path in socket_paths.items():
-            try:
-                workers[name] = (
-                    path.is_socket()
-                    and stat.S_ISSOCK(path.stat().st_mode)
-                )
-            except OSError:
-                workers[name] = False
+        workers = {
+            name: _is_audio_worker_healthy(
+                path,
+                worker_token,
+                expected_component=f"{name}-worker",
+            )
+            for name, path in socket_paths.items()
+        }
         return {
             "runtime": runtime,
             "workers": workers,

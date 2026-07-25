@@ -557,6 +557,20 @@ The bootstrap rejects non-loopback and cross-origin requests, binds its
 short-lived credential to the client address and user agent, and keeps it
 only in page/server memory. The long-lived pairing token is never returned to
 the browser or placed in a URL or browser storage.
+
+The **GPU VOICE STACK** panel controls the registered full voice stack rather
+than an arbitrary model or command. **모델 올리기** submits the fixed
+`local-voice-agent-interactive-qa` workload to `gpuq` with a 22,000 MiB
+reservation; an existing queued or running reservation is returned
+idempotently instead of being duplicated. **모델 내리기** asks for
+confirmation, then stops or cancels only the supervisor/job recorded for that
+workload. Both controls require the same authenticated, exact same-origin
+loopback QA session. The status is derived from the vLLM readiness record plus
+authenticated VAD, STT, and TTS health requests, so stale socket files do not
+appear healthy. A submitted job may remain queued while another GPU workload
+is active; refresh diagnostics or wait for the panel to change to **사용
+가능** before starting a voice turn.
+
 Stop this instance without disturbing the private-LAN Android gateway:
 
 ```powershell

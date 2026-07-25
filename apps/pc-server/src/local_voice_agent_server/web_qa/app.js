@@ -7,6 +7,9 @@ const ui = {
   connectButton: $("connectButton"),
   diagnoseButton: $("diagnoseButton"),
   diagnostics: $("diagnostics"),
+  modelControlStatus: $("modelControlStatus"),
+  modelStartButton: $("modelStartButton"),
+  modelStopButton: $("modelStopButton"),
   conversation: $("conversation"),
   salonCallStatus: $("salonCallStatus"),
   salonStartButton: $("salonStartButton"),
@@ -79,6 +82,9 @@ const state = {
   turn: {},
   salonCallActive: false,
   salonCallId: null,
+  modelControlBusy: false,
+  modelControlPhase: "stopped",
+  modelStatusPollTimer: null,
 };
 
 const assistantLabels = {
@@ -181,6 +187,103 @@ function setConnection(connected, label = connected ? "연결됨" : "연결 안 
   ui.salonMessageInput.disabled = !connected || !state.salonCallActive;
   ui.salonSendButton.disabled = !connected || !state.salonCallActive;
   ui.salonRefreshButton.disabled = !connected;
+  updateModelControlButtons();
+}
+
+function updateModelControlButtons() {
+  const unavailable = !state.connected || state.modelControlBusy;
+  ui.modelStartButton.disabled = (
+    unavailable
+    || ["starting", "ready"].includes(state.modelControlPhase)
+  );
+  ui.modelStopButton.disabled = (
+    unavailable
+    || state.modelControlPhase === "stopped"
+  );
+  const labels = {
+    stopped: "중지됨",
+    starting: "gpuq 예약·로딩 중",
+    ready: "사용 가능",
+    stopping: "정리 중",
+    degraded: "일부 구성요소만 실행 중",
+    error: "제어 오류",
+  };
+  ui.modelControlStatus.textContent = (
+    labels[state.modelControlPhase] || state.modelControlPhase
+  );
+}
+
+function applyRuntimeStatus(body) {
+  const workerStates = Object.values(body.workers || {});
+  const allWorkersReady = (
+    workerStates.length === 3
+    && workerStates.every(Boolean)
+  );
+  const runtimeReady = body.runtime?.state === "ready";
+  if (runtimeReady && allWorkersReady) {
+    state.modelControlPhase = "ready";
+  } else if (
+    !["starting", "stopping"].includes(state.modelControlPhase)
+  ) {
+    state.modelControlPhase = (
+      runtimeReady || workerStates.some(Boolean)
+        ? "degraded"
+        : "stopped"
+    );
+  }
+  updateModelControlButtons();
+}
+
+function scheduleModelStatusPoll() {
+  clearTimeout(state.modelStatusPollTimer);
+  if (!["starting", "stopping"].includes(state.modelControlPhase)) return;
+  state.modelStatusPollTimer = setTimeout(async () => {
+    try {
+      await refreshDiagnostics();
+    } catch {
+      // The next bounded poll can recover from a transient restart.
+    }
+    scheduleModelStatusPoll();
+  }, 2500);
+}
+
+async function controlModel(action) {
+  const starting = action === "start";
+  const approved = window.confirm(
+    starting
+      ? "Gemma 4 12B와 음성 워커를 gpuq에 22 GiB로 예약해 올립니다. 계속할까요?"
+      : "등록된 QA 모델과 음성 워커만 정상 종료하고 GPU 예약을 반환합니다. 계속할까요?",
+  );
+  if (!approved) return;
+  state.modelControlBusy = true;
+  state.modelControlPhase = starting ? "starting" : "stopping";
+  updateModelControlButtons();
+  addEvent("qa.model_control.requested", { action });
+  try {
+    const result = await api("/v1/qa/model-control", {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    });
+    addEvent("qa.model_control.completed", {
+      action,
+      state: result.state,
+      gpuq_job_id: result.gpuq_job_id || null,
+    });
+    state.modelControlPhase = starting ? "starting" : "stopped";
+    showToast(
+      starting
+        ? "gpuq 예약을 제출했습니다. 모델 로딩을 기다립니다."
+        : "등록된 GPU 음성 스택을 내렸습니다.",
+    );
+    await refreshDiagnostics();
+  } catch (error) {
+    state.modelControlPhase = "error";
+    showToast(error.message);
+  } finally {
+    state.modelControlBusy = false;
+    updateModelControlButtons();
+    scheduleModelStatusPoll();
+  }
 }
 
 function setSalonCall(active, label = active ? "통화 중" : "대기") {
@@ -799,6 +902,12 @@ async function refreshDiagnostics() {
   const values = ui.diagnostics.querySelectorAll("strong");
   values.forEach((value) => { value.textContent = "확인 중"; });
   const runtimeStatus = api("/v1/qa/runtime-status");
+  runtimeStatus.then(applyRuntimeStatus).catch(() => {
+    if (!state.modelControlBusy) {
+      state.modelControlPhase = "error";
+      updateModelControlButtons();
+    }
+  });
   const probes = [
     fetch(`${normalizedBaseUrl()}/health`).then((response) => response.json()).then(() => "정상"),
     runtimeStatus.then((body) => (
@@ -880,6 +989,8 @@ function interrupt() {
 ui.serverUrl.value = localStorage.getItem("lva.qa.serverUrl") || location.origin;
 ui.connectButton.addEventListener("click", connect);
 ui.diagnoseButton.addEventListener("click", () => refreshDiagnostics().catch((error) => showToast(error.message)));
+ui.modelStartButton.addEventListener("click", () => controlModel("start"));
+ui.modelStopButton.addEventListener("click", () => controlModel("stop"));
 ui.startButton.addEventListener("click", startListening);
 ui.salonStartButton.addEventListener("click", startSalonCall);
 ui.salonEndButton.addEventListener("click", endSalonCall);
@@ -899,6 +1010,7 @@ for (const slider of [ui.playbackRate, ui.exaggeration, ui.cfgWeight, ui.tempera
   slider.addEventListener("input", syncSliderLabels);
 }
 window.addEventListener("beforeunload", () => {
+  clearTimeout(state.modelStatusPollTimer);
   state.socket?.close(1000, "page closing");
   state.mediaStream?.getTracks().forEach((track) => track.stop());
 });

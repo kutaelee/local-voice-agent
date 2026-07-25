@@ -77,6 +77,9 @@ def test_pc_server_voice_mode_is_explicit_and_self_contained() -> None:
 
     assert "[switch]$EnableVoice" in start
     assert "Required audio worker socket is unavailable" in start
+    assert "scripts/audio-worker-health.py" in start
+    assert "Required audio worker failed health" in start
+    assert "$reportedComponent -ne $worker.component" in start
     assert "$env:LVA_VOICE_ENABLED = '1'" in start
     assert "$env:LVA_VLLM_MODEL = 'gemma4-12b'" in start
     assert "$env:LVA_VLLM_BASE_URL = 'http://127.0.0.1:46322/v1'" in start

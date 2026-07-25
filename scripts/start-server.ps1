@@ -190,14 +190,86 @@ if ($InstanceName -eq 'web-qa') {
     }
 }
 if ($EnableVoice) {
-    foreach ($socketPath in @(
-        '/home/kutae/.local/share/local-voice-agent/run/vad.sock',
-        '/home/kutae/.local/share/local-voice-agent/run/stt.sock',
-        '/home/kutae/.local/share/local-voice-agent/run/tts.sock'
-    )) {
-        wsl.exe -d Ubuntu -- test -S $socketPath
+    $audioWorkers = @(
+        [pscustomobject]@{
+            component = 'vad-worker'
+            socket = '/home/kutae/.local/share/local-voice-agent/run/vad.sock'
+        },
+        [pscustomobject]@{
+            component = 'stt-worker'
+            socket = '/home/kutae/.local/share/local-voice-agent/run/stt.sock'
+        },
+        [pscustomobject]@{
+            component = 'tts-worker'
+            socket = '/home/kutae/.local/share/local-voice-agent/run/tts.sock'
+        }
+    )
+    foreach ($worker in $audioWorkers) {
+        wsl.exe -d Ubuntu -- test -S $worker.socket
         if ($LASTEXITCODE -ne 0) {
-            throw "Required audio worker socket is unavailable: $socketPath"
+            throw "Required audio worker socket is unavailable: $($worker.socket)"
+        }
+    }
+    $workerHealthScript = (
+        '/mnt/c/Dev/Repos/local-voice-agent/' +
+        'scripts/audio-worker-health.py'
+    )
+    $previousWorkerWslEnv = $env:WSLENV
+    $workerBridgeEntries = @('LVA_AUDIO_WORKER_TOKEN')
+    if ($previousWorkerWslEnv) {
+        $workerBridgeEntries += $previousWorkerWslEnv
+    }
+    $env:WSLENV = $workerBridgeEntries -join ':'
+    try {
+        foreach ($worker in $audioWorkers) {
+            $healthOutput = @(
+                wsl.exe -d Ubuntu -- `
+                    $wslPython `
+                    $workerHealthScript `
+                    $worker.socket `
+                    2>$null
+            )
+            if ($LASTEXITCODE -ne 0) {
+                throw (
+                    "Required audio worker failed health: " +
+                    $worker.component
+                )
+            }
+            try {
+                $workerHealth = (
+                    ($healthOutput -join "`n") | ConvertFrom-Json
+                )
+            }
+            catch {
+                throw (
+                    "Required audio worker returned invalid health: " +
+                    $worker.component
+                )
+            }
+            $reportedComponent = [string]$workerHealth.component
+            if (
+                -not $reportedComponent -and
+                [string]$workerHealth.worker
+            ) {
+                $reportedComponent = "$($workerHealth.worker)-worker"
+            }
+            if (
+                $workerHealth.status -ne 'ok' -or
+                $reportedComponent -ne $worker.component
+            ) {
+                throw (
+                    "Required audio worker returned unexpected health: " +
+                    $worker.component
+                )
+            }
+        }
+    }
+    finally {
+        if ($null -eq $previousWorkerWslEnv) {
+            Remove-Item Env:WSLENV -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:WSLENV = $previousWorkerWslEnv
         }
     }
     if (-not $env:LVA_VLLM_MODEL) {
