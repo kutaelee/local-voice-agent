@@ -542,7 +542,7 @@ covers:
 - tool plans, Level 1/2 approval responses, execution events, and evidence IDs;
 - voice-profile settings and live runtime/worker/agent diagnostics;
 - STT-final, LLM-TTFT, TTS-first-audio, and playback-underrun measurements;
-- a GPU-free text salon-call simulation, confirmation-bound reservation
+- a Gemma-led text salon-call simulation, confirmation-bound reservation
   changes, the masked reservation table, and owner notifications.
 
 The bootstrap rejects non-loopback and cross-origin requests, binds its
@@ -559,10 +559,24 @@ The web portal does not replace physical APK checks for Bluetooth, earpiece,
 foreground service, audio focus, Keystore, rotation, backgrounding, or power
 management.
 
-To exercise only the text receptionist while GPU jobs belong to another
-project, omit `-EnableVoice` and `-EnableTools`:
+To exercise the text receptionist, first reserve the model for the entire QA
+window. The model-only supervisor intentionally leaves VAD, STT, and TTS
+unloaded:
 
 ```powershell
+gpuq run --vram 18000 --eta 3600 --priority 60 `
+  --max-runtime 7200 --agent local-voice-agent `
+  --workload local-voice-agent-salon-harness-qa `
+  --cwd C:\Dev\Repos\local-voice-agent -- `
+  wsl.exe -d Ubuntu -- bash `
+  /mnt/c/Dev/Repos/local-voice-agent/scripts/run-gpu-vllm-harness.sh
+```
+
+Then omit `-EnableVoice` and `-EnableTools` from the gateway:
+
+```powershell
+$env:LVA_SALON_LLM_ENABLED = '1'
+$env:LVA_SALON_TTS_ENABLED = '0'
 .\scripts\start-server.ps1 `
   -InstanceName web-qa `
   -ListenAddress 127.0.0.1 `
@@ -577,7 +591,7 @@ pre-mutation fast-recovery copies to
 D: recovery manifest is the current local recovery point. Off-machine backup
 is not configured for this feature; do not report one.
 
-The optional language and speech projections are independently gated:
+The language harness and optional speech projection are independently gated:
 
 ```powershell
 $env:LVA_SALON_LLM_ENABLED = '1' # Requires the registered vLLM endpoint.

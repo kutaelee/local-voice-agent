@@ -6,6 +6,7 @@ from uuid import uuid4
 from local_voice_agent_server.application.salon_calls import (
     SalonCallCoordinator,
     SalonFaqDecision,
+    SalonTurnDecision,
 )
 from local_voice_agent_server.domain.salon_booking import SalonReservationService
 from local_voice_agent_server.infrastructure.file_reservations import (
@@ -18,7 +19,12 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 POLICY_PATH = REPO_ROOT / "configs" / "salon-booking.json"
 
 
-def _coordinator(tmp_path: Path, *, faq_responder=None) -> SalonCallCoordinator:
+def _coordinator(
+    tmp_path: Path,
+    *,
+    faq_responder=None,
+    conversation_responder=None,
+) -> SalonCallCoordinator:
     policy = load_salon_policy(POLICY_PATH)
     now = lambda: datetime(2026, 7, 25, 9, 0, tzinfo=policy.timezone)
     service = SalonReservationService(
@@ -33,6 +39,7 @@ def _coordinator(tmp_path: Path, *, faq_responder=None) -> SalonCallCoordinator:
         reservations=service,
         now=now,
         faq_responder=faq_responder,
+        conversation_responder=conversation_responder,
     )
 
 
@@ -112,6 +119,70 @@ def test_optional_model_answers_only_scoped_unknown_faq(tmp_path: Path) -> None:
 
         assert "두 분 모두" in _texts(party)[0]
         assert "미용실 예약" in _texts(weather)[0]
+
+    asyncio.run(scenario())
+
+
+def test_conversation_model_drives_natural_reply_instead_of_echo(
+    tmp_path: Path,
+) -> None:
+    class Harness:
+        async def decide(self, **kwargs) -> SalonTurnDecision:
+            assert kwargs["user_message"] == "커트하고 싶은데요"
+            return SalonTurnDecision(
+                in_scope=True,
+                action="book",
+                service_id="haircut",
+                reply="좋아요. 언제 방문하시면 편하실까요?",
+            )
+
+        async def complete(self, **kwargs) -> str:
+            raise AssertionError("no tool should run before details are complete")
+
+    async def scenario() -> None:
+        coordinator = _coordinator(
+            tmp_path,
+            conversation_responder=Harness(),
+        )
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        events = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="커트하고 싶은데요",
+        )
+        assert _texts(events) == ["좋아요. 언제 방문하시면 편하실까요?"]
+
+    asyncio.run(scenario())
+
+
+def test_conversation_model_echo_is_rejected(tmp_path: Path) -> None:
+    class Harness:
+        async def decide(self, **kwargs) -> SalonTurnDecision:
+            message = kwargs["user_message"]
+            return SalonTurnDecision(
+                in_scope=True,
+                action="respond",
+                reply=message,
+            )
+
+        async def complete(self, **kwargs) -> str:
+            raise AssertionError
+
+    async def scenario() -> None:
+        coordinator = _coordinator(
+            tmp_path,
+            conversation_responder=Harness(),
+        )
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        events = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="오늘 커트하고 싶어요",
+        )
+        assert _texts(events)[0] != "오늘 커트하고 싶어요"
+        assert "연결이 원활하지 않아요" in _texts(events)[0]
 
     asyncio.run(scenario())
 

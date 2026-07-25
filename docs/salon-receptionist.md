@@ -25,18 +25,21 @@ Business rules stay in the domain service rather than the prompt or browser.
 ## Flow
 
 `salon.call.start` creates an isolated call state and returns the greeting.
-Each `salon.call.message` is passed through the bounded intent/slot parser and
-the reservation domain service. Proposed mutations enter a confirmation
-state. An affirmative response atomically updates the file and emits both
+Each `salon.call.message` is passed to the Gemma conversation harness with the
+persona, recent dialogue, committed policy, current time, and bounded call
+state. Gemma produces the customer-facing reply plus a closed-schema action
+and optional slots. Application code does not compose the normal dialogue.
+It validates the model proposal and invokes only the matching reservation
+domain operation. Proposed mutations enter a confirmation state. A later,
+explicit affirmative response atomically updates the file and emits both
 `salon.reservation.updated` and `salon.owner.notification`. A rejection clears
 the proposal without writing. `salon.call.end` closes the simulated call.
 
-The transaction engine is deterministic and does not reserve GPU memory. An
-optional Gemma 4 adapter answers otherwise-unmatched salon FAQs through a
-strict two-field JSON schema. It receives only the committed policy and the
-question, and it never receives authority to write the schedule. If the
-runtime is unavailable or its output fails validation, the text workflow
-continues with a bounded fallback. The domain service remains the source of
+The model may propose only `respond`, `availability`, `book`, `modify`, or
+`cancel`. It cannot write files or supply a command. Invalid schemas, unknown
+service/staff identifiers, and verbatim caller echoes fail closed. Actual
+availability and mutation results are returned to Gemma for natural narration;
+the model cannot alter the result. The domain service remains the source of
 truth for:
 
 - past dates and the 90-day booking horizon;
@@ -94,15 +97,16 @@ out-of-scope requests.
 Physical user QA and TTS listening QA are intentionally performed only after
 the text path, model smoke, and automated regressions pass.
 
-## Optional model and TTS adapters
+## Model harness and optional TTS adapter
 
-`LVA_SALON_LLM_ENABLED=1` enables the loopback-only structured FAQ adapter.
-The production reservation parser still handles every mutation. On
-2026-07-25, a `gpuq`-managed Gemma 4 12B run classified four supported salon
-questions and two unrelated questions correctly (6/6). The cold first
-request took 2,435.599 ms; the following requests took 206.110–471.006 ms.
-The scheduler observed 14,682 MiB peak total GPU use and the wrapper stopped
-the owned vLLM process after the evidence was written.
+`LVA_SALON_LLM_ENABLED=1` enables the authenticated, loopback-only Gemma
+conversation harness. On 2026-07-25 the revised harness passed six live
+persona/scope/action cases without echoing the caller. Measured response times
+were 1,109–1,468 ms. A browser regression using the previously failing
+sequence, “다음주 수요일 예약하고 싶어서요” → “뭐가 있어요?” → “너 누구야?”,
+produced three contextual persona responses instead of repeating the missing
+field prompt. Evidence is stored outside Git at
+`E:\Data\LocalVoiceAgent\runtime\evidence\salon-harness-live-20260725T1137.json`.
 
 `LVA_SALON_TTS_ENABLED=1` attaches the existing Qwen3-TTS 1.7B worker to each
 completed salon text response. One assistant response is synthesized as one

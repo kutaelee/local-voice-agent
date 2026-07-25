@@ -63,7 +63,7 @@ from .infrastructure.tool_registry import ToolRegistry
 from .infrastructure.persistence import PostgresStateStore
 from .infrastructure.file_reservations import FileReservationStore
 from .infrastructure.salon_config import load_salon_policy
-from .infrastructure.salon_vllm_faq import SalonVllmFaqAdapter
+from .infrastructure.salon_vllm_harness import SalonVllmConversationHarness
 from .infrastructure.voice_profiles import (
     VOICE_STYLES,
     VoiceProfileError,
@@ -1402,9 +1402,9 @@ def _salon_call_coordinator_from_environment() -> SalonCallCoordinator | None:
         backup_root=backup_root,
     )
     store.initialize()
-    faq_responder = None
+    conversation_responder = None
     if os.environ.get("LVA_SALON_LLM_ENABLED", "0") == "1":
-        faq_responder = SalonVllmFaqAdapter(
+        conversation_responder = SalonVllmConversationHarness(
             policy=policy,
             base_url=os.environ.get(
                 "LVA_VLLM_BASE_URL",
@@ -1421,7 +1421,7 @@ def _salon_call_coordinator_from_environment() -> SalonCallCoordinator | None:
             policy=policy,
             repository=store,
         ),
-        faq_responder=faq_responder,
+        conversation_responder=conversation_responder,
     )
 
 

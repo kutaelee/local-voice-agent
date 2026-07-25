@@ -158,14 +158,14 @@ Physical Android QA is still required for foreground-service lifecycle,
 Bluetooth/earpiece routing, audio focus, Keystore persistence, and power
 management.
 
-The same portal also exposes a GPU-free text-first **예약 전화 시뮬레이션**.
+The same portal also exposes a text-first **예약 전화 시뮬레이션**.
 Starting that conversation represents an incoming salon call. It exercises
-the committed hours/services policy, confirmation-bound reservation changes,
-the masked file-backed schedule, and connected-app owner notifications
-without starting VAD, STT, an LLM, or TTS. See
+the Gemma-led receptionist persona, committed hours/services policy,
+confirmation-bound reservation changes, masked file-backed schedule, and
+connected-app owner notifications without starting VAD, STT, or TTS. See
 [docs/salon-receptionist.md](docs/salon-receptionist.md).
-Optional, independently gated Gemma FAQ and Qwen3-TTS projections can then be
-enabled for final QA; neither model receives reservation mutation authority.
+The independently gated Qwen3-TTS projection can be enabled for final QA;
+neither model receives reservation mutation authority.
 
 After setting an untracked `LVA_TOOL_EXECUTOR_TOKEN` with at least 32 random
 characters, the isolated executor can be started and stopped with

@@ -1,9 +1,9 @@
-"""Deterministic salon call persona and multi-turn reservation workflow."""
+"""Salon call persona with a model-led conversation and guarded booking tools."""
 
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 import re
 from typing import Callable, Literal, Protocol
@@ -20,6 +20,7 @@ from ..domain.salon_booking import (
 
 
 SalonAction = Literal["availability", "book", "cancel", "modify"]
+SalonModelAction = Literal["respond", "availability", "book", "cancel", "modify"]
 
 
 class SalonFaqResponderError(RuntimeError):
@@ -34,6 +35,42 @@ class SalonFaqDecision:
 
 class SalonFaqResponder(Protocol):
     async def answer(self, question: str) -> SalonFaqDecision: ...
+
+
+@dataclass(frozen=True, slots=True)
+class SalonTurnDecision:
+    """Validated model output; it is a proposal, never authority to mutate data."""
+
+    in_scope: bool
+    action: SalonModelAction
+    reply: str
+    service_id: str | None = None
+    staff_id: str | None = None
+    starts_at: datetime | None = None
+    customer_name: str | None = None
+    phone: str | None = None
+    reservation_code: str | None = None
+    confirmed: bool = False
+
+
+class SalonConversationResponder(Protocol):
+    async def decide(
+        self,
+        *,
+        user_message: str,
+        state: dict[str, object],
+        history: tuple[dict[str, str], ...],
+        now: datetime,
+    ) -> SalonTurnDecision: ...
+
+    async def complete(
+        self,
+        *,
+        user_message: str,
+        state: dict[str, object],
+        history: tuple[dict[str, str], ...],
+        tool_result: dict[str, object],
+    ) -> str: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +91,7 @@ class SalonCallState:
     phone: str | None = None
     reservation_code: str | None = None
     awaiting_confirmation: bool = False
+    history: list[dict[str, str]] = field(default_factory=list)
 
     def clear_transaction(self) -> None:
         self.action = None
@@ -73,11 +111,13 @@ class SalonCallCoordinator:
         reservations: SalonReservationService,
         now: Callable[[], datetime] | None = None,
         faq_responder: SalonFaqResponder | None = None,
+        conversation_responder: SalonConversationResponder | None = None,
     ) -> None:
         self._reservations = reservations
         self.policy = reservations.policy
         self._now = now or (lambda: datetime.now(self.policy.timezone))
         self._faq_responder = faq_responder
+        self._conversation_responder = conversation_responder
         self._calls: dict[UUID, SalonCallState] = {}
         self._lock = asyncio.Lock()
 
@@ -128,6 +168,7 @@ class SalonCallCoordinator:
             f"{self.policy.receptionist_name}입니다. "
             "예약, 변경, 취소, 시술 가격과 영업시간을 도와드릴게요."
         )
+        self._append_history(state, "assistant", greeting)
         return [
             SalonEvent(
                 "salon.call.started",
@@ -152,6 +193,8 @@ class SalonCallCoordinator:
         normalized = " ".join(text.strip().split())
         if not normalized or len(normalized) > 2_000:
             raise ValueError("salon call message is invalid")
+        if self._conversation_responder is not None:
+            return await self._model_message(state, normalized)
         if _is_negative_confirmation(normalized) and state.awaiting_confirmation:
             state.clear_transaction()
             return self._reply("알겠습니다. 요청은 반영하지 않았습니다. 다른 예약을 도와드릴까요?")
@@ -206,6 +249,304 @@ class SalonCallCoordinator:
                     {"text": str(error), "error_code": error.code},
                 )
             ]
+
+    async def _model_message(
+        self,
+        state: SalonCallState,
+        text: str,
+    ) -> list[SalonEvent]:
+        assert self._conversation_responder is not None
+        history = tuple(state.history[-12:])
+        try:
+            decision = await self._conversation_responder.decide(
+                user_message=text,
+                state=self._model_state(state),
+                history=history,
+                now=self._normalized_now(),
+            )
+            reply = _safe_model_reply(text, decision.reply)
+            self._apply_model_slots(state, decision)
+        except (SalonFaqResponderError, SalonBookingError):
+            return self._reply(
+                "잠시 연결이 원활하지 않아요. 예약 날짜나 시술을 다시 말씀해 주시겠어요?"
+            )
+
+        self._append_history(state, "user", text)
+
+        if not decision.in_scope:
+            state.clear_transaction()
+            return self._model_reply(state, reply)
+        if decision.action == "respond":
+            return self._model_reply(state, reply)
+
+        state.action = decision.action
+        try:
+            if decision.action == "availability":
+                tool_result = self._model_availability_result(state)
+                return await self._complete_model_tool(state, text, history, tool_result)
+            if decision.action == "book":
+                return await self._model_book(state, text, history, decision, reply)
+            if decision.action == "modify":
+                return await self._model_modify(state, text, history, decision, reply)
+            return await self._model_cancel(state, text, history, decision, reply)
+        except SalonBookingError as error:
+            state.awaiting_confirmation = False
+            tool_result = {
+                "ok": False,
+                "operation": decision.action,
+                "error_code": error.code,
+                "message": str(error),
+            }
+            events = await self._complete_model_tool(state, text, history, tool_result)
+            events[0].payload["error_code"] = error.code
+            return events
+
+    async def _model_book(
+        self,
+        state: SalonCallState,
+        text: str,
+        history: tuple[dict[str, str], ...],
+        decision: SalonTurnDecision,
+        reply: str,
+    ) -> list[SalonEvent]:
+        missing = self._missing_model_booking_field(state)
+        if missing is not None:
+            return self._model_reply(state, reply)
+        if not state.awaiting_confirmation:
+            state.awaiting_confirmation = True
+            return self._model_reply(state, reply)
+        if not decision.confirmed or not _is_positive_confirmation(text):
+            if _is_negative_confirmation(text):
+                state.clear_transaction()
+            return self._model_reply(state, reply)
+        assert state.service_id is not None
+        assert state.starts_at is not None
+        assert state.customer_name is not None
+        assert state.phone is not None
+        reservation = self._reservations.create(
+            ReservationRequest(
+                customer_name=state.customer_name,
+                phone=state.phone,
+                service_id=state.service_id,
+                starts_at=state.starts_at,
+                staff_id=state.staff_id,
+            )
+        )
+        state.clear_transaction()
+        return await self._model_changed(
+            state, text, history, "created", reservation
+        )
+
+    async def _model_modify(
+        self,
+        state: SalonCallState,
+        text: str,
+        history: tuple[dict[str, str], ...],
+        decision: SalonTurnDecision,
+        reply: str,
+    ) -> list[SalonEvent]:
+        if (
+            state.reservation_code is None
+            or state.phone is None
+            or state.starts_at is None
+        ):
+            return self._model_reply(state, reply)
+        if not state.awaiting_confirmation:
+            state.awaiting_confirmation = True
+            return self._model_reply(state, reply)
+        if not decision.confirmed or not _is_positive_confirmation(text):
+            if _is_negative_confirmation(text):
+                state.clear_transaction()
+            return self._model_reply(state, reply)
+        reservation = self._reservations.modify(
+            reservation_code=state.reservation_code,
+            phone=state.phone,
+            starts_at=state.starts_at,
+            service_id=state.service_id,
+            staff_id=state.staff_id,
+        )
+        state.clear_transaction()
+        return await self._model_changed(
+            state, text, history, "modified", reservation
+        )
+
+    async def _model_cancel(
+        self,
+        state: SalonCallState,
+        text: str,
+        history: tuple[dict[str, str], ...],
+        decision: SalonTurnDecision,
+        reply: str,
+    ) -> list[SalonEvent]:
+        if state.reservation_code is None or state.phone is None:
+            return self._model_reply(state, reply)
+        if not state.awaiting_confirmation:
+            state.awaiting_confirmation = True
+            return self._model_reply(state, reply)
+        if not decision.confirmed or not _is_positive_confirmation(text):
+            if _is_negative_confirmation(text):
+                state.clear_transaction()
+            return self._model_reply(state, reply)
+        reservation = self._reservations.cancel(
+            reservation_code=state.reservation_code,
+            phone=state.phone,
+        )
+        state.clear_transaction()
+        return await self._model_changed(
+            state, text, history, "cancelled", reservation
+        )
+
+    def _model_availability_result(
+        self,
+        state: SalonCallState,
+    ) -> dict[str, object]:
+        if state.service_id is None or state.starts_at is None:
+            return {
+                "ok": False,
+                "operation": "availability",
+                "error_code": "MISSING_FIELDS",
+                "message": "시술과 희망 날짜 및 시간이 더 필요합니다.",
+            }
+        service = self.policy.service(state.service_id)
+        staff = self._reservations.available_staff(
+            service_id=state.service_id,
+            starts_at=state.starts_at,
+        )
+        return {
+            "ok": bool(staff),
+            "operation": "availability",
+            "service_name": service.name,
+            "starts_at": state.starts_at.isoformat(),
+            "available_staff": [member.name for member in staff],
+            "message": (
+                "예약 가능한 담당자가 있습니다."
+                if staff
+                else "해당 시간에는 예약 가능한 담당자가 없습니다."
+            ),
+        }
+
+    async def _model_changed(
+        self,
+        state: SalonCallState,
+        text: str,
+        history: tuple[dict[str, str], ...],
+        change_type: str,
+        reservation: Reservation,
+    ) -> list[SalonEvent]:
+        service = self.policy.service(reservation.service_id)
+        staff = self.policy.staff_member(reservation.staff_id)
+        payload = _reservation_payload(reservation)
+        tool_result = {
+            "ok": True,
+            "operation": change_type,
+            "reservation_code": reservation.short_code,
+            "service_name": service.name,
+            "staff_name": staff.name,
+            "starts_at": reservation.starts_at.isoformat(),
+        }
+        message_events = await self._complete_model_tool(
+            state, text, history, tool_result
+        )
+        summary = str(message_events[0].payload["text"])
+        return [
+            *message_events,
+            SalonEvent(
+                "salon.reservation.updated",
+                {"change_type": change_type, "reservation": payload},
+            ),
+            SalonEvent(
+                "salon.owner.notification",
+                {
+                    "title": f"{self.policy.salon_name} 예약 알림",
+                    "body": summary,
+                    "change_type": change_type,
+                    "reservation_id": str(reservation.reservation_id),
+                },
+            ),
+        ]
+
+    async def _complete_model_tool(
+        self,
+        state: SalonCallState,
+        text: str,
+        history: tuple[dict[str, str], ...],
+        tool_result: dict[str, object],
+    ) -> list[SalonEvent]:
+        assert self._conversation_responder is not None
+        try:
+            reply = await self._conversation_responder.complete(
+                user_message=text,
+                state=self._model_state(state),
+                history=history,
+                tool_result=tool_result,
+            )
+            reply = _safe_model_reply(text, reply)
+        except SalonFaqResponderError:
+            reply = str(tool_result.get("message", "처리 결과를 확인해 주세요."))
+        return self._model_reply(state, reply)
+
+    def _apply_model_slots(
+        self,
+        state: SalonCallState,
+        decision: SalonTurnDecision,
+    ) -> None:
+        if decision.service_id is not None:
+            self.policy.service(decision.service_id)
+            state.service_id = decision.service_id
+        if decision.staff_id is not None:
+            self.policy.staff_member(decision.staff_id)
+            state.staff_id = decision.staff_id
+        if decision.starts_at is not None:
+            state.starts_at = decision.starts_at.astimezone(self.policy.timezone)
+        if decision.customer_name is not None:
+            state.customer_name = decision.customer_name
+        if decision.phone is not None:
+            state.phone = decision.phone
+        if decision.reservation_code is not None:
+            state.reservation_code = decision.reservation_code
+
+    def _model_state(self, state: SalonCallState) -> dict[str, object]:
+        return {
+            "action": state.action,
+            "service_id": state.service_id,
+            "staff_id": state.staff_id,
+            "starts_at": (
+                state.starts_at.isoformat() if state.starts_at is not None else None
+            ),
+            "customer_name": state.customer_name,
+            "phone": state.phone,
+            "reservation_code": state.reservation_code,
+            "awaiting_confirmation": state.awaiting_confirmation,
+        }
+
+    @staticmethod
+    def _missing_model_booking_field(state: SalonCallState) -> str | None:
+        if state.service_id is None:
+            return "service_id"
+        if state.starts_at is None:
+            return "starts_at"
+        if state.customer_name is None:
+            return "customer_name"
+        if state.phone is None:
+            return "phone"
+        return None
+
+    @staticmethod
+    def _append_history(
+        state: SalonCallState,
+        role: str,
+        content: str,
+    ) -> None:
+        state.history.append({"role": role, "content": content})
+        del state.history[:-12]
+
+    def _model_reply(
+        self,
+        state: SalonCallState,
+        text: str,
+    ) -> list[SalonEvent]:
+        self._append_history(state, "assistant", text)
+        return self._reply(text)
 
     def _availability(self, state: SalonCallState) -> list[SalonEvent]:
         if state.service_id is None:
@@ -562,3 +903,14 @@ def _reservation_payload(item: Reservation) -> dict[str, object]:
         "status": item.status,
         "version": item.version,
     }
+
+
+def _safe_model_reply(user_message: str, reply: str) -> str:
+    normalized = " ".join(reply.strip().split())
+    if not normalized or len(normalized) > 600:
+        raise SalonFaqResponderError("salon model reply is invalid")
+    user_key = re.sub(r"[\W_]+", "", user_message).casefold()
+    reply_key = re.sub(r"[\W_]+", "", normalized).casefold()
+    if len(user_key) >= 4 and reply_key == user_key:
+        raise SalonFaqResponderError("salon model echoed the caller")
+    return normalized
