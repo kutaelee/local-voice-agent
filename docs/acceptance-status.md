@@ -27,7 +27,7 @@ live runtime or physical-device test.
 | 17 | WSL failure has a diagnostic fallback | VERIFIED | Pinned native Windows llama.cpp CPU fallback passes Korean text, tool/schema, and streaming smokes. |
 | 18 | Android debug APK exists | VERIFIED | Version 0.6.9 API 37 debug APK is v2-signed and hash-recorded. |
 | 19 | Install and removal are documented | VERIFIED | Runbook, installation, rollback, artifact, runtime, and model manifests are tracked. |
-| 20 | A new environment can reproduce the system from docs | VERIFIED | A fresh public clone at `734405e` with an empty Gradle cache passed prerequisites, 10 validators, 25 root tests, Android 15 tests, lint, and byte-identical debug/release builds. |
+| 20 | A new environment can reproduce the system from docs | VERIFIED | A fresh public clone at `9612857` with an empty Gradle cache passed plan-only discovery, 10 validators, 28 root tests, three private-CA tests, Android 30 tests, lint, and byte-identical 0.6.9 debug/release builds. |
 
 ## Current totals
 
@@ -50,7 +50,7 @@ live runtime or physical-device test.
 - Live model switch:
   `E:\Data\LocalVoiceAgent\runtime\evidence\model-switch\live-model-switch-20260724T011306766Z.json`
 - Clean-clone reproduction:
-  `E:\Data\LocalVoiceAgent\runtime\evidence\reproduction\clean-clone-734405e.json`
+  `E:\Data\LocalVoiceAgent\runtime\evidence\reproduction\clean-clone-9612857.json`
 - Android artifacts:
   `E:\Data\LocalVoiceAgent\artifacts\android\0.6.9-api37`
 - Detailed executed tests: `docs/test-report.md`

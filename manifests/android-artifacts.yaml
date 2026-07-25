@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-25T20:00:36+09:00"
+generated_at: "2026-07-25T20:16:58+09:00"
 application_id: dev.localvoiceagent.android
 version_code: 17
 version_name: "0.6.9"
@@ -9,8 +9,8 @@ target_sdk: 37
 artifacts:
   - kind: debug_apk
     path: 'E:\Data\LocalVoiceAgent\artifacts\android\0.6.9-api37\local-voice-agent-0.6.9-debug.apk'
-    size_bytes: 12933261
-    sha256: d5314c0eea101c695ab3713bbfce26676d0b5946b14272f9b97864d08f3e85f7
+    size_bytes: 12822182
+    sha256: bd81dc7463e75ea1d71abf1410c862ada6d5b66c5817867409dae0ffbe2a40c7
     signature: android_debug_v2_verified
     installable: true
   - kind: release_unsigned_apk
@@ -22,6 +22,8 @@ artifacts:
 validation:
   gradle_command: gradlew.bat --no-daemon --non-interactive testDebugUnitTest lintDebug assembleDebug; assembleRelease
   gradle_result: passed
+  public_clone_revision: 961285794b29cdd0a00d83c31833498f770641fc
+  public_clone_byte_identical: true
   unit_tests: 30
   unit_test_failures: 0
   lint_findings_after_fix: 0

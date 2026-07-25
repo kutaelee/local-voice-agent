@@ -23,7 +23,7 @@ Get-FileHash `
 ```
 
 Expected SHA-256:
-`d5314c0eea101c695ab3713bbfce26676d0b5946b14272f9b97864d08f3e85f7`.
+`bd81dc7463e75ea1d71abf1410c862ada6d5b66c5817867409dae0ffbe2a40c7`.
 
 ## Install and pair
 

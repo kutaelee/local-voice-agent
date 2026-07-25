@@ -16,7 +16,7 @@ def test_physical_android_qa_is_device_bound_and_privacy_preserving() -> None:
     assert "$metadata.app_version_code -ne 17" in source
     assert "$metadata.app_version_name -ne '0.6.9'" in source
     assert (
-        "d5314c0eea101c695ab3713bbfce26676d0b5946b14272f9b97864d08f3e85f7"
+        "bd81dc7463e75ea1d71abf1410c862ada6d5b66c5817867409dae0ffbe2a40c7"
         in source
     )
     assert "Physical QA refuses emulator devices" in source
