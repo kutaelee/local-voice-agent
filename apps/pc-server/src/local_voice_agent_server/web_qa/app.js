@@ -59,6 +59,7 @@ const state = {
   listening: false,
   manuallyStopped: false,
   inputStreamId: null,
+  rejectedInputRequestId: null,
   inputChunkIndex: 0,
   currentRequestId: null,
   mediaStream: null,
@@ -712,6 +713,21 @@ function respondApproval(approved) {
 
 function handleServerEvent(envelope) {
   const { type, payload } = envelope;
+  if (
+    type === "error"
+    && payload.error_code === "AUDIO_STREAM_INVALID"
+  ) {
+    const duplicate = state.rejectedInputRequestId === envelope.request_id;
+    state.rejectedInputRequestId = envelope.request_id;
+    if (
+      envelope.request_id === state.currentRequestId
+      && state.listening
+    ) {
+      state.manuallyStopped = true;
+      stopCapture(false, "server_rejected_stream");
+    }
+    if (duplicate) return;
+  }
   addEvent(`← ${type}`, payload);
   if (type === "assistant.state") {
     if (payload.state === "connecting" && payload.detail === "authenticated") {

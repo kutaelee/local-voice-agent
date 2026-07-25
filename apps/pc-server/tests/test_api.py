@@ -141,7 +141,10 @@ def test_qa_portal_is_local_static_content_without_secrets() -> None:
     assert "frame-ancestors 'none'" in response.headers[
         "content-security-policy"
     ]
-    assert client().get("/qa/app.js").status_code == 200
+    app_script = client().get("/qa/app.js")
+    assert app_script.status_code == 200
+    assert "state.rejectedInputRequestId === envelope.request_id" in app_script.text
+    assert 'stopCapture(false, "server_rejected_stream")' in app_script.text
     assert client().get("/qa/styles.css").status_code == 200
     assert client().get("/qa/pcm-worklet.js").status_code == 200
 

@@ -1,11 +1,17 @@
 package dev.localvoiceagent.android.network
 
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
@@ -19,6 +25,51 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PcGatewayClientTest {
+    @Test
+    fun explicitRequestIdCorrelatesVoiceTurnFrames() = runBlocking {
+        val sent = mutableListOf<String>()
+
+        class FakeSocket(private val request: okhttp3.Request) : WebSocket {
+            override fun request(): okhttp3.Request = request
+            override fun queueSize(): Long = 0
+            override fun send(text: String): Boolean = sent.add(text)
+            override fun send(bytes: okio.ByteString): Boolean = true
+            override fun close(code: Int, reason: String?): Boolean = true
+            override fun cancel() = Unit
+        }
+
+        val gateway = PcGatewayClient(
+            scope = this,
+            socketFactory = { request, _ -> FakeSocket(request) },
+        )
+        gateway.connect(
+            "wss://localhost:9443",
+            "test-only-pairing-token-with-32-chars",
+        )
+        val requestId = UUID.randomUUID()
+        for (type in listOf("audio.input.start", "audio.input.chunk", "audio.input.end")) {
+            assertTrue(
+                gateway.send(
+                    type = type,
+                    payload = buildJsonObject { put("test", type) },
+                    requestId = requestId,
+                ),
+            )
+        }
+
+        assertEquals(
+            listOf(requestId.toString(), requestId.toString(), requestId.toString()),
+            sent.map {
+                Json.parseToJsonElement(it)
+                    .jsonObject
+                    .getValue("request_id")
+                    .jsonPrimitive
+                    .content
+            },
+        )
+        gateway.disconnect()
+    }
+
     @Test
     fun trustedTlsWebSocketSendsBearerAndValidatesServerEnvelope() = runBlocking {
         val certificate = HeldCertificate.Builder()

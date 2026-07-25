@@ -5,7 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.util.Base64
 import androidx.core.app.ActivityCompat
@@ -14,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import dev.localvoiceagent.android.audio.PcmPlayer
 import dev.localvoiceagent.android.audio.PcmRecorder
 import dev.localvoiceagent.android.audio.VoiceSessionService
@@ -87,6 +87,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
     @Volatile
     private var inputStreamId: UUID? = null
+    @Volatile
+    private var inputRequestId: UUID? = null
     private var inputChunkIndex = 0
 
     val state: StateFlow<AppUiState> = mutableState.asStateFlow()
@@ -328,7 +330,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun readReferenceWav(contentUri: String): ByteArray =
         withContext(Dispatchers.IO) {
-            val uri = Uri.parse(contentUri)
+            val uri = contentUri.toUri()
             val resolver = getApplication<Application>().contentResolver
             resolver.openInputStream(uri)?.use { input ->
                 val output = ByteArrayOutputStream()
@@ -430,6 +432,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             player.stop()
         }
         val streamId = UUID.randomUUID()
+        val requestId = UUID.randomUUID()
         val sent = gateway.send(
             type = "audio.input.start",
             payload = buildJsonObject {
@@ -438,12 +441,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 put("sample_rate_hz", PcmRecorder.SAMPLE_RATE_HZ)
                 put("channels", PcmRecorder.CHANNELS)
             },
+            requestId = requestId,
         )
         if (!sent) {
             reduce(AppAction.ReportError("Audio stream could not be started"))
             return
         }
         inputStreamId = streamId
+        inputRequestId = requestId
         inputChunkIndex = 0
         runCatching {
             ContextCompat.startForegroundService(
@@ -452,6 +457,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         }.onFailure {
             inputStreamId = null
+            inputRequestId = null
             reduce(AppAction.ReportError("Microphone foreground service could not start"))
             return
         }
@@ -464,6 +470,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun sendAudioChunk(data: ByteArray, durationMs: Int) {
         val streamId = inputStreamId ?: return
+        val requestId = inputRequestId ?: return
         val sent = gateway.send(
             type = "audio.input.chunk",
             payload = buildJsonObject {
@@ -473,6 +480,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 put("duration_ms", durationMs)
                 put("data_base64", Base64.encodeToString(data, Base64.NO_WRAP))
             },
+            requestId = requestId,
         )
         if (!sent) {
             viewModelScope.launch {
@@ -485,14 +493,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun stopListening(reason: String, sendEvent: Boolean = true) {
         recorder.stop()
         val streamId = inputStreamId
+        val requestId = inputRequestId
         inputStreamId = null
-        if (sendEvent && streamId != null) {
+        inputRequestId = null
+        if (sendEvent && streamId != null && requestId != null) {
             gateway.send(
                 type = "audio.input.end",
                 payload = buildJsonObject {
                     put("audio_stream_id", streamId.toString())
                     put("reason", reason)
                 },
+                requestId = requestId,
             )
         }
         stopVoiceService()
@@ -720,12 +731,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 "model.switch.completed" -> reduce(
                     AppAction.SetAssistantState(AssistantState.THINKING),
                 )
-                "error" -> reduce(
-                    AppAction.ReportError(
-                        envelope.payload["message"]?.jsonPrimitive?.contentOrNull
-                            ?: "Server reported an error",
-                    ),
-                )
+                "error" -> {
+                    val errorCode = envelope.payload["error_code"]
+                        ?.jsonPrimitive
+                        ?.contentOrNull
+                    if (
+                        errorCode == "AUDIO_STREAM_INVALID"
+                        && envelope.requestId == inputRequestId
+                        && recorder.isActive
+                    ) {
+                        stopListening("server_rejected_stream", sendEvent = false)
+                    }
+                    reduce(
+                        AppAction.ReportError(
+                            envelope.payload["message"]?.jsonPrimitive?.contentOrNull
+                                ?: "Server reported an error",
+                        ),
+                    )
+                }
             }
         }.onFailure {
             reduce(AppAction.ReportError("Server payload validation failed"))
@@ -750,15 +773,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun showSalonNotification(title: String, body: String) {
         val application = getApplication<Application>()
         val manager = application.getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    SALON_NOTIFICATION_CHANNEL,
-                    "Salon reservations",
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ),
-            )
-        }
+        manager.createNotificationChannel(
+            NotificationChannel(
+                SALON_NOTIFICATION_CHANNEL,
+                "Salon reservations",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ),
+        )
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ActivityCompat.checkSelfPermission(
