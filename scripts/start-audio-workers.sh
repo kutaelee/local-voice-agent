@@ -6,7 +6,7 @@ run_root="/home/kutae/.local/share/local-voice-agent/run"
 log_root="/mnt/e/Data/LocalVoiceAgent/runtime/logs"
 stt_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1/.venv"
 tts_engine="${LVA_TTS_ENGINE:-qwen3}"
-qwen3_tts_size="${LVA_QWEN3_TTS_SIZE:-1.7b}"
+qwen3_tts_size="${LVA_QWEN3_TTS_SIZE:-0.6b}"
 vad_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/vad-silero-6.2.1/.venv"
 stt_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/stt/faster-whisper-large-v3-turbo/0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf"
 voice_profiles_root="/mnt/e/Data/LocalVoiceAgent/voice-profiles"
@@ -161,6 +161,16 @@ echo "${tts_pid}" >"${run_root}/tts.pid"
 if ! wait_for_health "${tts_socket}" 120; then
   echo "TTS worker failed health check; see ${log_root}/tts-worker.log" >&2
   exit 7
+fi
+
+if [[ "${tts_engine}" == "qwen3" ]]; then
+  if ! "${tts_runtime}/bin/python" \
+    "${repo}/scripts/warm-qwen3-tts-worker.py" \
+    --socket "${tts_socket}" \
+    --voice-profiles-root "${voice_profiles_root}"; then
+    echo "Qwen3-TTS warm-up failed; refusing to advertise a cold call path." >&2
+    exit 8
+  fi
 fi
 
 trap - ERR

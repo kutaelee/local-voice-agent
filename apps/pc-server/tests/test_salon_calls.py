@@ -63,7 +63,9 @@ def test_call_starts_with_bounded_salon_persona(tmp_path: Path) -> None:
             "salon.assistant.message",
             "assistant.state",
         ]
-        assert "윤슬 헤어 예약 도우미 수아" in _texts(events)[0]
+        assert _texts(events)[0] == (
+            "안녕하세요, 윤슬 헤어 수아입니다. 무엇을 도와드릴까요?"
+        )
 
     asyncio.run(scenario())
 

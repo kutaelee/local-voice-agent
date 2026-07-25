@@ -224,6 +224,24 @@ firewall change was made.
 | Repository validators | Passed | 10/10 validators; 32 protocol events and 75 tool contracts |
 | User listening and physical notification QA | Not run | Deliberately deferred until all automated regressions and deployment startup are complete |
 
+### Qwen3-TTS 0.6B same-harness latency recheck
+
+The exact prior availability prompt reached first audio 3,057 ms after text
+with no reported playback gap, versus 11,190 ms on the prior 1.7B observation.
+The 72.7% reduction is a single live A/B observation, not p50/p95. A cold
+0.6B greeting still took 11,177 ms, so startup now warms the selected voice
+profile and discards the warm-up PCM before readiness. Listening QA remains
+pending. The warm-up completed in 4,720 ms without retaining audio. The
+selected shortened greeting then reached first audio in 4,797 ms. A still
+shorter identity-only wording was rejected after it took 14,992 ms and
+produced 23 chunks under the same deterministic seed.
+
+The final registered `gpuq` job
+`4f448a5b-a114-4565-be9d-0a5d77054a51` reported the selected-profile warm-up
+as 4,720.1 ms for 2,080 ms of discarded PCM, then marked VAD, STT, and
+Qwen3-TTS 0.6B ready. The loopback QA server returned HTTP 200 and was left
+running on port 46326 for listening QA.
+
 ## 2026-07-25 salon voice routing and ending regression
 
 | Check | Result | Evidence |

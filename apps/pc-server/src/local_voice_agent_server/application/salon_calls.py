@@ -189,9 +189,8 @@ class SalonCallCoordinator:
         state = SalonCallState(call_id=uuid4(), started_at=self._normalized_now())
         self._calls[session_id] = state
         greeting = (
-            f"안녕하세요, {self.policy.salon_name} 예약 도우미 "
-            f"{self.policy.receptionist_name}입니다. "
-            "예약, 변경, 취소, 시술 가격과 영업시간을 도와드릴게요."
+            f"안녕하세요, {self.policy.salon_name} "
+            f"{self.policy.receptionist_name}입니다. 무엇을 도와드릴까요?"
         )
         self._append_history(state, "assistant", greeting)
         return [

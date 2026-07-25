@@ -127,12 +127,16 @@ produced three contextual persona responses instead of repeating the missing
 field prompt. Evidence is stored outside Git at
 `E:\Data\LocalVoiceAgent\runtime\evidence\salon-harness-live-20260725T1137.json`.
 
-`LVA_SALON_TTS_ENABLED=1` attaches the existing Qwen3-TTS 1.7B worker to each
-completed salon text response. One assistant response is synthesized as one
-unit to avoid sentence-boundary voice changes. The gateway applies a 24 ms
-release and a 200 ms final pause, then emits the existing ordered
-`audio.output.*` events. A TTS failure does not invalidate a successful text
-or reservation result.
+`LVA_SALON_TTS_ENABLED=1` attaches the existing Qwen3-TTS worker to each
+completed salon text response. The interactive stack defaults to the 0.6B
+Base checkpoint for latency and retains `LVA_QWEN3_TTS_SIZE=1.7b` as the
+quality-comparison rollback. Startup performs one selected-profile synthesis
+without retaining its PCM before the stack is reported ready, so the first
+accepted call does not pay lazy decoder and prompt-cache initialization.
+One assistant response is synthesized as one unit to avoid sentence-boundary
+voice changes. The gateway applies a 24 ms release and a 200 ms final pause,
+then emits the existing ordered `audio.output.*` events. A TTS failure does
+not invalidate a successful text or reservation result.
 
 The live two-sample TTS smoke passed, but full synthesis completed in
 8,460.720 ms for the greeting and 5,096.497 ms for the confirmation. These

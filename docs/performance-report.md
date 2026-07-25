@@ -588,3 +588,40 @@ This deliberately trades 1.9 seconds of greeting first-audio latency for
 continuous speaker identity, prosody, and sentence transitions. The remaining
 latency is a known limitation of the installed wrapper's complete-waveform
 API. End-phoneme quality still requires listening confirmation.
+
+## Qwen3-TTS 0.6B same-harness recheck (2026-07-25)
+
+The local knowledge index showed that the earlier 0.6B-to-1.7B rollback
+coincided with browser playback ordering, stochastic speaker sampling, style
+routing, and codec-limit changes. It therefore did not isolate checkpoint
+size. After those defects were corrected, the exact live availability prompt
+used for the 1.7B observation above was repeated through the same Web QA
+gateway with official Qwen3-TTS 0.6B Base revision `5d839924...`.
+
+| Live item | Qwen3-TTS 1.7B | Qwen3-TTS 0.6B |
+|---|---:|---:|
+| Same availability reply, first audio after text | 11,190 ms | 3,057 ms |
+| Largest reported playback gap | none | none |
+| Relative first-audio reduction | baseline | 72.7% |
+| First greeting after worker start | 8,508 ms | 11,177 ms |
+| Selected-profile warm-up before readiness | not measured | 4,720 ms; PCM discarded |
+| Warm shortened greeting | not measured | 4,797 ms |
+
+These are individual live observations, not a latency distribution. The
+0.6B warm result is materially faster, but its cold greeting shows that model
+load health alone does not warm the codec decoder and selected prompt path.
+The registered startup path now performs one short selected-profile synthesis
+and discards the PCM before reporting readiness. Subjective Korean prosody,
+speaker identity, and final-phoneme quality remain user listening QA. Set
+`LVA_QWEN3_TTS_SIZE=1.7b` before startup to roll back.
+
+An even shorter greeting ending immediately after the receptionist identity
+was rejected: with the same deterministic profile seed it missed an early EOS,
+produced 23 PCM chunks, and took 14,992 ms to first audio. Qwen synthesis time
+is therefore not monotonic with text length. The verified 4,797 ms greeting
+ending in `무엇을 도와드릴까요?` remains selected.
+
+After idle ComfyUI weights were released without stopping its service, the
+running 0.6B voice stack plus a separate 2 GiB Android-emulator reservation
+used 15,720 MiB total GPU memory and left 16,468 MiB free. This is a
+point-in-time coexistence observation, not a per-process VRAM attribution.

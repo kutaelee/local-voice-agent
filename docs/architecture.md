@@ -180,10 +180,13 @@ detailed in [`audio-design.md`](audio-design.md).
 
 The current voice composition uses three authenticated mode-0600 Unix-socket
 workers: Silero VAD 6.2.1 on CPU ONNX, faster-whisper on its isolated CUDA 12
-stack, and Qwen3-TTS 1.7B Base on its isolated CUDA 13 stack. Qwen reference
+stack, and Qwen3-TTS 0.6B Base on its isolated CUDA 13 stack. The 1.7B Base
+checkpoint remains an explicit quality-comparison rollback. Qwen reference
 audio and exact transcripts stay in external application data; a bounded
 four-entry prompt cache supports sentence-level neutral/happy/dark/advert
-tone changes. Chatterbox V3 remains an isolated rollback fallback. VAD consumes ordered
+tone changes. The selected profile is warmed once before the stack is marked
+ready, and the generated warm-up PCM is discarded. Chatterbox V3 remains an
+isolated rollback fallback. VAD consumes ordered
 PCM chunks and returns a server endpoint decision; Android then stops capture
 and sends the terminal input event. Voice-response completion runs as a
 background task so a monotonic cancellation event can be processed while
