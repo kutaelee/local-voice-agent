@@ -58,3 +58,9 @@ def test_physical_android_qa_covers_all_documented_cases() -> None:
     assert "Every physical QA case must have a terminal outcome" in source
     assert "Get-FileHash" in source
     assert "Write-EvidenceAtomically" in source
+    assert "$ErrorActionPreference = 'Continue'" in source
+    assert "$exitCode = $LASTEXITCODE" in source
+    assert "ADB exited $exitCode" in source
+    assert "$adbWasRunning" in source
+    assert "Invoke-Adb -Arguments @('kill-server')" in source
+    assert "Unable to stop the QA-started ADB server." in source

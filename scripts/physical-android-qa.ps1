@@ -72,10 +72,20 @@ $caseNames = @(
 function Invoke-Adb {
     param([string[]]$Arguments)
 
-    $output = @(& $adb @Arguments 2>&1)
-    if ($LASTEXITCODE -ne 0) {
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        # Windows PowerShell wraps native stderr as ErrorRecord instances.
+        # ADB writes its normal first-start daemon notice to stderr, so the
+        # script captures it while preserving the native exit-code gate.
+        $ErrorActionPreference = 'Continue'
+        $output = @(& $adb @Arguments 2>&1)
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($exitCode -ne 0) {
         throw (
-            "ADB exited $LASTEXITCODE for the registered QA operation: " +
+            "ADB exited $exitCode for the registered QA operation: " +
             (($output | ForEach-Object { $_.ToString() }) -join ' ')
         )
     }
@@ -239,12 +249,21 @@ function Read-Evidence {
     return $value
 }
 
-$serial = $null
-if ($Action -in @('preflight', 'install', 'initialize', 'finalize')) {
-    $serial = Get-PhysicalDeviceSerial
-}
+$adbWasRunning = @(
+    Get-Process -Name adb -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Path -and
+            $_.Path.Equals($adb, [StringComparison]::OrdinalIgnoreCase)
+        }
+).Count -gt 0
 
-switch ($Action) {
+try {
+    $serial = $null
+    if ($Action -in @('preflight', 'install', 'initialize', 'finalize')) {
+        $serial = Get-PhysicalDeviceSerial
+    }
+
+    switch ($Action) {
     'preflight' {
         $hash = Get-VerifiedApkHash
         [ordered]@{
@@ -379,5 +398,28 @@ switch ($Action) {
         Write-Output "physical_qa_result=$($evidence.result)"
         Write-Output "physical_qa_evidence=$full"
         Write-Output "physical_qa_evidence_sha256=$hash"
+    }
+    }
+}
+finally {
+    if (-not $adbWasRunning) {
+        $ownedAdb = @(
+            Get-Process -Name adb -ErrorAction SilentlyContinue |
+                Where-Object {
+                    $_.Path -and
+                    $_.Path.Equals(
+                        $adb,
+                        [StringComparison]::OrdinalIgnoreCase
+                    )
+                }
+        )
+        if ($ownedAdb.Count -gt 0) {
+            try {
+                Invoke-Adb -Arguments @('kill-server') | Out-Null
+            }
+            catch {
+                Write-Warning 'Unable to stop the QA-started ADB server.'
+            }
+        }
     }
 }

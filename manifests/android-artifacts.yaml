@@ -43,6 +43,7 @@ validation:
   llm_tts_overlap_test: bounded_queue_consumes_later_deltas_while_tts_runs
   legacy_endpoint_migration_test: exact_wss_8765_to_46321_only
   input_stream_correlation_test: one_request_id_for_start_chunks_and_end_stale_rejection_stops_capture
+  physical_qa_preflight_test: cold_adb_owned_and_no_device_rejected
   ui_evidence:
     initial_issue: status_bar_overlap_and_eight_item_bottom_row_clipping
     previous_emulator_qa: 'E:\Data\LocalVoiceAgent\runtime\evidence\android\android-0.6.2-emulator-qa.json'
