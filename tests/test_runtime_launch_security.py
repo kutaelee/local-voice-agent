@@ -76,6 +76,9 @@ def test_pc_server_voice_mode_is_explicit_and_self_contained() -> None:
     start = script("start-server.ps1")
 
     assert "[switch]$EnableVoice" in start
+    assert "[switch]$AllowVoiceWorkersUnavailable" in start
+    assert "$InstanceName -ne 'web-qa'" in start
+    assert "-not $isLoopback" in start
     assert "Required audio worker socket is unavailable" in start
     assert "scripts/audio-worker-health.py" in start
     assert "Required audio worker failed health" in start

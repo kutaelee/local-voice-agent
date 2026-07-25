@@ -325,3 +325,15 @@ Structured evidence:
 Structured evidence:
 `E:\Data\LocalVoiceAgent\runtime\evidence\web-qa\microphone-recovery-20260725T125744Z.json`
 (SHA-256 `457a3c24f2c501502800d92444e19cf877016a1ab3fd77f805eaccad1bd670e2`).
+
+## 2026-07-25 unavailable voice-worker capture regression
+
+| Check | Result | Evidence |
+|---|---|---|
+| Failure reproduction | Confirmed | At 22:33:55 the portal sent PCM while the `gpuq` voice-stack reservation was still queued; the gateway log recorded a missing VAD Unix socket and emitted `EVENT_HANDLER_FAILED` for each chunk |
+| Browser readiness gate | Passed (automated/live runtime) | **대화 시작** now requires ready model state and authenticated VAD, STT, and TTS health. Readiness is polled continuously, and loss of readiness stops active capture without an end marker. The restarted loopback gateway reported model `unavailable` and all three workers `false` while serving the new gate |
+| Server failure boundary | Passed (automated) | A voice-worker connection failure returns retryable `VOICE_WORKER_UNAVAILABLE`, removes the active turn, releases the model-usage hold, and handles a later stale chunk as `AUDIO_STREAM_INVALID` |
+| Focused regression | Passed | JavaScript syntax validation plus seven session-event/portal tests passed |
+| Repository checks | Passed | 31 platform-neutral root tests and all 10 repository validators passed |
+| Full Windows suite | Environment-limited | The full Windows invocation reached existing AF_UNIX/WSL-only and large parametrized cases; focused changed-area tests passed. The canonical full suite remains a WSL run |
+| Live voice retry | Not run | The shared GPU job remained queued behind another workload; no reservation was bypassed or cancelled |

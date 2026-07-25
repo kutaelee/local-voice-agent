@@ -16,6 +16,7 @@ from local_voice_agent_server.application.voice_turn import (
     ConversationReply,
     SynthesizedAudio,
     Transcript,
+    VoiceDependencyUnavailable,
     VoiceEvent,
     VoiceTurnService,
 )
@@ -48,6 +49,83 @@ def factory(*_: object) -> VoiceTurnService:
         conversation=FakeConversation(),
         tts=FakeTts(),
     )
+
+
+def test_voice_worker_failure_closes_turn_and_releases_model_usage() -> None:
+    class FailingVad:
+        async def analyze(self, **_: object) -> object:
+            raise VoiceDependencyUnavailable("worker connection failed")
+
+        async def close(self, **_: object) -> None:
+            return None
+
+    def failing_factory(*_: object) -> VoiceTurnService:
+        return VoiceTurnService(
+            stt=FakeStt(),
+            conversation=FakeConversation(),
+            tts=FakeTts(),
+            vad=FailingVad(),
+        )
+
+    async def scenario() -> None:
+        barrier = ModelActivityBarrier()
+        handler = VoiceSessionEventHandler(
+            failing_factory,
+            model_activity_barrier=barrier,
+        )
+        session_id = uuid4()
+        request_id = uuid4()
+        stream_id = uuid4()
+        await handler.handle(
+            session_id=session_id,
+            request_id=request_id,
+            event_type="audio.input.start",
+            payload=validate_client_payload(
+                "audio.input.start",
+                {
+                    "audio_stream_id": str(stream_id),
+                    "encoding": "pcm_s16le",
+                    "sample_rate_hz": 16_000,
+                    "channels": 1,
+                },
+            ),
+        )
+        chunk = validate_client_payload(
+            "audio.input.chunk",
+            {
+                "audio_stream_id": str(stream_id),
+                "chunk_index": 0,
+                "encoding": "pcm_s16le",
+                "duration_ms": 20,
+                "data_base64": base64.b64encode(b"\x00\x01" * 160).decode(),
+            },
+        )
+        failed = await handler.handle(
+            session_id=session_id,
+            request_id=request_id,
+            event_type="audio.input.chunk",
+            payload=chunk,
+        )
+        assert failed[0].payload == {
+            "error_code": "VOICE_WORKER_UNAVAILABLE",
+            "message": (
+                "Voice processing workers are unavailable. "
+                "Wait for the GPU voice stack to become ready and retry."
+            ),
+            "component": "voice_worker",
+            "retryable": True,
+        }
+        assert barrier.active_users == 0
+
+        stale = await handler.handle(
+            session_id=session_id,
+            request_id=request_id,
+            event_type="audio.input.chunk",
+            payload=chunk,
+        )
+        assert stale[0].payload["error_code"] == "AUDIO_STREAM_INVALID"
+
+    asyncio.run(scenario())
 
 
 def test_voice_session_routes_complete_turn_and_releases_session() -> None:

@@ -13,11 +13,12 @@ from ..application.voice_turn import (
     SynthesizedAudio,
     Transcript,
     VoiceActivityDecision,
+    VoiceDependencyUnavailable,
 )
 from .voice_profiles import VoiceSynthesisOptions
 
 
-class AudioWorkerError(RuntimeError):
+class AudioWorkerError(VoiceDependencyUnavailable):
     pass
 
 

@@ -16,7 +16,9 @@ param(
 
     [switch]$EnableTools,
 
-    [switch]$EnableVoice
+    [switch]$EnableVoice,
+
+    [switch]$AllowVoiceWorkersUnavailable
 )
 
 $ErrorActionPreference = 'Stop'
@@ -80,6 +82,19 @@ if (-not [System.Net.IPAddress]::TryParse($ListenAddress, [ref]$parsedAddress)) 
     throw 'ListenAddress must be a numeric IP address; hostnames and wildcard bindings are rejected.'
 }
 $isLoopback = [System.Net.IPAddress]::IsLoopback($parsedAddress)
+if (
+    $AllowVoiceWorkersUnavailable -and
+    (
+        -not $EnableVoice -or
+        -not $isLoopback -or
+        $InstanceName -ne 'web-qa'
+    )
+) {
+    throw (
+        '-AllowVoiceWorkersUnavailable is restricted to the loopback ' +
+        'web-qa instance with -EnableVoice.'
+    )
+}
 $tlsEnabled = -not [string]::IsNullOrWhiteSpace($TlsCertificatePath) -or
     -not [string]::IsNullOrWhiteSpace($TlsPrivateKeyPath)
 if ($tlsEnabled -and ([string]::IsNullOrWhiteSpace($TlsCertificatePath) -or [string]::IsNullOrWhiteSpace($TlsPrivateKeyPath))) {
@@ -204,72 +219,74 @@ if ($EnableVoice) {
             socket = '/home/kutae/.local/share/local-voice-agent/run/tts.sock'
         }
     )
-    foreach ($worker in $audioWorkers) {
-        wsl.exe -d Ubuntu -- test -S $worker.socket
-        if ($LASTEXITCODE -ne 0) {
-            throw "Required audio worker socket is unavailable: $($worker.socket)"
-        }
-    }
-    $workerHealthScript = (
-        '/mnt/c/Dev/Repos/local-voice-agent/' +
-        'scripts/audio-worker-health.py'
-    )
-    $previousWorkerWslEnv = $env:WSLENV
-    $workerBridgeEntries = @('LVA_AUDIO_WORKER_TOKEN')
-    if ($previousWorkerWslEnv) {
-        $workerBridgeEntries += $previousWorkerWslEnv
-    }
-    $env:WSLENV = $workerBridgeEntries -join ':'
-    try {
+    if (-not $AllowVoiceWorkersUnavailable) {
         foreach ($worker in $audioWorkers) {
-            $healthOutput = @(
-                wsl.exe -d Ubuntu -- `
-                    $wslPython `
-                    $workerHealthScript `
-                    $worker.socket `
-                    2>$null
-            )
+            wsl.exe -d Ubuntu -- test -S $worker.socket
             if ($LASTEXITCODE -ne 0) {
-                throw (
-                    "Required audio worker failed health: " +
-                    $worker.component
-                )
-            }
-            try {
-                $workerHealth = (
-                    ($healthOutput -join "`n") | ConvertFrom-Json
-                )
-            }
-            catch {
-                throw (
-                    "Required audio worker returned invalid health: " +
-                    $worker.component
-                )
-            }
-            $reportedComponent = [string]$workerHealth.component
-            if (
-                -not $reportedComponent -and
-                [string]$workerHealth.worker
-            ) {
-                $reportedComponent = "$($workerHealth.worker)-worker"
-            }
-            if (
-                $workerHealth.status -ne 'ok' -or
-                $reportedComponent -ne $worker.component
-            ) {
-                throw (
-                    "Required audio worker returned unexpected health: " +
-                    $worker.component
-                )
+                throw "Required audio worker socket is unavailable: $($worker.socket)"
             }
         }
-    }
-    finally {
-        if ($null -eq $previousWorkerWslEnv) {
-            Remove-Item Env:WSLENV -ErrorAction SilentlyContinue
+        $workerHealthScript = (
+            '/mnt/c/Dev/Repos/local-voice-agent/' +
+            'scripts/audio-worker-health.py'
+        )
+        $previousWorkerWslEnv = $env:WSLENV
+        $workerBridgeEntries = @('LVA_AUDIO_WORKER_TOKEN')
+        if ($previousWorkerWslEnv) {
+            $workerBridgeEntries += $previousWorkerWslEnv
         }
-        else {
-            $env:WSLENV = $previousWorkerWslEnv
+        $env:WSLENV = $workerBridgeEntries -join ':'
+        try {
+            foreach ($worker in $audioWorkers) {
+                $healthOutput = @(
+                    wsl.exe -d Ubuntu -- `
+                        $wslPython `
+                        $workerHealthScript `
+                        $worker.socket `
+                        2>$null
+                )
+                if ($LASTEXITCODE -ne 0) {
+                    throw (
+                        "Required audio worker failed health: " +
+                        $worker.component
+                    )
+                }
+                try {
+                    $workerHealth = (
+                        ($healthOutput -join "`n") | ConvertFrom-Json
+                    )
+                }
+                catch {
+                    throw (
+                        "Required audio worker returned invalid health: " +
+                        $worker.component
+                    )
+                }
+                $reportedComponent = [string]$workerHealth.component
+                if (
+                    -not $reportedComponent -and
+                    [string]$workerHealth.worker
+                ) {
+                    $reportedComponent = "$($workerHealth.worker)-worker"
+                }
+                if (
+                    $workerHealth.status -ne 'ok' -or
+                    $reportedComponent -ne $worker.component
+                ) {
+                    throw (
+                        "Required audio worker returned unexpected health: " +
+                        $worker.component
+                    )
+                }
+            }
+        }
+        finally {
+            if ($null -eq $previousWorkerWslEnv) {
+                Remove-Item Env:WSLENV -ErrorAction SilentlyContinue
+            }
+            else {
+                $env:WSLENV = $previousWorkerWslEnv
+            }
         }
     }
     if (-not $env:LVA_VLLM_MODEL) {

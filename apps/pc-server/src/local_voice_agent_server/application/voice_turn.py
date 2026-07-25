@@ -14,6 +14,10 @@ from uuid import UUID, uuid4
 from ..domain.audio_stream import AudioStream
 
 
+class VoiceDependencyUnavailable(RuntimeError):
+    """A required voice worker or runtime endpoint cannot serve the turn."""
+
+
 @dataclass(frozen=True, slots=True)
 class Transcript:
     text: str

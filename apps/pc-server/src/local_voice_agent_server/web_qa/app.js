@@ -177,10 +177,11 @@ function showToast(message) {
 
 function setConnection(connected, label = connected ? "연결됨" : "연결 안 됨") {
   state.connected = connected;
+  if (!connected) state.modelControlPhase = "stopped";
   ui.connectionBadge.textContent = label;
   ui.connectionBadge.className = `badge ${connected ? "online" : "offline"}`;
   ui.connectButton.textContent = connected ? "연결 해제" : "연결";
-  ui.startButton.disabled = !connected;
+  updateVoiceStartButton();
   ui.stopButton.disabled = !connected || !state.listening;
   updateInterruptButton();
   ui.saveVoiceButton.disabled = !connected;
@@ -191,6 +192,15 @@ function setConnection(connected, label = connected ? "연결됨" : "연결 안 
   ui.salonSendButton.disabled = !connected || !state.salonCallActive;
   ui.salonRefreshButton.disabled = !connected;
   updateModelControlButtons();
+  scheduleModelStatusPoll();
+}
+
+function updateVoiceStartButton() {
+  ui.startButton.disabled = (
+    !state.connected
+    || state.listening
+    || state.modelControlPhase !== "ready"
+  );
 }
 
 function updateInterruptButton() {
@@ -234,6 +244,7 @@ function updateModelControlButtons() {
   ui.modelControlStatus.textContent = (
     labels[state.modelControlPhase] || state.modelControlPhase
   );
+  updateVoiceStartButton();
 }
 
 function applyRuntimeStatus(body) {
@@ -243,7 +254,8 @@ function applyRuntimeStatus(body) {
     && workerStates.every(Boolean)
   );
   const runtimeReady = body.runtime?.state === "ready";
-  if (runtimeReady && allWorkersReady) {
+  const voiceStackReady = runtimeReady && allWorkersReady;
+  if (voiceStackReady) {
     state.modelControlPhase = "ready";
   } else if (
     !["starting", "stopping"].includes(state.modelControlPhase)
@@ -254,20 +266,34 @@ function applyRuntimeStatus(body) {
         : "stopped"
     );
   }
+  if (!voiceStackReady && state.listening) {
+    state.manuallyStopped = true;
+    stopCapture(false, "voice_stack_unavailable");
+    stopPlayback();
+    setAssistant(
+      "error",
+      "음성 워커가 준비되지 않아 마이크 입력을 중단했습니다.",
+    );
+    showToast("모델과 음성 워커가 준비되면 다시 시작해 주세요.");
+  }
   updateModelControlButtons();
 }
 
 function scheduleModelStatusPoll() {
   clearTimeout(state.modelStatusPollTimer);
-  if (!["starting", "stopping"].includes(state.modelControlPhase)) return;
+  if (!state.connected) return;
+  const delayMs = (
+    ["starting", "stopping"].includes(state.modelControlPhase) ? 2500 : 5000
+  );
   state.modelStatusPollTimer = setTimeout(async () => {
     try {
-      await refreshDiagnostics();
+      const body = await api("/v1/qa/runtime-status");
+      applyRuntimeStatus(body);
     } catch {
       // The next bounded poll can recover from a transient restart.
     }
     scheduleModelStatusPoll();
-  }, 2500);
+  }, delayMs);
 }
 
 async function controlModel(action) {
@@ -620,6 +646,10 @@ function microphoneErrorMessage(error) {
 
 async function startListening() {
   if (!state.connected || state.listening) return;
+  if (state.modelControlPhase !== "ready") {
+    showToast("모델과 음성 워커가 아직 준비되지 않았습니다.");
+    return;
+  }
   state.manuallyStopped = false;
   stopPlayback();
   let media = null;
@@ -677,6 +707,7 @@ async function startListening() {
     state.captureNode = worklet;
     state.captureGain = silent;
     state.listening = true;
+    updateVoiceStartButton();
     ui.startButton.classList.add("active");
     ui.startButton.textContent = " 듣는 중";
     ui.startButton.prepend(Object.assign(document.createElement("span"), { className: "call-dot" }));
@@ -872,7 +903,9 @@ function handleServerEvent(envelope) {
   const { type, payload } = envelope;
   if (
     type === "error"
-    && payload.error_code === "AUDIO_STREAM_INVALID"
+    && ["AUDIO_STREAM_INVALID", "VOICE_WORKER_UNAVAILABLE"].includes(
+      payload.error_code,
+    )
   ) {
     const duplicate = state.rejectedInputRequestId === envelope.request_id;
     state.rejectedInputRequestId = envelope.request_id;

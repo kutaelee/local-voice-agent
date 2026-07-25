@@ -17,7 +17,11 @@ from ..protocol.client_events import (
     OperationCancelPayload,
 )
 from .model_switch import ModelActivityBarrier
-from .voice_turn import VoiceEvent, VoiceTurnService
+from .voice_turn import (
+    VoiceDependencyUnavailable,
+    VoiceEvent,
+    VoiceTurnService,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,6 +215,25 @@ class VoiceSessionEventHandler:
                     session_id=session_id,
                     payload=payload,
                 )
+        except VoiceDependencyUnavailable:
+            active_turn = self._active.pop(session_id, None)
+            if active_turn is not None:
+                active_turn.cancel_active()
+            await self._release_usage(session_id)
+            return [
+                OutboundEvent(
+                    "error",
+                    {
+                        "error_code": "VOICE_WORKER_UNAVAILABLE",
+                        "message": (
+                            "Voice processing workers are unavailable. "
+                            "Wait for the GPU voice stack to become ready and retry."
+                        ),
+                        "component": "voice_worker",
+                        "retryable": True,
+                    },
+                )
+            ]
         except (AudioStreamError, ValueError) as error:
             return [
                 OutboundEvent(

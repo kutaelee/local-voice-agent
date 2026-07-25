@@ -534,6 +534,7 @@ Executor, and PostgreSQL are healthy:
   -ListenAddress 127.0.0.1 `
   -Port 46326 `
   -EnableVoice `
+  -AllowVoiceWorkersUnavailable `
   -EnableTools
 ```
 
@@ -569,7 +570,16 @@ loopback QA session. The status is derived from the vLLM readiness record plus
 authenticated VAD, STT, and TTS health requests, so stale socket files do not
 appear healthy. A submitted job may remain queued while another GPU workload
 is active; refresh diagnostics or wait for the panel to change to **사용
-가능** before starting a voice turn.
+가능** before starting a voice turn. The portal polls this readiness
+continuously and keeps **대화 시작** disabled until the model plus all three
+voice workers are healthy. If readiness is lost during capture, it stops the
+microphone locally without sending another end marker. A worker connection
+failure is returned as retryable `VOICE_WORKER_UNAVAILABLE`, closes the
+server-side turn, and releases its model-usage hold instead of producing
+repeated `EVENT_HANDLER_FAILED` events for every PCM chunk.
+`-AllowVoiceWorkersUnavailable` is accepted only for the loopback `web-qa`
+instance; production/private-network launchers still fail closed unless all
+three workers are healthy at startup.
 
 If the browser reports that it cannot start the audio source before any
 `audio.input.start` event, the failure is local capture rather than VAD/STT.

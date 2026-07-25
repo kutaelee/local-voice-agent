@@ -163,6 +163,11 @@ def test_qa_portal_is_local_static_content_without_secrets() -> None:
     assert "if (cancelRequestId)" in app_script.text
     assert "state.listening || state.responseInterruptible" in app_script.text
     assert "음성 턴을 먼저 중지한 뒤 모델을 내려" in app_script.text
+    assert 'state.modelControlPhase !== "ready"' in app_script.text
+    assert '"VOICE_WORKER_UNAVAILABLE"' in app_script.text
+    assert 'api("/v1/qa/runtime-status")' in app_script.text
+    assert "if (!state.connected) return;" in app_script.text
+    assert 'stopCapture(false, "voice_stack_unavailable")' in app_script.text
     assert client().get("/qa/styles.css").status_code == 200
     assert client().get("/qa/pcm-worklet.js").status_code == 200
 
