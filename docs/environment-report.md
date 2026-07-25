@@ -85,6 +85,11 @@ release, initially Python 3.12 unless official wheels require otherwise.
 - Canonical ComfyUI app exists at `E:\AI\Apps\ComfyUI`.
 - Existing models are under `E:\AI\Models\ComfyUI` and
   `E:\AI\Models\Standalone`; no Gemma 4 checkpoint was found.
+
+Update on 2026-07-25: the subsequently downloaded Gemma, STT, and TTS
+snapshots are now canonical under `E:\AI\Models\HuggingFace\hub`; the original
+statement above records the initial Slice 0 observation rather than current
+model availability.
 - `HF_HOME` points to `E:\Cache\HuggingFace`; it contains no model snapshot.
 - The Ubuntu VHDX is `C:\WSL\Ubuntu\ext4.vhdx` and currently occupies
   approximately 24.137 GiB.

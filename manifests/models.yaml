@@ -1,6 +1,6 @@
 schema_version: "1.0"
 generated_at: "2026-07-24T04:40:50+09:00"
-model_root: 'E:\AI\Models\Standalone\LocalVoiceAgent'
+model_root: 'E:\AI\Models\HuggingFace\hub'
 status: all_selected_model_weights_downloaded
 models:
   - role: default_target
@@ -8,7 +8,7 @@ models:
     repository: https://huggingface.co/google/gemma-4-12B-it-qat-w4a16-ct
     revision: 1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee
     license: Apache-2.0
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\12b\target\1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-12B-it-qat-w4a16-ct\snapshots\1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee'
     weight_format: safetensors
     quantization: compressed-tensors W4A16 QAT
     size_bytes: 10296461612
@@ -25,7 +25,7 @@ models:
     repository: https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-unquantized-assistant
     revision: 18934064dd4c5c6cc3621f6381e7d377fc8cb7bd
     license: Apache-2.0
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\12b\mtp-assistant\18934064dd4c5c6cc3621f6381e7d377fc8cb7bd'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-12B-it-qat-q4_0-unquantized-assistant\snapshots\18934064dd4c5c6cc3621f6381e7d377fc8cb7bd'
     weight_format: safetensors
     quantization: Q4_0 QAT extracted half-precision assistant
     size_bytes: 877944019
@@ -42,7 +42,7 @@ models:
     repository: https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-unquantized
     revision: b6ed86275a6a5735884e208bfed95b445a684ca2
     license: Apache-2.0
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\12b\mtp-target\b6ed86275a6a5735884e208bfed95b445a684ca2'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-12B-it-qat-q4_0-unquantized\snapshots\b6ed86275a6a5735884e208bfed95b445a684ca2'
     weight_format: safetensors
     quantization: Q4_0 QAT extracted half-precision target
     size_bytes: 23951777679
@@ -59,7 +59,7 @@ models:
     repository: https://huggingface.co/google/gemma-4-31B-it-qat-w4a16-ct
     revision: 52f3f65bc7a02d555763bc923bd1d9094898219d
     license: Apache-2.0
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\31b\target\52f3f65bc7a02d555763bc923bd1d9094898219d'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-31B-it-qat-w4a16-ct\snapshots\52f3f65bc7a02d555763bc923bd1d9094898219d'
     weight_format: safetensors
     quantization: compressed-tensors W4A16 QAT
     size_bytes: 23297596043
@@ -76,7 +76,7 @@ models:
     repository: https://huggingface.co/google/gemma-4-31B-it-qat-q4_0-unquantized-assistant
     revision: 96d4c8ca3cb38c107a8478587878124895d1e844
     license: Apache-2.0
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\31b\mtp-assistant\96d4c8ca3cb38c107a8478587878124895d1e844'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-31B-it-qat-q4_0-unquantized-assistant\snapshots\96d4c8ca3cb38c107a8478587878124895d1e844'
     weight_format: safetensors
     quantization: Q4_0 QAT extracted half-precision assistant
     size_bytes: 971267211
@@ -93,7 +93,7 @@ models:
     repository: https://huggingface.co/google/gemma-4-31B-it-qat-q4_0-unquantized
     revision: 1e4d8beecacb8b7590c1d8bedd7335f687bf311f
     license: Apache-2.0
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\31b\mtp-target\1e4d8beecacb8b7590c1d8bedd7335f687bf311f'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-31B-it-qat-q4_0-unquantized\snapshots\1e4d8beecacb8b7590c1d8bedd7335f687bf311f'
     weight_format: sharded safetensors
     quantization: Q4_0 QAT extracted half-precision target
     size_bytes: 62578687966
@@ -114,7 +114,7 @@ models:
     source_model: google/gemma-4-12B-it
     revision: d72ee27227da2ba16c725180ddd507ee96208d23
     license: Apache-2.0
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\12b\fallback-gguf\d72ee27227da2ba16c725180ddd507ee96208d23'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--ggml-org--gemma-4-12B-it-GGUF\snapshots\d72ee27227da2ba16c725180ddd507ee96208d23'
     weight_format: GGUF
     quantization: Q4_0
     size_bytes: 7219673216
@@ -132,7 +132,7 @@ models:
     revision: 5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18
     source_revision: 5de7a54aa4e5e2baadb0182dde554908b48b85c2
     license: MIT
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\tts\chatterbox-multilingual-v3\5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--ResembleAI--chatterbox\snapshots\5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18'
     weight_format: pytorch and safetensors
     variant: Chatterbox Multilingual V3
     language: ko
@@ -161,7 +161,7 @@ models:
     repository: https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base
     revision: fd4b254389122332181a7c3db7f27e918eec64e3
     license: Apache-2.0
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\tts\qwen3-tts-12hz-1.7b-base\fd4b254389122332181a7c3db7f27e918eec64e3'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--Qwen--Qwen3-TTS-12Hz-1.7B-Base\snapshots\fd4b254389122332181a7c3db7f27e918eec64e3'
     weight_format: safetensors
     variant: Base voice cloning
     languages: [ko]
@@ -186,7 +186,7 @@ models:
     repository: https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base
     revision: 5d83992436eae1d760afd27aff78a71d676296fc
     license: Apache-2.0
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\tts\qwen3-tts-12hz-0.6b-base\5d83992436eae1d760afd27aff78a71d676296fc'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--Qwen--Qwen3-TTS-12Hz-0.6B-Base\snapshots\5d83992436eae1d760afd27aff78a71d676296fc'
     weight_format: safetensors
     variant: Base voice cloning
     languages: [ko]
@@ -211,7 +211,7 @@ models:
     repository: https://huggingface.co/mobiuslabsgmbh/faster-whisper-large-v3-turbo
     revision: 0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf
     license: MIT
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\stt\faster-whisper-large-v3-turbo\0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--mobiuslabsgmbh--faster-whisper-large-v3-turbo\snapshots\0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf'
     weight_format: CTranslate2 model.bin
     size_bytes: 1617884929
     primary_weight:
@@ -227,7 +227,7 @@ models:
     repository: https://huggingface.co/Systran/faster-whisper-small
     revision: 536b0662742c02347bc0e980a01041f333bce120
     license: MIT
-    local_path: 'E:\AI\Models\Standalone\LocalVoiceAgent\stt\faster-whisper-small\536b0662742c02347bc0e980a01041f333bce120'
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--Systran--faster-whisper-small\snapshots\536b0662742c02347bc0e980a01041f333bce120'
     weight_format: CTranslate2 model.bin
     size_bytes: 483546902
     primary_weight:

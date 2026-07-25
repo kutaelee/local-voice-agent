@@ -92,8 +92,10 @@ See [docs/architecture.md](docs/architecture.md) and
 | Purpose | Path |
 |---|---|
 | Windows source repository | `C:\Dev\Repos\local-voice-agent` |
-| Models | `E:\AI\Models\Standalone\LocalVoiceAgent` |
-| Download and Hugging Face cache | `E:\Cache\LocalVoiceAgent` |
+| Shared Hugging Face models | `E:\AI\Models\HuggingFace\hub` |
+| Shared Hugging Face download cache | `E:\Cache\HuggingFace` |
+| Project download state | `E:\Cache\LocalVoiceAgent\download-state` |
+| Windows Ollama generation models | `E:\AI\Models\Ollama\generation\models` |
 | Runtime logs, sessions, evidence, backups, temp | `E:\Data\LocalVoiceAgent` |
 | Active salon reservation data | `E:\Data\LocalVoiceAgent\salon` |
 | Salon fast-recovery copies | `D:\LocalBackup\LocalVoiceAgent\salon` |
@@ -103,6 +105,10 @@ See [docs/architecture.md](docs/architecture.md) and
 
 `D:` is backup-only on this workstation and must never host active workloads.
 Model weights and runtime data are intentionally excluded from Git.
+Repositories reference immutable shared snapshots by model ID and revision;
+they do not own separate copies of model weights. Ollama's GGUF blob store and
+Hugging Face Safetensors/GGUF snapshots are different artifact formats and are
+not interchangeable.
 GPU admission and measured-peak gates are defined in
 [`configs/gpu-resources.yaml`](configs/gpu-resources.yaml); unknown high-VRAM
 peaks fail closed until measured.

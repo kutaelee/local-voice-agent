@@ -9,7 +9,7 @@ stt_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whis
 tts_engine="${LVA_TTS_ENGINE:-qwen3}"
 qwen3_tts_size="${LVA_QWEN3_TTS_SIZE:-0.6b}"
 vad_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/vad-silero-6.2.1/.venv"
-stt_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/stt/faster-whisper-large-v3-turbo/0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf"
+stt_model="/mnt/e/AI/Models/HuggingFace/hub/models--mobiuslabsgmbh--faster-whisper-large-v3-turbo/snapshots/0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf"
 voice_profiles_root="/mnt/e/Data/LocalVoiceAgent/voice-profiles"
 stt_socket="${run_root}/stt.sock"
 tts_socket="${run_root}/tts.sock"
@@ -37,10 +37,10 @@ case "${tts_engine}" in
     tts_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/tts-qwen3-1.7b/.venv"
     case "${qwen3_tts_size}" in
       0.6b)
-        tts_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/tts/qwen3-tts-12hz-0.6b-base/5d83992436eae1d760afd27aff78a71d676296fc"
+        tts_model="/mnt/e/AI/Models/HuggingFace/hub/models--Qwen--Qwen3-TTS-12Hz-0.6B-Base/snapshots/5d83992436eae1d760afd27aff78a71d676296fc"
         ;;
       1.7b)
-        tts_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/tts/qwen3-tts-12hz-1.7b-base/fd4b254389122332181a7c3db7f27e918eec64e3"
+        tts_model="/mnt/e/AI/Models/HuggingFace/hub/models--Qwen--Qwen3-TTS-12Hz-1.7B-Base/snapshots/fd4b254389122332181a7c3db7f27e918eec64e3"
         ;;
       *)
         echo "LVA_QWEN3_TTS_SIZE must be 0.6b or 1.7b." >&2
@@ -58,7 +58,7 @@ case "${tts_engine}" in
     ;;
   chatterbox)
     tts_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-v3-py3146/.venv"
-    tts_model="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18"
+    tts_model="/mnt/e/AI/Models/HuggingFace/hub/models--ResembleAI--chatterbox/snapshots/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18"
     tts_worker="${repo}/apps/pc-server/workers/tts_worker.py"
     tts_extra_args=()
     ;;

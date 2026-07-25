@@ -20,7 +20,7 @@ def test_sglang_launcher_keeps_api_key_out_of_argv() -> None:
     assert '--cpu-offload-gb "${mtp_cpu_offload_gib}"' in start
     assert "mtp-target-off" in start
     assert "gemma4-12b-mtp-target-off" in start
-    assert "gemma4/31b/mtp-target" in start
+    assert "models--google--gemma-4-31B-it-qat-q4_0-unquantized" in start
     assert "output width 8608 is not divisible" in start
 
 
@@ -52,7 +52,9 @@ def test_vllm_launcher_uses_official_environment_key() -> None:
 def test_vllm_stop_validates_owned_model_identity() -> None:
     stop = script("stop-vllm.sh")
 
-    assert '"/gemma4/${expected_model_size}/"' in stop
+    assert 'expected_model_segment="models--google--gemma-4-12B-it-"' in stop
+    assert 'expected_model_segment="models--google--gemma-4-31B-it-"' in stop
+    assert '"${model_root}/${expected_model_segment}"' in stop
     assert "refusing to signal" in stop
     assert 'kill -TERM "${pid}"' in stop
     assert "kill -KILL" not in stop

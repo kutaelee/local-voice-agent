@@ -2,6 +2,7 @@
 set -euo pipefail
 
 pid_file="/home/kutae/.local/share/local-voice-agent/run/sglang.pid"
+model_root="/mnt/e/AI/Models/HuggingFace/hub"
 [[ -f "${pid_file}" ]] || {
   echo "No owned SGLang PID file exists."
   exit 0
@@ -18,7 +19,10 @@ if ! kill -0 "${pid}" 2>/dev/null; then
 fi
 command="$(tr '\0' ' ' <"/proc/${pid}/cmdline")"
 [[ "${command}" == *"launch-sglang-secure.py"* ]] \
-  && [[ "${command}" == *"/gemma4/12b/"* || "${command}" == *"/gemma4/31b/"* ]] || {
+  && [[ \
+    "${command}" == *"${model_root}/models--google--gemma-4-12B-it-"*"/snapshots/"* \
+    || "${command}" == *"${model_root}/models--google--gemma-4-31B-it-"*"/snapshots/"* \
+  ]] || {
   echo "PID ${pid} is not the owned SGLang process; refusing to signal." >&2
   exit 4
 }

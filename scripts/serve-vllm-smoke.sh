@@ -5,7 +5,7 @@ model_size="${1:-12b}"
 mtp_mode="${2:-off}"
 stable_runtime_root="${HOME}/.local/share/local-voice-agent/runtimes/vllm-0.25.1"
 mtp_runtime_root="${VLLM_MTP_RUNTIME_ROOT:-${HOME}/.local/share/local-voice-agent/runtimes/vllm-b2b8f679d058-cu130}"
-model_root="/mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4"
+model_root="/mnt/e/AI/Models/HuggingFace/hub"
 host="${VLLM_SMOKE_HOST:-127.0.0.1}"
 port="${VLLM_SMOKE_PORT:-46322}"
 speculative_tokens="${VLLM_SMOKE_SPECULATIVE_TOKENS:-1}"
@@ -20,15 +20,15 @@ export VLLM_USE_V2_MODEL_RUNNER="${VLLM_USE_V2_MODEL_RUNNER:-0}"
 
 case "${model_size}" in
   12b)
-    target="${model_root}/12b/target/1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee"
-    mtp_target="${model_root}/12b/mtp-target/b6ed86275a6a5735884e208bfed95b445a684ca2"
-    assistant="${model_root}/12b/mtp-assistant/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd"
+    target="${model_root}/models--google--gemma-4-12B-it-qat-w4a16-ct/snapshots/1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee"
+    mtp_target="${model_root}/models--google--gemma-4-12B-it-qat-q4_0-unquantized/snapshots/b6ed86275a6a5735884e208bfed95b445a684ca2"
+    assistant="${model_root}/models--google--gemma-4-12B-it-qat-q4_0-unquantized-assistant/snapshots/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd"
     served_name="gemma4-12b"
     ;;
   31b)
-    target="${model_root}/31b/target/52f3f65bc7a02d555763bc923bd1d9094898219d"
-    mtp_target="${model_root}/31b/mtp-target/1e4d8beecacb8b7590c1d8bedd7335f687bf311f"
-    assistant="${model_root}/31b/mtp-assistant/96d4c8ca3cb38c107a8478587878124895d1e844"
+    target="${model_root}/models--google--gemma-4-31B-it-qat-w4a16-ct/snapshots/52f3f65bc7a02d555763bc923bd1d9094898219d"
+    mtp_target="${model_root}/models--google--gemma-4-31B-it-qat-q4_0-unquantized/snapshots/1e4d8beecacb8b7590c1d8bedd7335f687bf311f"
+    assistant="${model_root}/models--google--gemma-4-31B-it-qat-q4_0-unquantized-assistant/snapshots/96d4c8ca3cb38c107a8478587878124895d1e844"
     served_name="gemma4-31b"
     ;;
   *)

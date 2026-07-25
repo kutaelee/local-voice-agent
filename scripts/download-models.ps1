@@ -13,7 +13,9 @@ param(
         'mtp_target_31b',
         'stt_large_v3_turbo',
         'stt_small',
-        'tts_chatterbox_v3'
+        'tts_chatterbox_v3',
+        'tts_qwen3_base',
+        'tts_qwen3_base_0_6b'
     )]
     [string]$Only
 )

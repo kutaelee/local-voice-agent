@@ -4,6 +4,12 @@
   `E:\Workspace\System\workstation-config\docs\filesystem-layout.md`.
 - Do not store model weights, caches, database data, logs, evidence, secrets,
   APK signing keys, or `.env` files in this repository.
+- Resolve Hugging Face snapshots from `E:\AI\Models\HuggingFace\hub` and
+  Windows Ollama generation models from
+  `E:\AI\Models\Ollama\generation\models`; never create repository-specific
+  weight copies.
+- Submit model loading, inference, and other GPU work expected to use at least
+  2 GiB VRAM or run for at least 30 seconds through `gpuq`.
 - Use the canonical paths documented in `README.md`.
 - Keep vLLM, SGLang, STT, TTS, quantization, PC server, and Android/Gradle
   environments isolated.

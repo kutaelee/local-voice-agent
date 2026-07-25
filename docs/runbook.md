@@ -46,8 +46,8 @@ Offline target/assistant inspection:
 
 ```bash
 python scripts/inspect-model-pair.py \
-  /mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4/12b/mtp-target/b6ed86275a6a5735884e208bfed95b445a684ca2 \
-  /mnt/e/AI/Models/Standalone/LocalVoiceAgent/gemma4/12b/mtp-assistant/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd \
+  /mnt/e/AI/Models/HuggingFace/hub/models--google--gemma-4-12B-it-qat-q4_0-unquantized/snapshots/b6ed86275a6a5735884e208bfed95b445a684ca2 \
+  /mnt/e/AI/Models/HuggingFace/hub/models--google--gemma-4-12B-it-qat-q4_0-unquantized-assistant/snapshots/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd \
   --target-format unquantized
 ```
 

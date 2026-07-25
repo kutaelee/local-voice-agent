@@ -6,14 +6,14 @@ download_env="${HOME}/.local/share/local-voice-agent/runtimes/model-download/.ve
 hf_bin="${download_env}/bin/hf"
 python_bin="${download_env}/bin/python"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-model_root="/mnt/e/AI/Models/Standalone/LocalVoiceAgent"
-cache_root="/mnt/e/Cache/LocalVoiceAgent/huggingface"
+model_root="/mnt/e/AI/Models/HuggingFace/hub"
+cache_root="/mnt/e/Cache/HuggingFace"
 state_root="/mnt/e/Cache/LocalVoiceAgent/download-state"
 download_workers="${MODEL_DOWNLOAD_WORKERS:-16}"
 download_only="${MODEL_DOWNLOAD_ONLY:-}"
 
 case "${download_only}" in
-  ""|default_target_12b|mtp_assistant_12b|mtp_target_12b|escalation_target_31b|mtp_assistant_31b|mtp_target_31b|stt_large_v3_turbo|stt_small|tts_chatterbox_v3|tts_qwen3_base)
+  ""|default_target_12b|mtp_assistant_12b|mtp_target_12b|escalation_target_31b|mtp_assistant_31b|mtp_target_31b|stt_large_v3_turbo|stt_small|tts_chatterbox_v3|tts_qwen3_base|tts_qwen3_base_0_6b)
     ;;
   *)
     echo "Unknown MODEL_DOWNLOAD_ONLY role: ${download_only}" >&2
@@ -22,21 +22,23 @@ case "${download_only}" in
 esac
 
 models=(
-  "default_target_12b|google/gemma-4-12B-it-qat-w4a16-ct|1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|${model_root}/gemma4/12b/target/1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|model.safetensors|60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3|10264229896|Apache-2.0"
-  "mtp_assistant_12b|google/gemma-4-12B-it-qat-q4_0-unquantized-assistant|18934064dd4c5c6cc3621f6381e7d377fc8cb7bd|${model_root}/gemma4/12b/mtp-assistant/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd|model.safetensors|67f1420cf24aa5065089aaed175223f7c245ccfda16111b6c56765afd7280db6|845719296|Apache-2.0"
-  "mtp_target_12b|google/gemma-4-12B-it-qat-q4_0-unquantized|b6ed86275a6a5735884e208bfed95b445a684ca2|${model_root}/gemma4/12b/mtp-target/b6ed86275a6a5735884e208bfed95b445a684ca2|model.safetensors|26f2cee4292298a3f9f92209643c37c80e34e011381e22434088870d9439a0a0|23919549408|Apache-2.0"
-  "escalation_target_31b|google/gemma-4-31B-it-qat-w4a16-ct|52f3f65bc7a02d555763bc923bd1d9094898219d|${model_root}/gemma4/31b/target/52f3f65bc7a02d555763bc923bd1d9094898219d|model.safetensors|1b9b1d622a93f02c0d33f98e502f233b5d707443af6ddc464ed0bf5498506c20|23265352448|Apache-2.0"
-  "mtp_assistant_31b|google/gemma-4-31B-it-qat-q4_0-unquantized-assistant|96d4c8ca3cb38c107a8478587878124895d1e844|${model_root}/gemma4/31b/mtp-assistant/96d4c8ca3cb38c107a8478587878124895d1e844|model.safetensors|50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9|939042560|Apache-2.0"
-  "mtp_target_31b|google/gemma-4-31B-it-qat-q4_0-unquantized|1e4d8beecacb8b7590c1d8bedd7335f687bf311f|${model_root}/gemma4/31b/mtp-target/1e4d8beecacb8b7590c1d8bedd7335f687bf311f|model-00001-of-00002.safetensors|8ad3c67895dca6184c70d88a31f042eca42971728782dfb2c18edb736f3060a0|49784788364|Apache-2.0"
-  "mtp_target_31b|google/gemma-4-31B-it-qat-q4_0-unquantized|1e4d8beecacb8b7590c1d8bedd7335f687bf311f|${model_root}/gemma4/31b/mtp-target/1e4d8beecacb8b7590c1d8bedd7335f687bf311f|model-00002-of-00002.safetensors|a373e71426e369a2498a7a69793ce9ccdb07d2c96aa807c6baf675520f9add87|12761549884|Apache-2.0"
-  "stt_large_v3_turbo|mobiuslabsgmbh/faster-whisper-large-v3-turbo|0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf|${model_root}/stt/faster-whisper-large-v3-turbo/0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf|model.bin|e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da|1617884929|MIT"
-  "stt_small|Systran/faster-whisper-small|536b0662742c02347bc0e980a01041f333bce120|${model_root}/stt/faster-whisper-small/536b0662742c02347bc0e980a01041f333bce120|model.bin|3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671|483546902|MIT"
-  "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|t3_mtl23ls_v3.safetensors|5abca8321ede76f8e61f1cc0d19aea6c946b28871017ce8726f8a69203f05953|2143989928|MIT"
-  "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|s3gen.pt|9b9ff07e60b20c136e2b1b3d7563a24604e8d2c4c267888d1ee929dd0151d2a3|1057165844|MIT"
-  "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|ve.pt|4b16d836bc598509860f6fa068165a8bb5e9ac84f05582dfcf278a5a372879f1|5698626|MIT"
-  "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/tts/chatterbox-multilingual-v3/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|conds.pt|6552d70568833628ba019c6b03459e77fe71ca197d5c560cef9411bee9d87f4e|107374|MIT"
-  "tts_qwen3_base|Qwen/Qwen3-TTS-12Hz-1.7B-Base|fd4b254389122332181a7c3db7f27e918eec64e3|${model_root}/tts/qwen3-tts-12hz-1.7b-base/fd4b254389122332181a7c3db7f27e918eec64e3|model.safetensors|38fc7fc51c5e776e840414b6fd443962e9411b9654888fd7913e4da643cb857c|3857413744|Apache-2.0"
-  "tts_qwen3_base|Qwen/Qwen3-TTS-12Hz-1.7B-Base|fd4b254389122332181a7c3db7f27e918eec64e3|${model_root}/tts/qwen3-tts-12hz-1.7b-base/fd4b254389122332181a7c3db7f27e918eec64e3|speech_tokenizer/model.safetensors|836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258|682293092|Apache-2.0"
+  "default_target_12b|google/gemma-4-12B-it-qat-w4a16-ct|1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|${model_root}/models--google--gemma-4-12B-it-qat-w4a16-ct/snapshots/1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|model.safetensors|60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3|10264229896|Apache-2.0"
+  "mtp_assistant_12b|google/gemma-4-12B-it-qat-q4_0-unquantized-assistant|18934064dd4c5c6cc3621f6381e7d377fc8cb7bd|${model_root}/models--google--gemma-4-12B-it-qat-q4_0-unquantized-assistant/snapshots/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd|model.safetensors|67f1420cf24aa5065089aaed175223f7c245ccfda16111b6c56765afd7280db6|845719296|Apache-2.0"
+  "mtp_target_12b|google/gemma-4-12B-it-qat-q4_0-unquantized|b6ed86275a6a5735884e208bfed95b445a684ca2|${model_root}/models--google--gemma-4-12B-it-qat-q4_0-unquantized/snapshots/b6ed86275a6a5735884e208bfed95b445a684ca2|model.safetensors|26f2cee4292298a3f9f92209643c37c80e34e011381e22434088870d9439a0a0|23919549408|Apache-2.0"
+  "escalation_target_31b|google/gemma-4-31B-it-qat-w4a16-ct|52f3f65bc7a02d555763bc923bd1d9094898219d|${model_root}/models--google--gemma-4-31B-it-qat-w4a16-ct/snapshots/52f3f65bc7a02d555763bc923bd1d9094898219d|model.safetensors|1b9b1d622a93f02c0d33f98e502f233b5d707443af6ddc464ed0bf5498506c20|23265352448|Apache-2.0"
+  "mtp_assistant_31b|google/gemma-4-31B-it-qat-q4_0-unquantized-assistant|96d4c8ca3cb38c107a8478587878124895d1e844|${model_root}/models--google--gemma-4-31B-it-qat-q4_0-unquantized-assistant/snapshots/96d4c8ca3cb38c107a8478587878124895d1e844|model.safetensors|50008e854554a1a9c26317216cd99ae5a3567d4942c9e061398b995cc48c34b9|939042560|Apache-2.0"
+  "mtp_target_31b|google/gemma-4-31B-it-qat-q4_0-unquantized|1e4d8beecacb8b7590c1d8bedd7335f687bf311f|${model_root}/models--google--gemma-4-31B-it-qat-q4_0-unquantized/snapshots/1e4d8beecacb8b7590c1d8bedd7335f687bf311f|model-00001-of-00002.safetensors|8ad3c67895dca6184c70d88a31f042eca42971728782dfb2c18edb736f3060a0|49784788364|Apache-2.0"
+  "mtp_target_31b|google/gemma-4-31B-it-qat-q4_0-unquantized|1e4d8beecacb8b7590c1d8bedd7335f687bf311f|${model_root}/models--google--gemma-4-31B-it-qat-q4_0-unquantized/snapshots/1e4d8beecacb8b7590c1d8bedd7335f687bf311f|model-00002-of-00002.safetensors|a373e71426e369a2498a7a69793ce9ccdb07d2c96aa807c6baf675520f9add87|12761549884|Apache-2.0"
+  "stt_large_v3_turbo|mobiuslabsgmbh/faster-whisper-large-v3-turbo|0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf|${model_root}/models--mobiuslabsgmbh--faster-whisper-large-v3-turbo/snapshots/0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf|model.bin|e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da|1617884929|MIT"
+  "stt_small|Systran/faster-whisper-small|536b0662742c02347bc0e980a01041f333bce120|${model_root}/models--Systran--faster-whisper-small/snapshots/536b0662742c02347bc0e980a01041f333bce120|model.bin|3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671|483546902|MIT"
+  "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/models--ResembleAI--chatterbox/snapshots/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|t3_mtl23ls_v3.safetensors|5abca8321ede76f8e61f1cc0d19aea6c946b28871017ce8726f8a69203f05953|2143989928|MIT"
+  "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/models--ResembleAI--chatterbox/snapshots/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|s3gen.pt|9b9ff07e60b20c136e2b1b3d7563a24604e8d2c4c267888d1ee929dd0151d2a3|1057165844|MIT"
+  "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/models--ResembleAI--chatterbox/snapshots/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|ve.pt|4b16d836bc598509860f6fa068165a8bb5e9ac84f05582dfcf278a5a372879f1|5698626|MIT"
+  "tts_chatterbox_v3|ResembleAI/chatterbox|5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|${model_root}/models--ResembleAI--chatterbox/snapshots/5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18|conds.pt|6552d70568833628ba019c6b03459e77fe71ca197d5c560cef9411bee9d87f4e|107374|MIT"
+  "tts_qwen3_base|Qwen/Qwen3-TTS-12Hz-1.7B-Base|fd4b254389122332181a7c3db7f27e918eec64e3|${model_root}/models--Qwen--Qwen3-TTS-12Hz-1.7B-Base/snapshots/fd4b254389122332181a7c3db7f27e918eec64e3|model.safetensors|38fc7fc51c5e776e840414b6fd443962e9411b9654888fd7913e4da643cb857c|3857413744|Apache-2.0"
+  "tts_qwen3_base|Qwen/Qwen3-TTS-12Hz-1.7B-Base|fd4b254389122332181a7c3db7f27e918eec64e3|${model_root}/models--Qwen--Qwen3-TTS-12Hz-1.7B-Base/snapshots/fd4b254389122332181a7c3db7f27e918eec64e3|speech_tokenizer/model.safetensors|836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258|682293092|Apache-2.0"
+  "tts_qwen3_base_0_6b|Qwen/Qwen3-TTS-12Hz-0.6B-Base|5d83992436eae1d760afd27aff78a71d676296fc|${model_root}/models--Qwen--Qwen3-TTS-12Hz-0.6B-Base/snapshots/5d83992436eae1d760afd27aff78a71d676296fc|model.safetensors|180b3b10eb1c9f1b4db7806d5475bae3071c0243c299d49926bab1da3b6946f6|1829344272|Apache-2.0"
+  "tts_qwen3_base_0_6b|Qwen/Qwen3-TTS-12Hz-0.6B-Base|5d83992436eae1d760afd27aff78a71d676296fc|${model_root}/models--Qwen--Qwen3-TTS-12Hz-0.6B-Base/snapshots/5d83992436eae1d760afd27aff78a71d676296fc|speech_tokenizer/model.safetensors|836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258|682293092|Apache-2.0"
 )
 
 [[ "${download_workers}" =~ ^([1-9]|1[0-6])$ ]] || {
@@ -46,15 +48,31 @@ models=(
 
 selected_weight_bytes=0
 selected_file_count=0
+reusable_weight_bytes=0
+reusable_file_count=0
+download_weight_bytes=0
+download_file_count=0
 for entry in "${models[@]}"; do
-  IFS='|' read -r role _model _revision _target _filename _sha bytes _license <<<"${entry}"
+  IFS='|' read -r role _model _revision target filename _sha bytes _license <<<"${entry}"
   [[ -z "${download_only}" || "${download_only}" == "${role}" ]] || continue
   selected_weight_bytes=$((selected_weight_bytes + bytes))
   selected_file_count=$((selected_file_count + 1))
+  actual_file="${target}/${filename}"
+  if [[ -f "${actual_file}" ]] \
+    && [[ "$(stat -c '%s' "${actual_file}")" == "${bytes}" ]]; then
+    reusable_weight_bytes=$((reusable_weight_bytes + bytes))
+    reusable_file_count=$((reusable_file_count + 1))
+  else
+    download_weight_bytes=$((download_weight_bytes + bytes))
+    download_file_count=$((download_file_count + 1))
+  fi
 done
 
-metadata_headroom_bytes=1073741824
-required_bytes=$((selected_weight_bytes + metadata_headroom_bytes))
+metadata_headroom_bytes=0
+if (( download_file_count > 0 )); then
+  metadata_headroom_bytes=1073741824
+fi
+required_bytes=$((download_weight_bytes + metadata_headroom_bytes))
 read -r volume_bytes available_bytes < <(
   df -B1 --output=size,avail /mnt/e | tail -1 | xargs
 )
@@ -72,6 +90,10 @@ echo "Cache: ${cache_root}"
 echo "Parallel range workers: ${download_workers}"
 echo "Selected weight files: ${selected_file_count}"
 echo "Selected weight bytes: ${selected_weight_bytes}"
+echo "Existing size-matched weight files: ${reusable_file_count}"
+echo "Existing size-matched weight bytes: ${reusable_weight_bytes}"
+echo "Weight files requiring download: ${download_file_count}"
+echo "Weight bytes requiring download: ${download_weight_bytes}"
 echo "Metadata headroom: ${metadata_headroom_bytes} bytes"
 echo "Available on E: ${available_bytes} bytes"
 echo "Projected available on E: ${projected_available_bytes} bytes"

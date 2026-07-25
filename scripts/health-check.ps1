@@ -7,7 +7,7 @@ $gpu = & nvidia-smi --query-gpu=name,memory.total,memory.free,driver_version,com
 $wsl = & wsl.exe -d Ubuntu -- bash -lc 'uname -r; nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader,nounits' 2>&1
 $paths = @(
     'C:\Dev\Repos\local-voice-agent',
-    'E:\AI\Models\Standalone\LocalVoiceAgent',
+    'E:\AI\Models\HuggingFace\hub',
     'E:\Cache\LocalVoiceAgent',
     'E:\Data\LocalVoiceAgent',
     'E:\Data\DB\Active\LocalVoiceAgent'
@@ -85,35 +85,35 @@ $modelDefinitions = @(
     [pscustomobject]@{
         role = 'default_target'
         files = @([pscustomobject]@{
-            path = 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\12b\target\1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee\model.safetensors'
+            path = 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-12B-it-qat-w4a16-ct\snapshots\1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee\model.safetensors'
             expected_bytes = [int64]10264229896
         })
     },
     [pscustomobject]@{
         role = 'default_mtp_assistant'
         files = @([pscustomobject]@{
-            path = 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\12b\mtp-assistant\18934064dd4c5c6cc3621f6381e7d377fc8cb7bd\model.safetensors'
+            path = 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-12B-it-qat-q4_0-unquantized-assistant\snapshots\18934064dd4c5c6cc3621f6381e7d377fc8cb7bd\model.safetensors'
             expected_bytes = [int64]845719296
         })
     },
     [pscustomobject]@{
         role = 'mtp_target_12b'
         files = @([pscustomobject]@{
-            path = 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\12b\mtp-target\b6ed86275a6a5735884e208bfed95b445a684ca2\model.safetensors'
+            path = 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-12B-it-qat-q4_0-unquantized\snapshots\b6ed86275a6a5735884e208bfed95b445a684ca2\model.safetensors'
             expected_bytes = [int64]23919549408
         })
     },
     [pscustomobject]@{
         role = 'escalation_target'
         files = @([pscustomobject]@{
-            path = 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\31b\target\52f3f65bc7a02d555763bc923bd1d9094898219d\model.safetensors'
+            path = 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-31B-it-qat-w4a16-ct\snapshots\52f3f65bc7a02d555763bc923bd1d9094898219d\model.safetensors'
             expected_bytes = [int64]23265352448
         })
     },
     [pscustomobject]@{
         role = 'escalation_mtp_assistant'
         files = @([pscustomobject]@{
-            path = 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\31b\mtp-assistant\96d4c8ca3cb38c107a8478587878124895d1e844\model.safetensors'
+            path = 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-31B-it-qat-q4_0-unquantized-assistant\snapshots\96d4c8ca3cb38c107a8478587878124895d1e844\model.safetensors'
             expected_bytes = [int64]939042560
         })
     },
@@ -121,11 +121,11 @@ $modelDefinitions = @(
         role = 'mtp_target_31b'
         files = @(
             [pscustomobject]@{
-                path = 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\31b\mtp-target\1e4d8beecacb8b7590c1d8bedd7335f687bf311f\model-00001-of-00002.safetensors'
+                path = 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-31B-it-qat-q4_0-unquantized\snapshots\1e4d8beecacb8b7590c1d8bedd7335f687bf311f\model-00001-of-00002.safetensors'
                 expected_bytes = [int64]49784788364
             },
             [pscustomobject]@{
-                path = 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4\31b\mtp-target\1e4d8beecacb8b7590c1d8bedd7335f687bf311f\model-00002-of-00002.safetensors'
+                path = 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-31B-it-qat-q4_0-unquantized\snapshots\1e4d8beecacb8b7590c1d8bedd7335f687bf311f\model-00002-of-00002.safetensors'
                 expected_bytes = [int64]12761549884
             }
         )

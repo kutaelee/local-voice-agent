@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "generated_at": "2026-07-24T04:40:50+09:00",
-  "canonical_cache": "E:\\Cache\\LocalVoiceAgent\\huggingface",
+  "canonical_cache": "E:\\AI\\Models\\HuggingFace\\hub",
   "free_space_before_bytes": 3636472119296,
   "status": "all_selected_model_weights_downloaded",
   "downloads": [

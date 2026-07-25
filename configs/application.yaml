@@ -20,5 +20,5 @@ retention:
   audit_days: 90
 paths:
   runtime_root: 'E:\Data\LocalVoiceAgent\runtime'
-  model_root: 'E:\AI\Models\Standalone\LocalVoiceAgent'
+  model_root: 'E:\AI\Models\HuggingFace\hub'
   cache_root: 'E:\Cache\LocalVoiceAgent'

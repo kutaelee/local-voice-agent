@@ -79,7 +79,7 @@
           "const": "E:\\Data\\LocalVoiceAgent\\runtime"
         },
         "model_root": {
-          "const": "E:\\AI\\Models\\Standalone\\LocalVoiceAgent"
+          "const": "E:\\AI\\Models\\HuggingFace\\hub"
         },
         "cache_root": {
           "const": "E:\\Cache\\LocalVoiceAgent"

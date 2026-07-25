@@ -10,6 +10,8 @@ product acceptance and physical Android QA are not complete.
 | Windows/GPU discovery | Passed | `docs/environment-report.md` |
 | WSL GPU visibility | Passed | RTX 5090 visible in Ubuntu |
 | Canonical storage capacity | Passed | `docs/storage-report.md` |
+| Shared model registry migration | Passed | 12 immutable Hugging Face snapshots registered under `E:\AI\Models\HuggingFace\hub`; 18 declared weights passed exact-size validation, 16 files of at least 100 MiB retained validated same-volume hardlinks during recoverable migration, and the download plan reported 0 files/0 bytes required |
+| Windows Ollama shared generation store | Passed | Ollama 0.32.3 server log reported `OLLAMA_MODELS=E:\AI\Models\Ollama\generation\models`; four existing generation models were listed without download. The portal embedding container remained mounted at `E:\AI\Models\Ollama` |
 | Existing Gemma 4 duplicate check | Passed | No Gemma 4 checkpoint found |
 | Official model IDs/revisions metadata query | Passed | `manifests/models.yaml` |
 | vLLM/SGLang official support research | Passed; stable vLLM selected after measured SGLang comparison | `docs/compatibility-report.md` |

@@ -14,43 +14,43 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $stateRoot = 'E:\Cache\LocalVoiceAgent\download-state'
-$modelRoot = 'E:\AI\Models\Standalone\LocalVoiceAgent\gemma4'
+$modelRoot = 'E:\AI\Models\HuggingFace\hub'
 
 $specs = @{
     default_target_12b = @{
         Model = 'google/gemma-4-12B-it-qat-w4a16-ct'
         Revision = '1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee'
-        Directory = Join-Path $modelRoot '12b\target\1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee'
+        Directory = Join-Path $modelRoot 'models--google--gemma-4-12B-it-qat-w4a16-ct\snapshots\1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee'
         Files = @(@{ Name = 'model.safetensors'; Bytes = 10264229896 })
     }
     mtp_assistant_12b = @{
         Model = 'google/gemma-4-12B-it-qat-q4_0-unquantized-assistant'
         Revision = '18934064dd4c5c6cc3621f6381e7d377fc8cb7bd'
-        Directory = Join-Path $modelRoot '12b\mtp-assistant\18934064dd4c5c6cc3621f6381e7d377fc8cb7bd'
+        Directory = Join-Path $modelRoot 'models--google--gemma-4-12B-it-qat-q4_0-unquantized-assistant\snapshots\18934064dd4c5c6cc3621f6381e7d377fc8cb7bd'
         Files = @(@{ Name = 'model.safetensors'; Bytes = 845719296 })
     }
     mtp_target_12b = @{
         Model = 'google/gemma-4-12B-it-qat-q4_0-unquantized'
         Revision = 'b6ed86275a6a5735884e208bfed95b445a684ca2'
-        Directory = Join-Path $modelRoot '12b\mtp-target\b6ed86275a6a5735884e208bfed95b445a684ca2'
+        Directory = Join-Path $modelRoot 'models--google--gemma-4-12B-it-qat-q4_0-unquantized\snapshots\b6ed86275a6a5735884e208bfed95b445a684ca2'
         Files = @(@{ Name = 'model.safetensors'; Bytes = 23919549408 })
     }
     escalation_target_31b = @{
         Model = 'google/gemma-4-31B-it-qat-w4a16-ct'
         Revision = '52f3f65bc7a02d555763bc923bd1d9094898219d'
-        Directory = Join-Path $modelRoot '31b\target\52f3f65bc7a02d555763bc923bd1d9094898219d'
+        Directory = Join-Path $modelRoot 'models--google--gemma-4-31B-it-qat-w4a16-ct\snapshots\52f3f65bc7a02d555763bc923bd1d9094898219d'
         Files = @(@{ Name = 'model.safetensors'; Bytes = 23265352448 })
     }
     mtp_assistant_31b = @{
         Model = 'google/gemma-4-31B-it-qat-q4_0-unquantized-assistant'
         Revision = '96d4c8ca3cb38c107a8478587878124895d1e844'
-        Directory = Join-Path $modelRoot '31b\mtp-assistant\96d4c8ca3cb38c107a8478587878124895d1e844'
+        Directory = Join-Path $modelRoot 'models--google--gemma-4-31B-it-qat-q4_0-unquantized-assistant\snapshots\96d4c8ca3cb38c107a8478587878124895d1e844'
         Files = @(@{ Name = 'model.safetensors'; Bytes = 939042560 })
     }
     mtp_target_31b = @{
         Model = 'google/gemma-4-31B-it-qat-q4_0-unquantized'
         Revision = '1e4d8beecacb8b7590c1d8bedd7335f687bf311f'
-        Directory = Join-Path $modelRoot '31b\mtp-target\1e4d8beecacb8b7590c1d8bedd7335f687bf311f'
+        Directory = Join-Path $modelRoot 'models--google--gemma-4-31B-it-qat-q4_0-unquantized\snapshots\1e4d8beecacb8b7590c1d8bedd7335f687bf311f'
         Files = @(
             @{ Name = 'model-00001-of-00002.safetensors'; Bytes = 49784788364 },
             @{ Name = 'model-00002-of-00002.safetensors'; Bytes = 12761549884 }
