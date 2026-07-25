@@ -278,3 +278,19 @@ invalid cache degrades to the same visible `switching_model` status.
 | Repository root suites | Passed | 28 script tests plus three isolated private-CA tests |
 | Repository validators | Passed | Repository orchestrator reported 10/10 validators passed |
 | Listening QA | Not run | The voice stack remained stopped; cache playback will be assessed on the next user-started voice session |
+
+## 2026-07-25 stale input-stream and 0.6.9 release regression
+
+| Check | Result | Evidence |
+|---|---|---|
+| Web stale-stream recovery | Passed | An `AUDIO_STREAM_INVALID` event matching the active request now stops capture without sending another end marker, and duplicate errors for that rejected request are suppressed in the QA timeline |
+| Android request correlation | Passed | Start, PCM chunks, and end now share one request UUID; a matching active-stream rejection stops the recorder locally. The dedicated transport regression and complete Android suite passed 30/30 |
+| PC-server suite | Passed | 248 collected; 246 passed and two environment-dependent cases skipped in the isolated WSL runtime |
+| Repository suites | Passed | 28/28 platform-neutral script tests plus 3/3 private-CA tests in the Linux ACL environment |
+| Repository validators | Passed | 10/10 validators; 32 protocol events, 75 tool contracts, 160 benchmark cases, and Android/runtime manifests cross-validated |
+| Web portal smoke | Passed | Reloaded portal connected through memory-only loopback QA auth, reported Gateway normal, 10 salon menu rows, three seeded reservations, VAD/STT/TTS workers configured, and model runtime intentionally unavailable after teardown |
+| Gemma 4 12B salon harness | Passed | `gpuq` job `75e9487f-2957-441c-bafd-e9f76c5cb789` passed 6/6 action/scope cases; p50 1,558.658 ms, p95 1,660.254 ms, cold-inclusive maximum 4,488.897 ms, 18,094 MiB peak total GPU use; model stopped |
+| Qwen3-TTS 0.6B salon projection | Passed with latency limitation | `gpuq` job `98084108-bdf9-439f-a23b-3333090b93e8` warmed the selected profile and then completed two ordered 24 kHz PCM streams in 6,028.927 ms and 6,229.516 ms with 200 ms final silence; 9,562 MiB peak total GPU use; worker and socket stopped |
+| Android 0.6.9 artifacts | Passed | Debug APK 12,933,261 bytes SHA-256 `d5314c0eea101c695ab3713bbfce26676d0b5946b14272f9b97864d08f3e85f7`; unsigned release APK 9,120,013 bytes SHA-256 `921ff6c7b9b45fb905db31f3427b68139a22fc44227346624d41618240ba1ab2`; version code 17/name 0.6.9 and API 37 verified; debug signature v2 passed and release remained unsigned |
+| Android build quality | Passed | Clean/unit/lint/debug/release build passed; 30 tests, zero failures, and lint reported no errors or warnings |
+| Physical Android listening/barge-in | Not run | Deliberately remains the final user QA gate |

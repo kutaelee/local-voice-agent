@@ -627,3 +627,20 @@ After idle ComfyUI weights were released without stopping its service, the
 running 0.6B voice stack plus a separate 2 GiB Android-emulator reservation
 used 15,720 MiB total GPU memory and left 16,468 MiB free. This is a
 point-in-time coexistence observation, not a per-process VRAM attribution.
+
+## Current bounded warm-path recheck (2026-07-25)
+
+The selected 0.6B wrapper was rerun through `gpuq` after aligning the salon
+smoke with the production warm-up path. The warm-up itself took 14,636.751 ms
+and produced 12,606 ms of discarded PCM; Qwen synthesis duration is not
+monotonic, so this is another reason the call must not be accepted before
+warm-up completes. After warm-up, two normal salon sentences required
+6,028.927 ms and 6,229.516 ms to return complete waveforms for 5,803 ms and
+6,363 ms of audio. Peak total GPU use was 9,562 MiB.
+
+This confirms near-real-time synthesis throughput after warm-up, but not low
+first-audio latency: the installed official wrapper still returns complete
+waveforms. The result therefore remains a documented latency limitation, not
+an optimization claim. Evidence:
+`E:\Data\LocalVoiceAgent\runtime\evidence\salon\salon-tts-smoke-20260725T105419.620795062Z.json`
+(SHA-256 `6c986a15bef97fa7e6283bb77b211b8649dababbac20c59deb323751ec8d9c93`).

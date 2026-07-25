@@ -623,7 +623,7 @@ gpuq run --vram 14500 --eta 420 --priority 60 `
   powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -File C:\Dev\Repos\local-voice-agent\scripts\run-salon-llm-smoke.ps1
 
-gpuq run --vram 9000 --eta 300 --priority 60 `
+gpuq run --vram 14000 --eta 300 --priority 60 `
   --max-runtime 900 --agent codex:local-voice-agent `
   --workload salon-qwen3-tts-integration-v1 `
   --cwd C:\Dev\Repos\local-voice-agent -- `
@@ -634,7 +634,9 @@ gpuq run --vram 9000 --eta 300 --priority 60 `
 The TTS-only wrapper does not load STT or an LLM. Both wrappers write
 metadata-only evidence below
 `E:\Data\LocalVoiceAgent\runtime\evidence\salon` and unload their owned model
-before the scheduler job completes.
+before the scheduler job completes. The TTS wrapper defaults to the selected
+low-latency Qwen3-TTS 0.6B Base checkpoint. Set
+`LVA_QWEN3_TTS_SIZE=1.7b` only for the documented quality rollback comparison.
 
 Restore procedure:
 
@@ -914,7 +916,7 @@ Install the verified debug APK only when a device is visible in
 ```powershell
 C:\Dev\SDK\Android\platform-tools\adb.exe devices
 C:\Dev\SDK\Android\platform-tools\adb.exe install -r `
-  E:\Data\LocalVoiceAgent\artifacts\android\0.6.8-api37\local-voice-agent-0.6.8-debug.apk
+  E:\Data\LocalVoiceAgent\artifacts\android\0.6.9-api37\local-voice-agent-0.6.9-debug.apk
 ```
 
 The release APK is intentionally unsigned and cannot be installed until the

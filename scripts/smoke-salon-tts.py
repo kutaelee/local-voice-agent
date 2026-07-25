@@ -24,6 +24,7 @@ TEXTS = (
     "안녕하세요, 윤슬 헤어 예약 도우미 수아입니다. 어떤 예약을 도와드릴까요?",
     "예약이 확정됐습니다. 일요일 오후 두 시 커트, 담당 민지입니다.",
 )
+WARMUP_TEXT = "잠시만요, 확인해 볼게요."
 
 
 async def run(args: argparse.Namespace) -> dict[str, object]:
@@ -42,6 +43,18 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
         release_fade_ms=24,
         final_silence_ms=200,
     )
+    warmup_started = perf_counter()
+    warmup_events = await service.synthesize(WARMUP_TEXT)
+    warmup = {
+        "text_sha256": sha256(WARMUP_TEXT.encode("utf-8")).hexdigest(),
+        "latency_ms": round((perf_counter() - warmup_started) * 1_000, 3),
+        "duration_ms": sum(
+            int(event.payload["duration_ms"])
+            for event in warmup_events
+            if event.type == "audio.output.chunk"
+        ),
+        "audio_discarded": True,
+    }
     results = []
     for text in TEXTS:
         started = perf_counter()
@@ -70,11 +83,12 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
     return {
         "schema_version": "1.0",
         "status": "passed",
-        "engine": "qwen3-tts-1.7b-base",
+        "engine": args.engine,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "profile_id": profiles.get_settings().profile_id,
         "release_fade_ms": 24,
         "final_silence_ms": 200,
+        "warmup": warmup,
         "samples": results,
     }
 
@@ -90,6 +104,14 @@ def parse_args() -> argparse.Namespace:
         "--voice-profiles-root",
         type=Path,
         default=Path("/mnt/e/Data/LocalVoiceAgent/voice-profiles"),
+    )
+    parser.add_argument(
+        "--engine",
+        choices=(
+            "qwen3-tts-12hz-0.6b-base",
+            "qwen3-tts-12hz-1.7b-base",
+        ),
+        default="qwen3-tts-12hz-0.6b-base",
     )
     parser.add_argument("--output", type=Path, required=True)
     return parser.parse_args()

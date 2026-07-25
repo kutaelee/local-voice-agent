@@ -52,6 +52,10 @@ checkpoint remains selectable as the quality comparison profile.
 Version 0.6.8 migrates a previously saved secure Gateway endpoint from the
 retired port 8765 to 46321 during an in-place APK upgrade. Other schemes and
 ports remain unchanged.
+Version 0.6.9 correlates every microphone frame and end marker with one
+request ID. If the server rejects that active stream, capture stops locally
+instead of continuing to send stale PCM chunks and flooding the session with
+repeated errors.
 The previous 0.6.2 debug APK was installed on an API 36 x86_64 emulator and
 passed cold
 launch, all primary destinations, portrait/landscape recreation, and

@@ -7,7 +7,21 @@ log_root="/mnt/e/Data/LocalVoiceAgent/runtime/logs"
 evidence_root="/mnt/e/Data/LocalVoiceAgent/runtime/evidence/salon"
 runtime="/home/kutae/.local/share/local-voice-agent/runtimes/tts-qwen3-1.7b/.venv"
 health_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1/.venv"
-model="/mnt/e/AI/Models/HuggingFace/hub/models--Qwen--Qwen3-TTS-12Hz-1.7B-Base/snapshots/fd4b254389122332181a7c3db7f27e918eec64e3"
+model_size="${LVA_QWEN3_TTS_SIZE:-0.6b}"
+case "${model_size}" in
+  0.6b)
+    model="/mnt/e/AI/Models/HuggingFace/hub/models--Qwen--Qwen3-TTS-12Hz-0.6B-Base/snapshots/5d83992436eae1d760afd27aff78a71d676296fc"
+    engine="qwen3-tts-12hz-0.6b-base"
+    ;;
+  1.7b)
+    model="/mnt/e/AI/Models/HuggingFace/hub/models--Qwen--Qwen3-TTS-12Hz-1.7B-Base/snapshots/fd4b254389122332181a7c3db7f27e918eec64e3"
+    engine="qwen3-tts-12hz-1.7b-base"
+    ;;
+  *)
+    echo "LVA_QWEN3_TTS_SIZE must be 0.6b or 1.7b." >&2
+    exit 4
+    ;;
+esac
 profiles="/mnt/e/Data/LocalVoiceAgent/voice-profiles"
 socket="${run_root}/tts.sock"
 pid_file="${run_root}/tts.pid"
@@ -111,5 +125,6 @@ done
 PYTHONPATH="${repo}/apps/pc-server/src" \
   "/home/kutae/.local/share/local-voice-agent/runtimes/pc-server/.venv/bin/python" \
   "${repo}/scripts/smoke-salon-tts.py" \
+  --engine "${engine}" \
   --output "${evidence_path}"
 echo "Salon TTS evidence: ${evidence_path}"
