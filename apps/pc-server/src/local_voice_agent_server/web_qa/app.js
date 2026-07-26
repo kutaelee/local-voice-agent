@@ -1219,6 +1219,7 @@ ui.clearEventsButton.addEventListener("click", () => ui.events.replaceChildren()
 ui.approveButton.addEventListener("click", () => respondApproval(true));
 ui.rejectButton.addEventListener("click", () => respondApproval(false));
 ui.saveVoiceButton.addEventListener("click", saveVoiceSettings);
+ui.voiceProfile.addEventListener("change", saveVoiceSettings);
 for (const slider of [ui.playbackRate, ui.exaggeration, ui.cfgWeight, ui.temperature]) {
   slider.addEventListener("input", syncSliderLabels);
 }

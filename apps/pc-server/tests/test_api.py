@@ -162,6 +162,10 @@ def test_qa_portal_is_local_static_content_without_secrets() -> None:
     assert "state.captureAudioContext = captureContext" in start_listening
     assert 'payload.error_code === "NO_SPEECH_RECOGNIZED"' in app_script.text
     assert "말소리가 확인되지 않아 다시 듣고 있습니다." in app_script.text
+    assert (
+        'ui.voiceProfile.addEventListener("change", saveVoiceSettings)'
+        in app_script.text
+    )
     assert "새 QA 탭을 열거나 Bluetooth 헤드셋을 다시 연결" in app_script.text
     assert 'addEvent("capture.error"' in app_script.text
     assert "!state.responseInterruptible" in app_script.text

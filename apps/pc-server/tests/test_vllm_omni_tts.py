@@ -1,10 +1,14 @@
 import asyncio
+from pathlib import Path
 
 import pytest
 
 from local_voice_agent_server.infrastructure.vllm_omni_tts import (
     VllmOmniTtsAdapter,
     VllmOmniTtsError,
+)
+from local_voice_agent_server.infrastructure.voice_profiles import (
+    VoiceSynthesisOptions,
 )
 
 
@@ -88,3 +92,36 @@ def test_vllm_omni_tts_reassembles_network_chunks_on_pcm_boundaries() -> None:
         ]
 
     assert asyncio.run(collect()) == [b"\x01\x02", b"\x03\x04"]
+
+
+def test_vllm_omni_tts_uses_selected_reference_profile(tmp_path: Path) -> None:
+    reference = tmp_path / "reference.wav"
+    reference.write_bytes(b"RIFF-reference")
+    payloads = []
+
+    adapter = VllmOmniTtsAdapter(
+        base_url="http://localhost:46329",
+        voice="fallback-voice",
+        stream_transport=lambda payload: (
+            payloads.append(payload) or iter((b"\x01\x02",))
+        ),
+        options_provider=lambda _: VoiceSynthesisOptions(
+            profile_id="selected-profile",
+            reference_audio_path=reference,
+            exaggeration=0.5,
+            cfg_weight=0.5,
+            temperature=0.8,
+            reference_text="선택한 목소리의 참조 대사입니다.",
+            style="neutral",
+        ),
+    )
+
+    async def collect() -> None:
+        async for _ in adapter.stream_synthesize("테스트입니다.", language="ko"):
+            pass
+
+    asyncio.run(collect())
+
+    assert payloads[0]["voice"] == "fallback-voice"
+    assert payloads[0]["ref_audio"] == reference.resolve().as_uri()
+    assert payloads[0]["ref_text"] == "선택한 목소리의 참조 대사입니다."

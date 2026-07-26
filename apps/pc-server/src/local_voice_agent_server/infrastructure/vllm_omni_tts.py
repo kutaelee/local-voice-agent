@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from ..application.voice_turn import SynthesizedAudio
+from .voice_profiles import VoiceSynthesisOptions
 
 
 class VllmOmniTtsError(RuntimeError):
@@ -30,6 +31,7 @@ class VllmOmniTtsAdapter:
         timeout_seconds: float = 180,
         sample_rate_hz: int = 24_000,
         stream_transport: StreamTransport | None = None,
+        options_provider: Callable[[str], VoiceSynthesisOptions] | None = None,
     ) -> None:
         parsed = urlparse(base_url)
         if (
@@ -54,6 +56,7 @@ class VllmOmniTtsAdapter:
         self._timeout_seconds = timeout_seconds
         self._sample_rate_hz = sample_rate_hz
         self._stream_transport = stream_transport or self._stream_request
+        self._options_provider = options_provider
 
     async def synthesize(self, text: str, *, language: str) -> SynthesizedAudio:
         chunks = [
@@ -129,7 +132,7 @@ class VllmOmniTtsAdapter:
         # units hit the earlier 64-token floor. EOS still terminates normal
         # generations, so the larger ceiling is only a safety bound.
         max_new_tokens = min(768, max(160, len(normalized) * 8))
-        return {
+        payload: dict[str, object] = {
             "input": normalized,
             "voice": self._voice,
             "language": resolved_language,
@@ -139,6 +142,16 @@ class VllmOmniTtsAdapter:
             "stream_format": "audio",
             "max_new_tokens": max_new_tokens,
         }
+        if self._options_provider is not None:
+            options = self._options_provider(normalized)
+            if (
+                options.reference_audio_path is not None
+                and options.reference_text is not None
+            ):
+                reference = options.reference_audio_path.resolve(strict=True)
+                payload["ref_audio"] = reference.as_uri()
+                payload["ref_text"] = options.reference_text
+        return payload
 
     def _stream_request(self, payload: dict[str, object]) -> Iterator[bytes]:
         encoded = json.dumps(payload, separators=(",", ":")).encode("utf-8")

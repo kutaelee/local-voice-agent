@@ -1719,6 +1719,11 @@ def _tts_adapter_from_environment(
             timeout_seconds=float(
                 os.environ.get("LVA_TTS_TIMEOUT_SECONDS", "180")
             ),
+            options_provider=(
+                voice_profile_store.synthesis_options
+                if voice_profile_store is not None
+                else None
+            ),
         )
     if adapter != "worker":
         raise RuntimeError("LVA_TTS_ADAPTER must be worker or vllm-omni")
