@@ -10,7 +10,11 @@ stt_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whis
 worker_token_file="/mnt/e/Data/LocalVoiceAgent/secrets/audio-worker-token"
 vllm_started=0
 audio_started=0
+omni_tts_started=0
+omni_tts_pid=""
 shutdown_requested=0
+omni_tts_port="${LVA_VLLM_OMNI_TTS_PORT:-46329}"
+log_root="/mnt/e/Data/LocalVoiceAgent/runtime/logs"
 
 if [[ ! -r "${worker_token_file}" ]]; then
   echo "Audio worker token is unavailable." >&2
@@ -27,6 +31,12 @@ cleanup() {
   local exit_code=$?
   trap - EXIT INT TERM
   set +e
+  if ((omni_tts_started == 1)) && [[ "${omni_tts_pid}" =~ ^[0-9]+$ ]] \
+    && kill -0 "${omni_tts_pid}" 2>/dev/null; then
+    kill -TERM "${omni_tts_pid}"
+    wait "${omni_tts_pid}" 2>/dev/null || true
+  fi
+  rm -f -- "${run_root}/vllm-omni-tts.pid"
   if ((audio_started == 1)); then
     bash "${repo}/scripts/stop-audio-workers.sh"
   fi
@@ -55,9 +65,33 @@ vllm_started=1
 
 export \
   LVA_TTS_ENGINE=qwen3 \
+  LVA_SKIP_TTS_WORKER=1 \
   LVA_QWEN3_TTS_SIZE="${LVA_QWEN3_TTS_SIZE:-0.6b}"
 bash "${repo}/scripts/start-audio-workers.sh"
 audio_started=1
+
+mkdir -p "${log_root}"
+bash "${repo}/scripts/run-vllm-omni-tts.sh" \
+  >"${log_root}/vllm-omni-tts.log" 2>&1 &
+omni_tts_pid=$!
+omni_tts_started=1
+echo "${omni_tts_pid}" >"${run_root}/vllm-omni-tts.pid"
+for _ in {1..180}; do
+  if curl --silent --fail --max-time 2 \
+    "http://127.0.0.1:${omni_tts_port}/health" >/dev/null; then
+    break
+  fi
+  if ! kill -0 "${omni_tts_pid}" 2>/dev/null; then
+    echo "vLLM-Omni TTS exited during startup." >&2
+    exit 12
+  fi
+  sleep 1
+done
+if ! curl --silent --fail --max-time 2 \
+  "http://127.0.0.1:${omni_tts_port}/health" >/dev/null; then
+  echo "vLLM-Omni TTS failed health check." >&2
+  exit 12
+fi
 
 echo "gpuq-managed interactive voice stack is ready."
 
@@ -71,7 +105,7 @@ while ((shutdown_requested == 0)); do
     exit 10
   fi
 
-  for worker in vad stt tts; do
+  for worker in vad stt; do
     pid_file="${run_root}/${worker}.pid"
     worker_pid="$(<"${pid_file}")"
     socket_path="${run_root}/${worker}.sock"
@@ -84,6 +118,13 @@ while ((shutdown_requested == 0)); do
       exit 11
     fi
   done
+
+  if ! kill -0 "${omni_tts_pid}" 2>/dev/null \
+    || ! curl --silent --fail --max-time 2 \
+      "http://127.0.0.1:${omni_tts_port}/health" >/dev/null; then
+    echo "Registered vLLM-Omni TTS health check failed." >&2
+    exit 12
+  fi
 
   sleep 5 &
   wait $! || true

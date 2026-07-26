@@ -7,6 +7,7 @@ log_root="/mnt/e/Data/LocalVoiceAgent/runtime/logs"
 cache_root="/mnt/e/Data/LocalVoiceAgent/runtime/cache"
 stt_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1/.venv"
 tts_engine="${LVA_TTS_ENGINE:-qwen3}"
+skip_tts_worker="${LVA_SKIP_TTS_WORKER:-0}"
 qwen3_tts_size="${LVA_QWEN3_TTS_SIZE:-0.6b}"
 vad_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/vad-silero-6.2.1/.venv"
 stt_model="/mnt/e/AI/Models/HuggingFace/hub/models--mobiuslabsgmbh--faster-whisper-large-v3-turbo/snapshots/0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf"
@@ -68,6 +69,11 @@ case "${tts_engine}" in
     ;;
 esac
 
+if [[ "${skip_tts_worker}" != "0" && "${skip_tts_worker}" != "1" ]]; then
+  echo "LVA_SKIP_TTS_WORKER must be 0 or 1." >&2
+  exit 3
+fi
+
 assert_not_running() {
   local name="$1"
   local pid_file="${run_root}/${name}.pid"
@@ -96,7 +102,9 @@ wait_for_health() {
 }
 
 assert_not_running stt
-assert_not_running tts
+if [[ "${skip_tts_worker}" == "0" ]]; then
+  assert_not_running tts
+fi
 assert_not_running vad
 started_pids=()
 cleanup_on_error() {
@@ -148,36 +156,38 @@ if ! wait_for_health "${stt_socket}" 90; then
   exit 6
 fi
 
-nohup env \
-  PYTHONNOUSERSITE=1 \
-  HF_HUB_OFFLINE=1 \
-  TRANSFORMERS_OFFLINE=1 \
-  LVA_AUDIO_WORKER_TOKEN="${worker_token}" \
-  "${tts_runtime}/bin/python" "${tts_worker}" \
-    --socket "${tts_socket}" \
-    --model "${tts_model}" \
-    --voice-profiles-root "${voice_profiles_root}" \
-    "${tts_extra_args[@]}" \
-  >"${log_root}/tts-worker.log" 2>&1 &
-tts_pid=$!
-started_pids+=("${tts_pid}")
-echo "${tts_pid}" >"${run_root}/tts.pid"
+if [[ "${skip_tts_worker}" == "0" ]]; then
+  nohup env \
+    PYTHONNOUSERSITE=1 \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1 \
+    LVA_AUDIO_WORKER_TOKEN="${worker_token}" \
+    "${tts_runtime}/bin/python" "${tts_worker}" \
+      --socket "${tts_socket}" \
+      --model "${tts_model}" \
+      --voice-profiles-root "${voice_profiles_root}" \
+      "${tts_extra_args[@]}" \
+    >"${log_root}/tts-worker.log" 2>&1 &
+  tts_pid=$!
+  started_pids+=("${tts_pid}")
+  echo "${tts_pid}" >"${run_root}/tts.pid"
 
-if ! wait_for_health "${tts_socket}" 120; then
-  echo "TTS worker failed health check; see ${log_root}/tts-worker.log" >&2
-  exit 7
-fi
+  if ! wait_for_health "${tts_socket}" 120; then
+    echo "TTS worker failed health check; see ${log_root}/tts-worker.log" >&2
+    exit 7
+  fi
 
-if [[ "${tts_engine}" == "qwen3" ]]; then
-  if ! "${tts_runtime}/bin/python" \
-    "${repo}/scripts/warm-qwen3-tts-worker.py" \
-    --socket "${tts_socket}" \
-    --voice-profiles-root "${voice_profiles_root}" \
-    --cache-output "${cache_root}/model-switch-hold.wav"; then
-    echo "Qwen3-TTS warm-up failed; refusing to advertise a cold call path." >&2
-    exit 8
+  if [[ "${tts_engine}" == "qwen3" ]]; then
+    if ! "${tts_runtime}/bin/python" \
+      "${repo}/scripts/warm-qwen3-tts-worker.py" \
+      --socket "${tts_socket}" \
+      --voice-profiles-root "${voice_profiles_root}" \
+      --cache-output "${cache_root}/model-switch-hold.wav"; then
+      echo "Qwen3-TTS warm-up failed; refusing to advertise a cold call path." >&2
+      exit 8
+    fi
   fi
 fi
 
 trap - ERR
-echo "Audio workers ready: vad_pid=${vad_pid} stt_pid=${stt_pid} tts_pid=${tts_pid} tts_engine=${tts_engine} qwen3_size=${qwen3_tts_size}"
+echo "Audio workers ready: vad_pid=${vad_pid} stt_pid=${stt_pid} tts_pid=${tts_pid:-external} tts_engine=${tts_engine} qwen3_size=${qwen3_tts_size}"

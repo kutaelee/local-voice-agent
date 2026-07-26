@@ -1,6 +1,6 @@
 # Derived from vLLM-Omni 0.24.0 vllm_omni/deploy/qwen3_tts.yaml.
 # This workstation profile preserves raw PCM async chunking while bounding the
-# two same-GPU stages for an interactive service with concurrency <= 4.
+# two same-GPU stages for one interactive phone session.
 async_chunk: true
 
 connectors:
@@ -19,13 +19,16 @@ connectors:
 
 stages:
   - stage_id: 0
-    max_num_seqs: 4
-    gpu_memory_utilization: 0.12
+    max_num_seqs: 1
+    gpu_memory_utilization: 0.08
     trust_remote_code: true
     enable_prefix_caching: true
     async_scheduling: true
     max_num_batched_tokens: 512
-    max_model_len: 4096
+    # A spoken response unit is bounded well below this limit. Keeping 4096
+    # requires 0.44 GiB of KV cache, which does not fit the 8% phone-session
+    # profile (0.37 GiB available).
+    max_model_len: 3072
     devices: "0"
     output_connectors:
       to_stage_1: connector_of_shared_memory
@@ -42,8 +45,8 @@ stages:
       top_p: 1.0
 
   - stage_id: 1
-    max_num_seqs: 4
-    gpu_memory_utilization: 0.12
+    max_num_seqs: 1
+    gpu_memory_utilization: 0.08
     enforce_eager: false
     trust_remote_code: true
     enable_prefix_caching: false

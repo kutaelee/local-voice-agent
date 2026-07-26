@@ -165,6 +165,9 @@ def test_qa_portal_is_local_static_content_without_secrets() -> None:
     assert "state.activeResponseRequestId" in app_script.text
     assert "if (cancelRequestId)" in app_script.text
     assert "state.listening || state.responseInterruptible" in app_script.text
+    assert "state.captureStarting" in app_script.text
+    assert "state.pendingBargeInStart = true" in app_script.text
+    assert "interrupt({ resumeListening: true })" in app_script.text
     assert "음성 턴을 먼저 중지한 뒤 모델을 내려" in app_script.text
     assert 'state.modelControlPhase !== "ready"' in app_script.text
     assert '"VOICE_WORKER_UNAVAILABLE"' in app_script.text

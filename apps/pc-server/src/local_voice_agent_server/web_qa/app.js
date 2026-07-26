@@ -61,6 +61,8 @@ const state = {
   sequence: 0,
   connected: false,
   listening: false,
+  captureStarting: false,
+  pendingBargeInStart: false,
   manuallyStopped: false,
   inputStreamId: null,
   rejectedInputRequestId: null,
@@ -204,6 +206,7 @@ function updateVoiceStartButton() {
   ui.startButton.disabled = (
     !state.connected
     || state.listening
+    || state.captureStarting
     || state.modelControlPhase !== "ready"
   );
 }
@@ -658,11 +661,18 @@ function microphoneErrorMessage(error) {
 }
 
 async function startListening() {
-  if (!state.connected || state.listening) return;
+  if (!state.connected || state.listening || state.captureStarting) return;
   if (state.modelControlPhase !== "ready") {
     showToast("모델과 음성 워커가 아직 준비되지 않았습니다.");
     return;
   }
+  if (state.responseInterruptible && state.serverOperationActive) {
+    state.pendingBargeInStart = true;
+    interrupt({ resumeListening: true });
+    return;
+  }
+  state.captureStarting = true;
+  updateVoiceStartButton();
   state.manuallyStopped = false;
   stopPlayback();
   let media = null;
@@ -737,6 +747,9 @@ async function startListening() {
     });
     showToast(message);
     setAssistant("error", message);
+  } finally {
+    state.captureStarting = false;
+    updateVoiceStartButton();
   }
 }
 
@@ -974,6 +987,11 @@ function handleServerEvent(envelope) {
     } else {
       setAssistant(payload.state, payload.detail || "");
     }
+    if (payload.state === "interrupted" && state.pendingBargeInStart) {
+      state.pendingBargeInStart = false;
+      state.manuallyStopped = false;
+      queueMicrotask(() => startListening());
+    }
     if (payload.state === "recognizing" && payload.detail === "vad_end_detected" && state.listening) {
       stopCapture(true, "vad_end");
     }
@@ -1123,14 +1141,14 @@ function syncSliderLabels() {
   ui.temperatureValue.textContent = Number(ui.temperature.value).toFixed(2);
 }
 
-function interrupt() {
+function interrupt({ resumeListening = false } = {}) {
   if (!state.responseInterruptible) return;
   const cancelRequestId = (
     state.serverOperationActive
       ? state.activeResponseRequestId
       : null
   );
-  state.manuallyStopped = true;
+  state.manuallyStopped = !resumeListening;
   stopCapture(false);
   stopPlayback();
   if (cancelRequestId) {
@@ -1140,6 +1158,11 @@ function interrupt() {
       reason: "user_request",
       idempotency_key: crypto.randomUUID(),
     }, cancelRequestId);
+  }
+  if (!cancelRequestId && resumeListening) {
+    state.pendingBargeInStart = false;
+    state.manuallyStopped = false;
+    queueMicrotask(() => startListening());
   }
   setAssistant("interrupted");
 }
@@ -1158,7 +1181,7 @@ ui.stopButton.addEventListener("click", () => {
   state.manuallyStopped = true;
   stopCapture(true, "client_stop");
 });
-ui.interruptButton.addEventListener("click", interrupt);
+ui.interruptButton.addEventListener("click", () => interrupt());
 ui.resetMetricsButton.addEventListener("click", resetMetrics);
 ui.clearEventsButton.addEventListener("click", () => ui.events.replaceChildren());
 ui.approveButton.addEventListener("click", () => respondApproval(true));

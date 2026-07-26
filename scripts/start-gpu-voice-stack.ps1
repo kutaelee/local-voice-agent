@@ -60,7 +60,7 @@ if ($LASTEXITCODE -eq 0 -and $existing.Count -gt 0) {
 
 $jobId = (
     & $gpuq run `
-        --vram 22000 `
+        --vram 25000 `
         --eta 3600 `
         --priority $Priority `
         --max-runtime $MaxRuntimeSeconds `
@@ -83,7 +83,7 @@ New-Item -ItemType Directory -Path (Split-Path -Parent $statusPath) -Force |
     state = 'submitted'
     gpuq_job_id = $jobId
     workload = 'local-voice-agent-interactive-qa'
-    requested_vram_mib = 22000
+    requested_vram_mib = 25000
     priority = $Priority
     max_runtime_seconds = $MaxRuntimeSeconds
     submitted_at = (Get-Date).ToUniversalTime().ToString('o')
