@@ -151,6 +151,8 @@ def test_qa_portal_is_local_static_content_without_secrets() -> None:
     assert 'addEvent("playback.first_enqueued"' in app_script.text
     assert 'addEvent("playback.first_scheduled"' in app_script.text
     assert "state.turn.firstPlaybackScheduledAt" in app_script.text
+    assert 'new AudioContext({ latencyHint: "playback" })' in app_script.text
+    assert 'new AudioContext({ latencyHint: "interactive" })' in app_script.text
     start_listening = app_script.text.split(
         "async function startListening()",
         maxsplit=1,

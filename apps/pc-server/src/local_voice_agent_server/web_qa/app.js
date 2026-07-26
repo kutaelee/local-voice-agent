@@ -606,7 +606,11 @@ async function refreshSalonReservations() {
 
 async function ensureAudioContext() {
   if (!state.audioContext || state.audioContext.state === "closed") {
-    state.audioContext = new AudioContext({ latencyHint: "interactive" });
+    // TTS is media playback, not capture monitoring. The interactive output
+    // path can begin in a low-quality communications profile on Windows and
+    // only later transition to the full-quality renderer. Keep microphone
+    // capture interactive, but request the stable playback renderer here.
+    state.audioContext = new AudioContext({ latencyHint: "playback" });
     await state.audioContext.audioWorklet.addModule("/qa/pcm-worklet.js");
   }
   if (state.audioContext.state === "suspended") await state.audioContext.resume();
