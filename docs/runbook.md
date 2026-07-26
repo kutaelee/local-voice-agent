@@ -675,6 +675,21 @@ Qwen3-TTS 1.7B Base by default. Set `LVA_QWEN3_TTS_SIZE=0.6b` only for a
 bounded latency comparison; it is not accepted for custom-profile QA because
 it failed generated-text round-trip checks.
 
+Use `-TtsBackend vllm-omni` for the production custom-profile streaming path:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\start-gpu-voice-stack.ps1 `
+  -ModelSize e4b -TtsSize 1.7b -TtsBackend vllm-omni
+```
+
+The supervisor applies the pinned vLLM-Omni 0.24.0 compatibility patch
+idempotently and re-registers consented profiles from
+`E:\Data\LocalVoiceAgent\voice-profiles\profiles`. It rejects a profile whose
+reference hash does not match metadata. To roll back without changing model
+files, stop the registered stack and restart it with `-TtsBackend worker`;
+then start the PC server with `LVA_TTS_ADAPTER=worker`.
+
 For the raw-PCM streaming candidate, install and launch the isolated runtime:
 
 ```powershell

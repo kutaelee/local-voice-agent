@@ -177,8 +177,8 @@ async def run(args: argparse.Namespace) -> int:
         "schema_version": "1.0",
         "created_at": datetime.now(UTC).isoformat(),
         "runtime": "vllm-omni-0.24.0",
-        "model_id": "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
-        "model_revision": "5d83992436eae1d760afd27aff78a71d676296fc",
+        "model_id": args.model_id,
+        "model_revision": args.model_revision,
         "transport": "http_raw_pcm_stream",
         "voice_uploaded_this_run": uploaded,
         "reference_audio_sha256": sha256(args.reference_wav.read_bytes()).hexdigest(),
@@ -218,6 +218,14 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:46329")
     parser.add_argument("--voice-name", default="local-voice-agent-active")
+    parser.add_argument(
+        "--model-id",
+        default="Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+    )
+    parser.add_argument(
+        "--model-revision",
+        default="5d83992436eae1d760afd27aff78a71d676296fc",
+    )
     parser.add_argument("--reference-wav", type=Path, required=True)
     parser.add_argument("--profile-metadata", type=Path, required=True)
     parser.add_argument("--output-wav", type=Path, required=True)

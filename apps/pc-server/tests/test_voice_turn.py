@@ -52,6 +52,16 @@ def test_two_short_korean_sentences_release_one_low_latency_unit() -> None:
     assert pending == ""
 
 
+def test_non_streamed_complete_sentences_start_tts_before_full_reply() -> None:
+    assert _speech_units(
+        "가장 빠른 날짜로 염색 예약을 도와드릴게요. "
+        "가능한 시간을 확인해 볼게요."
+    ) == (
+        "가장 빠른 날짜로 염색 예약을 도와드릴게요.",
+        "가능한 시간을 확인해 볼게요.",
+    )
+
+
 def test_multiple_sentences_release_natural_units_without_waiting_for_all_text() -> None:
     ready, pending = _take_complete_speech_units(
         "죄송합니다. 바로 다시 확인하겠습니다. "

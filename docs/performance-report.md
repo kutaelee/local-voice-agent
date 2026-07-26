@@ -750,3 +750,33 @@ evidence:
 (SHA-256 `c3d71e621845f4e5b05d6bf898c6ece0f7391c64057ba7bafd159d03f0c251a5`).
 Subjective speaker identity, final phoneme, and physical playback latency
 remain final user QA gates.
+
+## 1.7B custom-profile streaming recovery (2026-07-26)
+
+The complete-waveform worker regression was replaced by the raw-PCM
+vLLM-Omni path while retaining the Qwen3-TTS 1.7B Base checkpoint required
+for custom-profile text correctness. vLLM-Omni 0.24.0 needed two bounded
+compatibility measures: a 384 MiB explicit stage-0 KV cache and disabling
+its artifact-only reference omission. The latter could omit reference audio
+after an API-side cache hit even though the model-side speaker cache had no
+matching entry, causing the next request to terminate the engine. Profiles
+are now re-registered through `/v1/audio/voices` at every stack start and
+the stable uploaded voice name is used for synthesis.
+
+Three sequential Sian v3 requests completed without engine death, invalid
+PCM alignment, or adjacent duplicate chunks. The first request included
+runtime compilation; the two warm requests reached first PCM in 981.806 and
+1,288.533 ms and completed in 1,894.563 and 1,992.637 ms for 3.52 seconds of
+audio. The live WebSocket greeting emitted 15 ordered chunks, reached first
+PCM 1,518.905 ms after connection setup, and closed with
+`reason=completed`.
+
+Evidence:
+
+- `E:\Data\LocalVoiceAgent\runtime\evidence\vllm-omni-tts-1.7b-sian-v3-restore.json`
+- `E:\Data\LocalVoiceAgent\runtime\evidence\vllm-omni-tts-1.7b-sian-v3-restore.wav`
+
+The integrated stack and a concurrently running unrelated GPU workload used
+30,001 MiB total at the observation point. This is whole-GPU telemetry, not
+per-model attribution. The voice stack remains subject to its 19,000 MiB
+`gpuq` reservation and must not bypass the scheduler.

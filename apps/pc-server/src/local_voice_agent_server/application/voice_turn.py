@@ -853,6 +853,7 @@ def _speech_units(text: str) -> tuple[str, ...]:
     if trailing:
         if (
             units
+            and len(units[-1]) < _MIN_STREAM_UNIT_CHARACTERS
             and len(units[-1]) + len(trailing) + 1
             <= _MAX_STREAM_UNIT_CHARACTERS
         ):

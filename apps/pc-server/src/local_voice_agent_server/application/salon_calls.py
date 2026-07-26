@@ -283,6 +283,12 @@ class SalonCallCoordinator:
     ) -> list[SalonEvent]:
         assert self._conversation_responder is not None
         history = tuple(state.history[-12:])
+        availability_search = _availability_search_request(text)
+        excluded_date = (
+            state.requested_date
+            if availability_search is not False and "말고" in text
+            else None
+        )
         try:
             decision = await self._conversation_responder.decide(
                 user_message=text,
@@ -324,6 +330,20 @@ class SalonCallCoordinator:
         if not decision.in_scope:
             state.clear_transaction()
             return self._model_reply(state, reply)
+        if availability_search is not False and state.service_id is not None:
+            state.action = "availability"
+            state.starts_at = None
+            tool_result = self._model_availability_search_result(
+                state,
+                requested_time=availability_search,
+                excluded_date=excluded_date,
+            )
+            return await self._complete_model_tool(
+                state,
+                text,
+                history,
+                tool_result,
+            )
         if decision.action == "respond":
             return self._model_reply(state, reply)
 
@@ -592,6 +612,118 @@ class SalonCallCoordinator:
                 "예약 가능한 시간이 있습니다."
                 if slots
                 else "선택한 날짜에는 예약 가능한 시간이 없습니다."
+            ),
+        }
+
+    def _model_availability_search_result(
+        self,
+        state: SalonCallState,
+        *,
+        requested_time: time | None,
+        excluded_date: date | None,
+    ) -> dict[str, object]:
+        if state.service_id is None:
+            return {
+                "ok": False,
+                "operation": "availability_search",
+                "error_code": "MISSING_FIELDS",
+                "available_slots": [],
+                "message": "확인할 세부 시술이 더 필요합니다.",
+            }
+        service = self.policy.service(state.service_id)
+        requested_staff = (
+            self.policy.staff_member(state.staff_id)
+            if state.staff_id is not None
+            else None
+        )
+        slots: list[dict[str, object]] = []
+        first_date = self._normalized_now().date()
+        if excluded_date is not None and excluded_date >= first_date:
+            first_date = excluded_date + timedelta(days=1)
+        for offset in range(self.policy.booking_horizon_days + 1):
+            candidate_date = first_date + timedelta(days=offset)
+            hours = self.policy.business_hours[candidate_date.weekday()]
+            if hours is None:
+                continue
+            if requested_time is not None:
+                candidate = local_datetime(
+                    candidate_date,
+                    requested_time,
+                    self.policy.timezone_name,
+                )
+                closes_at = local_datetime(
+                    candidate_date,
+                    hours.closes_at,
+                    self.policy.timezone_name,
+                )
+                if (
+                    requested_time < hours.opens_at
+                    or candidate + timedelta(minutes=service.duration_minutes)
+                    > closes_at
+                ):
+                    continue
+                candidates = (candidate,)
+            else:
+                daily = self._model_daily_availability_result(
+                    service_id=state.service_id,
+                    requested_date=candidate_date,
+                )
+                candidates = tuple(
+                    datetime.fromisoformat(str(item["starts_at"]))
+                    for item in daily["available_slots"]
+                )
+            for candidate in candidates:
+                try:
+                    available_staff = self._reservations.available_staff(
+                        service_id=state.service_id,
+                        starts_at=candidate,
+                    )
+                except SalonBookingError as error:
+                    if error.code in {
+                        "RESERVATION_IN_PAST",
+                        "BOOKING_HORIZON_EXCEEDED",
+                    }:
+                        continue
+                    raise
+                if requested_staff is not None:
+                    available_staff = tuple(
+                        member
+                        for member in available_staff
+                        if member.staff_id == requested_staff.staff_id
+                    )
+                if available_staff:
+                    slots.append(
+                        {
+                            "starts_at": candidate.isoformat(),
+                            "available_staff": [
+                                member.name for member in available_staff
+                            ],
+                        }
+                    )
+                if len(slots) >= 3:
+                    break
+            if len(slots) >= 3:
+                break
+        return {
+            "ok": bool(slots),
+            "operation": "availability_search",
+            "search_mode": (
+                "next_at_time" if requested_time is not None else "earliest"
+            ),
+            "service_name": service.name,
+            "requested_time": (
+                requested_time.isoformat(timespec="minutes")
+                if requested_time is not None
+                else None
+            ),
+            "requested_staff_name": (
+                requested_staff.name if requested_staff is not None else None
+            ),
+            "available_slots": slots,
+            "message": (
+                "조건에 맞는 가장 빠른 예약 가능 시간을 찾았습니다."
+                if slots
+                else "조건에 맞는 예약 가능 시간을 찾지 못했습니다."
             ),
         }
 
@@ -988,6 +1120,39 @@ def _detect_action(text: str) -> SalonAction | None:
     if "예약" in text:
         return "book"
     return None
+
+
+def _availability_search_request(text: str) -> time | None | Literal[False]:
+    normalized = " ".join(text.split())
+    searches_earliest = any(
+        phrase in normalized
+        for phrase in (
+            "가장 빠른",
+            "제일 빠른",
+            "빠른 날짜",
+            "빠른 시간",
+            "되는 날짜",
+            "가능한 날짜",
+        )
+    )
+    if not searches_earliest:
+        return False
+    match = re.search(
+        r"(?:(오전|오후)\s*)?(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?",
+        normalized,
+    )
+    if match is None:
+        return None
+    meridiem, hour_value, minute_value = match.groups()
+    hour = int(hour_value)
+    minute = int(minute_value or "0")
+    if not 0 <= minute <= 59 or not 1 <= hour <= 12:
+        return None
+    if meridiem == "오후" and hour != 12:
+        hour += 12
+    elif meridiem == "오전" and hour == 12:
+        hour = 0
+    return time(hour, minute)
 
 
 def _is_greeting(text: str) -> bool:

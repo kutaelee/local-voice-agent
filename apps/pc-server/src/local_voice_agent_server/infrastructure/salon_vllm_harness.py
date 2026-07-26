@@ -101,6 +101,7 @@ class SalonVllmConversationHarness:
                 or _reply_leaks_internal_state(decision.reply)
                 or _reply_is_not_spoken_korean(decision.reply)
                 or _reply_is_too_long_for_phone(decision.reply, max_sentences=3)
+                or _reply_has_short_lead_in(decision.reply)
             )
         except SalonFaqResponderError:
             decision = None
@@ -116,7 +117,8 @@ class SalonVllmConversationHarness:
                         "십 자리 또는 십일 자리 번호를 고객이 말한 경우에만 넣고, 거부하거나 "
                         "말하지 않았다면 null로 둔다. service_id와 staff_id는 FACTS에 있는 "
                         "식별자만 사용하고 불확실하면 null로 둔다. 답변은 고객 말을 따라 하지 "
-                        "않고 보통 삼십오 자 이내의 자연스러운 한국어 평문 한 문장으로 쓴다. "
+                        "않고 보통 이십오 자 이내의 자연스러운 한국어 평문 한 문장으로 쓴다. "
+                        "짧은 맞장구나 사과를 첫 문장으로 따로 두지 말고 핵심 답부터 말한다. "
                         "action, 슬롯, JSON, "
                         "Note, 판단 과정, 마크다운, 글머리표, 괄호, 별표, 이모지, 줄바꿈을 "
                         "노출하지 않는다."
@@ -136,6 +138,7 @@ class SalonVllmConversationHarness:
                 or _reply_leaks_internal_state(decision.reply)
                 or _reply_is_not_spoken_korean(decision.reply)
                 or _reply_is_too_long_for_phone(decision.reply, max_sentences=3)
+                or _reply_has_short_lead_in(decision.reply)
             ):
                 raise SalonFaqResponderError("salon turn reply is not phone suitable")
         return decision
@@ -161,12 +164,18 @@ class SalonVllmConversationHarness:
                 "content": (
                     "도구 실행 결과를 고객에게 자연스럽게 전달한다. "
                     "성공이나 실패를 도구 결과와 다르게 말하지 않는다. "
-                    "고객 문장을 따라 하지 말고 보통 삼십오 자 이내 한 문장으로 말한다. "
+                    "고객 문장을 따라 하지 말고 보통 이십오 자 이내 한 문장으로 말한다. "
                     "availability 결과면 "
                     "확인된 시술, 날짜와 시간, available_staff를 구체적으로 알려 주고 예약을 "
                     "진행할지 자연스럽게 묻는다. 이미 받은 시술이나 시간을 다시 확인하거나 "
                     "묻지 않는다. availability_by_date 결과면 available_slots 중 이른 순서로 "
                     "최대 세 개만 자연스럽게 제안하고 어느 시간이 편한지 묻는다. 내부 필드명, "
+                    "availability_search 결과면 available_slots의 첫 번째 한 건만 말한다. "
+                    "가장 빠른 요청에는 날짜와 시각 하나만, 특정 시각의 다음 가능일 요청에는 "
+                    "가장 이른 날짜 하나만 안내한다. 고객이 담당자를 물은 경우가 아니면 "
+                    "available_staff는 말하지 않는다. 첫 문장은 삼십 자 이내로 결과를 말하고 "
+                    "둘째 문장은 그 시간이 괜찮은지만 짧게 묻는다. 이 결과를 받은 뒤 날짜를 "
+                    "다시 정해 달라고 되묻지 않는다. "
                     "JSON, 판단 과정은 말하지 않는다. 마크다운, 글머리표, 괄호, 별표, 이모지, "
                     "줄바꿈을 쓰지 않는다. 예약 가능 여부만 물은 고객에게 성함이나 전화번호를 "
                     "미리 요구하지 않는다. next_step이 request_customer_name이면 확인된 "
@@ -190,7 +199,11 @@ class SalonVllmConversationHarness:
         if set(value) != {"reply"} or not isinstance(value["reply"], str):
             raise SalonFaqResponderError("salon tool reply is invalid")
         reply = " ".join(value["reply"].strip().split())
-        if _tool_reply_is_invalid(reply):
+        search_reply_invalid = (
+            tool_result.get("operation") == "availability_search"
+            and _availability_search_reply_is_slow(reply)
+        )
+        if _tool_reply_is_invalid(reply) or search_reply_invalid:
             messages.append(
                 {
                     "role": "system",
@@ -199,6 +212,8 @@ class SalonVllmConversationHarness:
                         "도구 결과의 사실은 유지하되 두 문장, 이백 자 이내의 자연스러운 "
                         "한국어 평문으로 다시 쓴다. 예약 가능 여부만 물었다면 가능한 시간과 "
                         "어느 시간이 편한지만 말하고 성함, 전화번호, 담당자 지정을 묻지 않는다. "
+                        "availability_search라면 available_slots의 첫 번째 한 건만 사용해 "
+                        "첫 문장을 삼십 자 이내로 쓴다. 여러 날짜나 담당자 목록은 말하지 않는다. "
                         "마크다운과 글머리표는 쓰지 않는다."
                     ),
                 }
@@ -213,6 +228,10 @@ class SalonVllmConversationHarness:
             if set(value) != {"reply"} or not isinstance(value["reply"], str):
                 raise SalonFaqResponderError("salon tool reply is invalid")
             reply = " ".join(value["reply"].strip().split())
+        # Brevity is a latency preference, not a correctness boundary. The
+        # retry above gives the model one chance to shorten a valid answer,
+        # but rejecting a still-long, factually valid answer here would make
+        # the coordinator replace it with a fixed tool-message fallback.
         if _tool_reply_is_invalid(reply):
             raise SalonFaqResponderError("salon tool reply is invalid")
         return reply
@@ -482,7 +501,7 @@ def _persona_prompt(policy: SalonPolicy) -> str:
         "캘린더 앱, 다른 미용실, 외부 검색을 절대 언급하지 않는다. "
         "답변은 실제 통화에서 그대로 읽을 수 있는 평문으로 쓴다. 마크다운, 글머리표, "
         "별표, 해시, 괄호식 부연, 이모지, 줄바꿈을 쓰지 않는다. "
-        "보통은 핵심 답과 다음 질문을 삼십오 자 이내 한 문장으로 짧고 정중하게 말한다. "
+        "보통은 핵심 답과 다음 질문을 이십오 자 이내 한 문장으로 짧고 정중하게 말한다. "
         "설명을 요청받은 경우에만 두 문장까지 늘릴 수 있으며, 첫 문장에 결론을 먼저 말한다. "
         "고객 응대에 맞는 쉬운 어휘를 쓰고 보고서나 안내문처럼 말하지 않는다. "
         "고객 문장을 그대로 되풀이하거나 단순히 바꿔 말하지 않는다. "
@@ -527,7 +546,18 @@ def _action_hint(text: str) -> str | None:
         return "cancel"
     if any(word in normalized for word in ("변경", "옮기", "바꾸")):
         return "modify"
-    if any(word in normalized for word in ("가능", "빈 시간", "자리 있", "비어")):
+    if any(
+        word in normalized
+        for word in (
+            "가능",
+            "빈 시간",
+            "자리 있",
+            "비어",
+            "가장 빠른",
+            "제일 빠른",
+            "되는 날짜",
+        )
+    ):
         return "availability"
     if "예약" in normalized:
         return "book"
@@ -631,4 +661,30 @@ def _tool_reply_is_invalid(reply: str) -> bool:
             max_sentences=2,
             max_characters=200,
         )
+    )
+
+
+def _reply_has_short_lead_in(reply: str) -> bool:
+    sentences = [
+        item.strip()
+        for item in re.split(r"(?<=[.!?。！？])\s+", reply)
+        if item.strip()
+    ]
+    return (
+        len(sentences) > 1
+        and len(sentences[0]) < 14
+        and len(reply) > 32
+    )
+
+
+def _availability_search_reply_is_slow(reply: str) -> bool:
+    sentences = [
+        item.strip()
+        for item in re.split(r"(?<=[.!?。！？])\s+", reply)
+        if item.strip()
+    ]
+    return (
+        not sentences
+        or len(sentences[0]) > 32
+        or len(reply) > 58
     )

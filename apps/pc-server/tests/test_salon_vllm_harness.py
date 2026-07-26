@@ -171,6 +171,116 @@ def test_verbose_availability_reply_is_regenerated_for_phone() -> None:
     assert reply.endswith("어느 시간이 편하실까요?")
 
 
+def test_availability_search_reply_is_reduced_to_first_real_slot() -> None:
+    replies = iter(
+        [
+            {
+                "reply": (
+                    "7월 28일, 29일, 30일 오전 11시에 민지, 준 선생님으로 "
+                    "예약할 수 있습니다. 어느 날짜가 편하신가요?"
+                )
+            },
+            {
+                "reply": (
+                    "오전 11시는 7월 28일이 가장 빨라요. "
+                    "이날 괜찮으세요?"
+                )
+            },
+        ]
+    )
+    calls = []
+
+    def transport(payload):
+        calls.append(payload)
+        return _response(next(replies))
+
+    adapter = SalonVllmConversationHarness(
+        policy=load_salon_policy(POLICY_PATH),
+        base_url="http://127.0.0.1:46322/v1",
+        model="gemma4-e4b",
+        api_key=API_KEY,
+        transport=transport,
+    )
+    reply = asyncio.run(
+        adapter.complete(
+            user_message="11시 되는 가장 빠른 날짜가 언제예요?",
+            state={"action": "availability"},
+            history=(),
+            tool_result={
+                "ok": True,
+                "operation": "availability_search",
+                "search_mode": "next_at_time",
+                "requested_time": "11:00",
+                "available_slots": [
+                    {
+                        "starts_at": "2026-07-28T11:00:00+09:00",
+                        "available_staff": ["민지", "준"],
+                    },
+                    {
+                        "starts_at": "2026-07-29T11:00:00+09:00",
+                        "available_staff": ["민지", "준"],
+                    },
+                ],
+            },
+        )
+    )
+
+    assert len(calls) == 2
+    assert calls[1]["response_format"]["json_schema"]["name"] == (
+        "salon_tool_reply_retry"
+    )
+    assert "7월 29일" not in reply
+    assert reply.startswith("오전 11시는 7월 28일")
+
+
+def test_availability_search_keeps_valid_model_retry_when_still_long() -> None:
+    replies = iter(
+        [
+            {
+                "reply": (
+                    "가장 빠른 염색 예약은 7월 28일 오전 10시에 가능하며 "
+                    "민지 선생님과 준 선생님이 가능합니다. 진행할까요?"
+                )
+            },
+            {
+                "reply": (
+                    "가장 빠른 염색 예약은 7월 28일 오전 10시에 가능해요. "
+                    "이 시간으로 예약을 진행해 드릴까요?"
+                )
+            },
+        ]
+    )
+    adapter = SalonVllmConversationHarness(
+        policy=load_salon_policy(POLICY_PATH),
+        base_url="http://127.0.0.1:46322/v1",
+        model="gemma4-e4b",
+        api_key=API_KEY,
+        transport=lambda _payload: _response(next(replies)),
+    )
+
+    reply = asyncio.run(
+        adapter.complete(
+            user_message="제일 빠른 날짜요.",
+            state={"action": "availability"},
+            history=(),
+            tool_result={
+                "ok": True,
+                "operation": "availability_search",
+                "search_mode": "earliest",
+                "available_slots": [
+                    {
+                        "starts_at": "2026-07-28T10:00:00+09:00",
+                        "available_staff": ["민지", "준"],
+                    }
+                ],
+            },
+        )
+    )
+
+    assert reply.startswith("가장 빠른 염색 예약은 7월 28일")
+    assert "예약을 진행해 드릴까요?" in reply
+
+
 def test_repetitive_scope_refusal_is_regenerated_by_model() -> None:
     replies = iter(
         [

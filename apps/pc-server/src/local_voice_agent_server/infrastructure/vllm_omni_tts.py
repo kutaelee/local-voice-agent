@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Callable, Iterator
 import json
+import re
 from typing import BinaryIO
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -148,11 +149,16 @@ class VllmOmniTtsAdapter:
                 options.reference_audio_path is not None
                 and options.reference_text is not None
             ):
-                raise VllmOmniTtsError(
-                    "vLLM-Omni 0.24.0 custom voice profiles are disabled "
-                    "because its Qwen3-TTS conditioning cache truncates "
-                    "repeated audio; use the Qwen3 worker adapter"
-                )
+                profile_id = options.profile_id.strip().lower()
+                if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,95}", profile_id):
+                    raise VllmOmniTtsError(
+                        "voice profile ID is invalid for vLLM-Omni"
+                    )
+                # The GPU-stack supervisor registers every consented local
+                # profile through vLLM-Omni's official voices endpoint before
+                # it reports ready. Sending only the stable registered name
+                # keeps private reference audio out of every speech request.
+                payload["voice"] = f"lva-{profile_id}"
         return payload
 
     def _stream_request(self, payload: dict[str, object]) -> Iterator[bytes]:

@@ -205,6 +205,119 @@ def test_model_date_only_availability_returns_real_schedule_slots(
     asyncio.run(scenario())
 
 
+def test_model_gate_searches_real_earliest_slot_without_asking_for_date(
+    tmp_path: Path,
+) -> None:
+    observed = {}
+
+    class Harness:
+        turn = 0
+
+        async def decide(self, **kwargs) -> SalonTurnDecision:
+            self.turn += 1
+            if self.turn == 1:
+                return SalonTurnDecision(
+                    in_scope=True,
+                    action="book",
+                    service_id="color",
+                    reply="원하시는 날짜가 있으실까요?",
+                )
+            return SalonTurnDecision(
+                in_scope=True,
+                action="respond",
+                reply="원하시는 날짜를 말씀해 주세요.",
+            )
+
+        async def complete(self, **kwargs) -> str:
+            observed.update(kwargs["tool_result"])
+            return "가장 빠른 시간은 오늘 오전 열 시예요. 이 시간으로 도와드릴까요?"
+
+    async def scenario() -> None:
+        coordinator = _coordinator(
+            tmp_path,
+            conversation_responder=Harness(),
+        )
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="염색하고 싶어요.",
+        )
+        events = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="아니요, 제일 빠른 날짜요.",
+        )
+
+        assert observed["operation"] == "availability_search"
+        assert observed["search_mode"] == "earliest"
+        assert observed["available_slots"][0]["starts_at"].startswith(
+            "2026-07-25T10:00:00"
+        )
+        assert "날짜를 말씀해" not in _texts(events)[0]
+
+    asyncio.run(scenario())
+
+
+def test_model_gate_finds_next_date_at_requested_time(
+    tmp_path: Path,
+) -> None:
+    observed = {}
+
+    class Harness:
+        turn = 0
+
+        async def decide(self, **kwargs) -> SalonTurnDecision:
+            self.turn += 1
+            if self.turn == 1:
+                return SalonTurnDecision(
+                    in_scope=True,
+                    action="availability",
+                    service_id="down_perm",
+                    requested_date=date(2026, 7, 26),
+                    reply="26일 가능한 시간을 확인해 볼게요.",
+                )
+            return SalonTurnDecision(
+                in_scope=True,
+                action="respond",
+                reply="다른 날짜를 말씀해 주세요.",
+            )
+
+        async def complete(self, **kwargs) -> str:
+            observed.clear()
+            observed.update(kwargs["tool_result"])
+            return "오전 열한 시는 28일 화요일에 가장 빨리 가능해요."
+
+    async def scenario() -> None:
+        coordinator = _coordinator(
+            tmp_path,
+            conversation_responder=Harness(),
+        )
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="26일 다운펌 가능한가요?",
+        )
+        events = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="그날 말고 11시 되는 날짜가 언제예요?",
+        )
+
+        assert observed["operation"] == "availability_search"
+        assert observed["search_mode"] == "next_at_time"
+        assert observed["requested_time"] == "11:00"
+        assert observed["available_slots"][0]["starts_at"].startswith(
+            "2026-07-28T11:00:00"
+        )
+        assert "28일" in _texts(events)[0]
+
+    asyncio.run(scenario())
+
+
 def test_model_booking_checks_live_availability_before_confirmation(
     tmp_path: Path,
 ) -> None:

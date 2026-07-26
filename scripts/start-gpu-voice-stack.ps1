@@ -6,6 +6,9 @@ param(
     [ValidateSet('0.6b', '1.7b')]
     [string]$TtsSize = '1.7b',
 
+    [ValidateSet('worker', 'vllm-omni')]
+    [string]$TtsBackend = 'vllm-omni',
+
     [ValidateRange(0, 100)]
     [int]$Priority = 80,
 
@@ -19,10 +22,16 @@ $gpuq = 'C:\Dev\Tools\CodexCLI\gpuq.cmd'
 $supervisor = '/mnt/c/Dev/Repos/local-voice-agent/scripts/run-gpu-voice-stack.sh'
 $statusPath = 'E:\Data\LocalVoiceAgent\runtime\status\gpu-voice-stack.json'
 $requestedVramMiB = if ($ModelSize -eq 'e4b') {
-    if ($TtsSize -eq '1.7b') { 21000 } else { 17000 }
+    if ($TtsBackend -eq 'vllm-omni') {
+        if ($TtsSize -eq '1.7b') { 19000 } else { 17000 }
+    }
+    elseif ($TtsSize -eq '1.7b') { 21000 } else { 17000 }
 }
 else {
-    if ($TtsSize -eq '1.7b') { 29000 } else { 25000 }
+    if ($TtsBackend -eq 'vllm-omni') {
+        if ($TtsSize -eq '1.7b') { 27000 } else { 25000 }
+    }
+    elseif ($TtsSize -eq '1.7b') { 29000 } else { 25000 }
 }
 
 if (-not (Test-Path -LiteralPath $gpuq -PathType Leaf)) {
@@ -52,9 +61,17 @@ if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
                         $_.id -eq $registeredJobId.ToString()
                     }
             )
-            if ($matching.Count -eq 1) {
+            if (
+                $matching.Count -eq 1 -and
+                $registered.model_size -eq $ModelSize -and
+                $registered.tts_size -eq $TtsSize -and
+                $registered.tts_backend -eq $TtsBackend
+            ) {
                 Write-Output $registeredJobId.ToString()
                 exit 0
+            }
+            if ($matching.Count -eq 1) {
+                throw 'A differently configured GPU voice stack is active.'
             }
         }
     }
@@ -83,6 +100,7 @@ $jobId = (
         wsl.exe -d Ubuntu -- env `
             "LVA_VOICE_LLM_SIZE=$ModelSize" `
             "LVA_QWEN3_TTS_SIZE=$TtsSize" `
+            "LVA_TTS_BACKEND=$TtsBackend" `
             bash $supervisor
 ).Trim()
 $parsedJobId = [Guid]::Empty
@@ -100,6 +118,7 @@ New-Item -ItemType Directory -Path (Split-Path -Parent $statusPath) -Force |
     workload = 'local-voice-agent-interactive-qa'
     model_size = $ModelSize
     tts_size = $TtsSize
+    tts_backend = $TtsBackend
     requested_vram_mib = $requestedVramMiB
     priority = $Priority
     max_runtime_seconds = $MaxRuntimeSeconds

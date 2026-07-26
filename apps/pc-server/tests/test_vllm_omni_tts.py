@@ -94,7 +94,7 @@ def test_vllm_omni_tts_reassembles_network_chunks_on_pcm_boundaries() -> None:
     assert asyncio.run(collect()) == [b"\x01\x02", b"\x03\x04"]
 
 
-def test_vllm_omni_tts_rejects_custom_profiles_that_would_be_truncated(
+def test_vllm_omni_tts_uses_registered_custom_profile_voice(
     tmp_path: Path,
 ) -> None:
     reference = tmp_path / "reference.wav"
@@ -118,10 +118,16 @@ def test_vllm_omni_tts_rejects_custom_profiles_that_would_be_truncated(
         ),
     )
 
-    async def collect() -> None:
-        async for _ in adapter.stream_synthesize("테스트입니다.", language="ko"):
-            pass
+    async def collect() -> list[bytes]:
+        return [
+            chunk.pcm_s16le
+            async for chunk in adapter.stream_synthesize(
+                "테스트입니다.",
+                language="ko",
+            )
+        ]
 
-    with pytest.raises(VllmOmniTtsError, match="conditioning cache truncates"):
-        asyncio.run(collect())
-    assert payloads == []
+    assert asyncio.run(collect()) == [b"\x01\x02"]
+    assert payloads[0]["voice"] == "lva-selected-profile"
+    assert "ref_audio" not in payloads[0]
+    assert "ref_text" not in payloads[0]

@@ -109,6 +109,9 @@ if [[ "${tts_backend}" == "vllm-omni" ]]; then
     echo "vLLM-Omni TTS failed health check." >&2
     exit 12
   fi
+  "${stt_runtime}/bin/python" "${repo}/scripts/sync-vllm-omni-voices.py" \
+    --profiles-root "/mnt/e/Data/LocalVoiceAgent/voice-profiles/profiles" \
+    --base-url "http://127.0.0.1:${omni_tts_port}"
 fi
 
 echo "gpuq-managed interactive voice stack is ready (tts=${tts_backend})."

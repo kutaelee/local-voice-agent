@@ -23,6 +23,10 @@ stages:
   - stage_id: 0
     max_num_seqs: 1
     gpu_memory_utilization: 0.08
+    # The 1.7B talker weights exceed the 8% profiling budget even though the
+    # card still has ample physical memory. A bounded explicit cache avoids
+    # both the false zero-cache startup failure and a larger dynamic reserve.
+    kv_cache_memory_bytes: 402653184
     trust_remote_code: true
     enable_prefix_caching: true
     async_scheduling: true

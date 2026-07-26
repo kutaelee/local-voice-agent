@@ -1,0 +1,11 @@
+--- a/vllm_omni/entrypoints/openai/serving_speech.py
++++ b/vllm_omni/entrypoints/openai/serving_speech.py
+@@ -2547,6 +2547,8 @@
+             self._ref_audio_model_artifact_ready.discard(artifact_key)
+ 
+     def _qwen3_tts_can_use_ref_audio_artifact_only(self, tts_params: dict[str, Any], artifact_key: str | None) -> bool:
++        if os.environ.get("LVA_QWEN3_TTS_DISABLE_ARTIFACT_ONLY", "0") == "1":
++            return False
+         if self._tts_model_type != "qwen3_tts":
+             return False
+         if not artifact_key or artifact_key not in self._ref_audio_model_artifact_ready:
