@@ -17,7 +17,7 @@ from .voice_turn import (
     _take_complete_speech_units,
 )
 
-_MAX_SINGLE_SALON_TTS_CHARACTERS = 72
+_MAX_SINGLE_SALON_TTS_CHARACTERS = 40
 
 
 class SalonSpeechService:

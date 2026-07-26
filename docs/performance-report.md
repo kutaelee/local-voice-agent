@@ -646,6 +646,23 @@ similarity remains physical listening QA.
 The interactive default therefore returns to 1.7B; 0.6B remains a bounded
 latency experiment rather than a production voice-cloning path.
 
+## Short spoken reply projection (2026-07-26)
+
+The 1.7B correctness rollback increased complete-waveform latency. With the
+Sian profile, a two-sentence 26-character test took 5.146 seconds to synthesize
+4.240 seconds of audio at temperature 0.9. A concise 20-character reservation
+reply took 2.942 seconds and produced 2.720 seconds of audio; its STT result
+was semantically identical, normalizing spoken `세 시` to `3시`.
+
+The salon persona now targets one spoken sentence of about 35 characters and
+long multi-sentence replies begin emitting after the first complete sentence.
+The fixed call greeting was shortened without removing the salon or persona
+identity. On the live loopback WebSocket, warm greeting first-audio improved
+from 4,553.036 ms to 3,034.578 ms. This is a single before/after observation,
+not a latency distribution. The remaining roughly three seconds comes from
+the Qwen Python wrapper returning a complete waveform rather than incremental
+audio.
+
 ## Current bounded warm-path recheck (2026-07-25)
 
 The selected 0.6B wrapper was rerun through `gpuq` after aligning the salon

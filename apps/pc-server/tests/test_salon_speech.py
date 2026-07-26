@@ -61,7 +61,7 @@ def test_salon_speech_can_resume_idle_after_hangup() -> None:
     assert events[-1].payload == {"state": "idle"}
 
 
-def test_salon_speech_keeps_normal_two_sentence_reply_in_one_generation() -> None:
+def test_salon_speech_splits_long_two_sentence_reply_for_earlier_audio() -> None:
     tts = FakeTts()
     service = SalonSpeechService(tts=tts)
 
@@ -72,9 +72,9 @@ def test_salon_speech_keeps_normal_two_sentence_reply_in_one_generation() -> Non
         )
     )
 
-    assert len(tts.requests) == 1
+    assert len(tts.requests) == 2
     assert "수아입니다" in tts.requests[0][0]
-    assert "도와드릴게요" in tts.requests[0][0]
+    assert "도와드릴게요" in tts.requests[1][0]
 
 
 def test_salon_speech_streams_first_unit_before_synthesizing_the_next() -> None:

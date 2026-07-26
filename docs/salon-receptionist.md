@@ -121,6 +121,11 @@ out-of-scope requests.
 Physical user QA and TTS listening QA are intentionally performed only after
 the text path, model smoke, and automated regressions pass.
 
+Normal model replies target one concise spoken sentence. Explanations may use
+two sentences; when they do, the first complete sentence is emitted before the
+next synthesis starts. This bounds perceived latency without splitting inside
+a Korean sentence.
+
 ## Model harness and optional TTS adapter
 
 `LVA_SALON_LLM_ENABLED=1` enables the authenticated, loopback-only Gemma
