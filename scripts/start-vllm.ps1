@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('12b', '31b')]
+    [ValidateSet('e4b', '12b', '31b')]
     [string]$ModelSize = '12b',
 
     [ValidateSet('off', 'exact-off', 'on')]
@@ -50,7 +50,7 @@ $minimumFreeMemory = if (
     if ($ModelSize -eq '31b') { 27000 } else { 28500 }
 }
 else {
-    22000
+    if ($ModelSize -eq 'e4b') { 12000 } else { 22000 }
 }
 if ($freeMemory -lt $minimumFreeMemory) {
     throw (

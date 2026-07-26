@@ -76,6 +76,7 @@ class SalonVllmConversationHarness:
             "conversation_state": state,
             "recent_dialogue": history[-12:],
             "latest_user_message": normalized,
+            "action_hint": _action_hint(normalized),
         }
         messages: list[dict[str, str]] = [
             {"role": "system", "content": self._persona_prompt},
@@ -272,7 +273,6 @@ _TURN_SCHEMA: dict[str, object] = {
             "type": "string",
             "enum": ["respond", "availability", "book", "modify", "cancel"],
         },
-        "reply": {"type": "string", "maxLength": 600},
         "service_id": _NULLABLE_STRING,
         "staff_id": _NULLABLE_STRING,
         "starts_at": _NULLABLE_STRING,
@@ -281,11 +281,14 @@ _TURN_SCHEMA: dict[str, object] = {
         "phone": _NULLABLE_STRING,
         "reservation_code": _NULLABLE_STRING,
         "confirmed": {"type": "boolean"},
+        # Keep the free-form field last. Small structured-output models can
+        # otherwise spend their remaining token budget on legal whitespace
+        # inside the first string before reaching the fixed control fields.
+        "reply": {"type": "string", "maxLength": 600},
     },
     "required": [
         "in_scope",
         "action",
-        "reply",
         "service_id",
         "staff_id",
         "starts_at",
@@ -294,6 +297,7 @@ _TURN_SCHEMA: dict[str, object] = {
         "phone",
         "reservation_code",
         "confirmed",
+        "reply",
     ],
     "additionalProperties": False,
 }
@@ -446,7 +450,14 @@ def _persona_prompt(policy: SalonPolicy) -> str:
             for item in policy.staff
         ],
     }
-    return (
+    scope_rule = (
+        "매장 주소, 전화번호, 주차, 영업시간, 가격, 소요 시간, 시술 안내와 통화 인사는 모두 "
+        "미용실 고객 응대 범위이므로 in_scope=true로 답한다. 날씨, 뉴스처럼 매장과 무관한 "
+        "질문만 in_scope=false로 답한다. CURRENT_CONTEXT의 action_hint가 null이 아니면 "
+        "고객 의도 분류용 안전 힌트로 사용하고 동일한 action을 선택한다. 답변 문장은 모델이 "
+        "현재 대화에 맞게 자연스럽게 만든다. "
+    )
+    return scope_rule + (
         f"당신은 {policy.salon_name}의 예약 담당자 {policy.receptionist_name}다. "
         "전화 응대처럼 따뜻하고 자연스러운 한국어 존댓말로 대화한다. "
         f"다른 비서나 검색 서비스가 아니라 오직 {policy.salon_name}의 현재 예약표와 "
@@ -489,6 +500,21 @@ def _persona_prompt(policy: SalonPolicy) -> str:
         "정해진 JSON 스키마 외 텍스트는 출력하지 않는다.\nFACTS="
         + json.dumps(facts, ensure_ascii=False, separators=(",", ":"))
     )
+
+
+def _action_hint(text: str) -> str | None:
+    """Recommend a control token while leaving the spoken reply to the model."""
+
+    normalized = " ".join(text.split())
+    if "취소" in normalized and "취소 규정" not in normalized and "취소 수수료" not in normalized:
+        return "cancel"
+    if any(word in normalized for word in ("변경", "옮기", "바꾸")):
+        return "modify"
+    if any(word in normalized for word in ("가능", "빈 시간", "자리 있", "비어")):
+        return "availability"
+    if "예약" in normalized:
+        return "book"
+    return None
 
 
 def _relative_date_reference(now: datetime) -> dict[str, str]:

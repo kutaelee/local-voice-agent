@@ -1,8 +1,25 @@
 schema_version: "1.0"
-generated_at: "2026-07-24T04:40:50+09:00"
+generated_at: "2026-07-26T13:56:58+09:00"
 model_root: 'E:\AI\Models\HuggingFace\hub'
 status: all_selected_model_weights_downloaded
 models:
+  - role: salon_default_candidate
+    model_id: google/gemma-4-E4B-it-qat-mobile-ct
+    repository: https://huggingface.co/google/gemma-4-E4B-it-qat-mobile-ct
+    revision: 3624117cf04528e099519f93839f0f0b7a18913d
+    license: Apache-2.0
+    local_path: 'E:\AI\Models\HuggingFace\hub\models--google--gemma-4-E4B-it-qat-mobile-ct\snapshots\3624117cf04528e099519f93839f0f0b7a18913d'
+    weight_format: safetensors
+    quantization: compressed-tensors mobile QAT
+    size_bytes: 3766831745
+    primary_weight:
+      filename: model.safetensors
+      size_bytes: 3734269116
+      sha256: dd626f1b06dda679c4994e61ba636542442f140ee3d8fde56f443860ad720c05
+    runtime_candidates: [vllm-0.25.1]
+    mtp_assistant: null
+    downloaded_at: "2026-07-26T13:54:47+09:00"
+    validation_status: sha256_vllm_text_and_salon_6_case_gate_passed
   - role: default_target
     model_id: google/gemma-4-12B-it-qat-w4a16-ct
     repository: https://huggingface.co/google/gemma-4-12B-it-qat-w4a16-ct

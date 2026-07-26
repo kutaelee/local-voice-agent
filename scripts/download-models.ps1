@@ -5,6 +5,7 @@ param(
     [Parameter(ParameterSetName = 'Execute')]
     [switch]$Execute,
     [ValidateSet(
+        'salon_default_e4b',
         'default_target_12b',
         'mtp_assistant_12b',
         'mtp_target_12b',

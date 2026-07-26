@@ -14,7 +14,10 @@ def test_gpu_voice_start_is_fixed_idempotent_and_scheduler_managed() -> None:
     source = read("start-gpu-voice-stack.ps1")
 
     assert "C:\\Dev\\Tools\\CodexCLI\\gpuq.cmd" in source
-    assert "--vram 25000" in source
+    assert "[ValidateSet('e4b', '12b')]" in source
+    assert "$requestedVramMiB = if ($ModelSize -eq 'e4b') { 19000 } else { 25000 }" in source
+    assert "--vram $requestedVramMiB" in source
+    assert 'env "LVA_VOICE_LLM_SIZE=$ModelSize"' in source
     assert "--workload local-voice-agent-interactive-qa" in source
     assert "run-gpu-voice-stack.sh" in source
     assert "$scheduler.jobs.queued" in source

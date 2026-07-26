@@ -206,8 +206,27 @@ if ($InstanceName -eq 'web-qa') {
     if ($EnableVoice -and -not $env:LVA_SALON_LLM_ENABLED) {
         $env:LVA_SALON_LLM_ENABLED = '1'
     }
+    if ($EnableVoice -and -not $env:LVA_SALON_TTS_ENABLED) {
+        $env:LVA_SALON_TTS_ENABLED = '1'
+    }
 }
 if ($EnableVoice) {
+    if (-not $env:LVA_TTS_ADAPTER) {
+        $env:LVA_TTS_ADAPTER = 'vllm-omni'
+    }
+    if ($env:LVA_TTS_ADAPTER -eq 'vllm-omni') {
+        if (-not $env:LVA_VLLM_OMNI_TTS_URL) {
+            $env:LVA_VLLM_OMNI_TTS_URL = 'http://127.0.0.1:46329'
+        }
+        try {
+            $omniHealth = Invoke-RestMethod `
+                -Uri "$($env:LVA_VLLM_OMNI_TTS_URL)/health" `
+                -TimeoutSec 2
+        }
+        catch {
+            throw 'Required vLLM-Omni TTS endpoint is unavailable.'
+        }
+    }
     $audioWorkers = @(
         [pscustomobject]@{
             component = 'vad-worker'
@@ -216,12 +235,14 @@ if ($EnableVoice) {
         [pscustomobject]@{
             component = 'stt-worker'
             socket = '/home/kutae/.local/share/local-voice-agent/run/stt.sock'
-        },
-        [pscustomobject]@{
+        }
+    )
+    if ($env:LVA_TTS_ADAPTER -ne 'vllm-omni') {
+        $audioWorkers += [pscustomobject]@{
             component = 'tts-worker'
             socket = '/home/kutae/.local/share/local-voice-agent/run/tts.sock'
         }
-    )
+    }
     if (-not $AllowVoiceWorkersUnavailable) {
         foreach ($worker in $audioWorkers) {
             wsl.exe -d Ubuntu -- test -S $worker.socket
@@ -293,7 +314,7 @@ if ($EnableVoice) {
         }
     }
     if (-not $env:LVA_VLLM_MODEL) {
-        $env:LVA_VLLM_MODEL = 'gemma4-12b'
+        $env:LVA_VLLM_MODEL = 'gemma4-e4b'
     }
     if (-not $env:LVA_VLLM_BASE_URL) {
         $env:LVA_VLLM_BASE_URL = 'http://127.0.0.1:46322/v1'

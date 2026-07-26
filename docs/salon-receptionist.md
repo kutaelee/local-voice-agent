@@ -33,6 +33,11 @@ Each `salon.call.message` is passed to the Gemma conversation harness with the
 persona, recent dialogue, committed policy, current time, and bounded call
 state. Gemma produces the customer-facing reply plus a closed-schema action
 and optional slots. Application code does not compose the normal dialogue.
+The default salon runtime is the pinned Gemma 4 E4B mobile-QAT checkpoint.
+Code recommends only a bounded intent token when the caller explicitly says
+book, check availability, modify, or cancel; E4B still authors the complete
+spoken reply. This keeps deterministic mutation gates without template-like
+dialogue. Gemma 4 12B remains the configured salon fallback.
 It validates the model proposal and invokes only the matching reservation
 domain operation. Proposed mutations enter a confirmation state. A later,
 explicit affirmative response atomically updates the file and emits both

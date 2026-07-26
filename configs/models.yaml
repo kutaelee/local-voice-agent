@@ -2,6 +2,14 @@ schema_version: "1.0"
 default_model: gemma4-12b
 escalation_model: gemma4-31b
 models:
+  gemma4-e4b:
+    manifest_role: salon_default_target
+    max_model_len_initial: 4096
+    mtp_enabled_by_default: false
+    modalities: [text, image, audio]
+    validated_modalities: [text]
+    pending_modalities: [image, audio]
+    validation_evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\salon\salon-e4b-smoke-20260726T050841Z.json'
   gemma4-12b:
     manifest_role: default_target
     max_model_len_initial: 8192

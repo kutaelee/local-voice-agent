@@ -25,6 +25,10 @@ mtp_mode="${LVA_VLLM_MTP_MODE:-off}"
   exit 4
 }
 case "${model_size}:${mtp_mode}" in
+  e4b:off)
+    minimum_free_mib=12000
+    log_file="${log_root}/vllm-e4b.log"
+    ;;
   12b:off)
     minimum_free_mib=22000
     log_file="${log_root}/vllm-12b.log"
@@ -46,7 +50,7 @@ case "${model_size}:${mtp_mode}" in
     exit 5
     ;;
   *)
-    echo "LVA_VLLM_MODEL_SIZE/MTP_MODE must be 12b|31b and off|exact-off|on." >&2
+    echo "LVA_VLLM_MODEL_SIZE/MTP_MODE must be e4b|12b|31b with a validated mode." >&2
     exit 5
     ;;
 esac

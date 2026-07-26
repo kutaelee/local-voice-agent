@@ -1,10 +1,24 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-24T04:40:50+09:00",
+  "generated_at": "2026-07-26T13:56:58+09:00",
   "canonical_cache": "E:\\AI\\Models\\HuggingFace\\hub",
   "free_space_before_bytes": 3636472119296,
   "status": "all_selected_model_weights_downloaded",
   "downloads": [
+    {
+      "model_id": "google/gemma-4-E4B-it-qat-mobile-ct",
+      "revision": "3624117cf04528e099519f93839f0f0b7a18913d",
+      "license": "Apache-2.0",
+      "size_bytes": 3766831745,
+      "largest_file": {
+        "path": "model.safetensors",
+        "size_bytes": 3734269116,
+        "sha256": "dd626f1b06dda679c4994e61ba636542442f140ee3d8fde56f443860ad720c05"
+      },
+      "requires_credential": false,
+      "downloaded_at": "2026-07-26T13:54:47+09:00",
+      "validation_status": "sha256_vllm_text_and_salon_6_case_gate_passed"
+    },
     {
       "model_id": "google/gemma-4-12B-it-qat-w4a16-ct",
       "revision": "1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee",

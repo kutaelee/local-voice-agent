@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('any', '12b', '31b')]
+    [ValidateSet('any', 'e4b', '12b', '31b')]
     [string]$ExpectedModelSize = 'any'
 )
 

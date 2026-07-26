@@ -1,5 +1,7 @@
 schema_version: "1.0"
 default: gemma4-12b
+salon_default: gemma4-e4b
+salon_fallback: gemma4-12b
 escalate_to: gemma4-31b
 escalation_reasons:
   - explicit_user_request

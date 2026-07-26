@@ -174,6 +174,9 @@ confirmation-bound reservation changes, an isolated prefilled QA schedule,
 ten detailed cut/color/perm/clinic menus, and connected-app owner
 notifications without starting VAD, STT, or TTS. See
 [docs/salon-receptionist.md](docs/salon-receptionist.md).
+The salon voice profile uses the pinned `google/gemma-4-E4B-it-qat-mobile-ct`
+checkpoint by default after its six-case Korean intent/FAQ gate passed; 12B
+remains the fallback for failed or out-of-policy E4B operation.
 The independently gated Qwen3-TTS projection can be enabled for final QA;
 neither model receives reservation mutation authority.
 

@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-26T11:30:00+09:00"
+generated_at: "2026-07-26T14:08:41+09:00"
 runtimes:
   - id: android-client-build-0.6.9
     role: android_client_build
@@ -69,7 +69,7 @@ runtimes:
   - id: vllm-0.25.1
     role: primary_candidate
     version: 0.25.1
-    status: installed_12b_live_voice_api_and_31b_text_api_smoke_passed
+    status: installed_e4b_salon_12b_live_voice_and_31b_text_api_smoke_passed
     environment: /home/kutae/.local/share/local-voice-agent/runtimes/vllm-0.25.1
     python: "3.12.13"
     cuda: "13.0"
@@ -84,6 +84,20 @@ runtimes:
     gpu_smoke: rtx_5090_compute_capability_12_0_cuda_matmul_passed
     gemma4_31b_status: text_tool_structured_stream_passed_multimodal_pending
     gemma4_12b_live_api: health_and_korean_chat_passed_on_loopback_8766
+    gemma4_e4b_salon:
+      model_revision: 3624117cf04528e099519f93839f0f0b7a18913d
+      weight_load_seconds: 21.47
+      model_gpu_memory_gib_reported: 3.72
+      structured_output_fix: free_form_reply_field_last
+      control_hint: code_recommends_action_token_model_authors_spoken_reply
+      smoke_cases_passed: 6
+      response_latency_ms_min: 600.543
+      response_latency_ms_median: 613.708
+      response_latency_ms_max: 845.007
+      unified_stack_peak_total_gpu_mib: 20402
+      measured_non_stack_baseline_gpu_mib: 2628
+      next_gpuq_reservation_mib: 19000
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\salon\salon-e4b-smoke-20260726T050841Z.json'
     gemma4_12b_cold_start:
       weight_load_seconds: 132.38
       total_seconds_approximate: 200
@@ -718,6 +732,11 @@ runtimes:
     bind: "127.0.0.1:46329"
     gpu_memory_utilization_per_stage: 0.12
     peak_observed_total_gpu_mib: 14888
+    cold_load_2026_07_26:
+      stage_0_weight_seconds: 11.72
+      stage_1_weight_seconds: 2.96
+      explicit_page_cache_prefetch_seconds: 11.52
+      result: prefetch_disabled_by_default_no_stage_0_improvement
     warm_concurrency_1:
       runs: 5
       server_ttfa_p50_ms: 64.296

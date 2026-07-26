@@ -13,7 +13,7 @@ download_workers="${MODEL_DOWNLOAD_WORKERS:-16}"
 download_only="${MODEL_DOWNLOAD_ONLY:-}"
 
 case "${download_only}" in
-  ""|default_target_12b|mtp_assistant_12b|mtp_target_12b|escalation_target_31b|mtp_assistant_31b|mtp_target_31b|stt_large_v3_turbo|stt_small|tts_chatterbox_v3|tts_qwen3_base|tts_qwen3_base_0_6b)
+  ""|salon_default_e4b|default_target_12b|mtp_assistant_12b|mtp_target_12b|escalation_target_31b|mtp_assistant_31b|mtp_target_31b|stt_large_v3_turbo|stt_small|tts_chatterbox_v3|tts_qwen3_base|tts_qwen3_base_0_6b)
     ;;
   *)
     echo "Unknown MODEL_DOWNLOAD_ONLY role: ${download_only}" >&2
@@ -22,6 +22,7 @@ case "${download_only}" in
 esac
 
 models=(
+  "salon_default_e4b|google/gemma-4-E4B-it-qat-mobile-ct|3624117cf04528e099519f93839f0f0b7a18913d|${model_root}/models--google--gemma-4-E4B-it-qat-mobile-ct/snapshots/3624117cf04528e099519f93839f0f0b7a18913d|model.safetensors|dd626f1b06dda679c4994e61ba636542442f140ee3d8fde56f443860ad720c05|3734269116|Apache-2.0"
   "default_target_12b|google/gemma-4-12B-it-qat-w4a16-ct|1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|${model_root}/models--google--gemma-4-12B-it-qat-w4a16-ct/snapshots/1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee|model.safetensors|60b6e3989502969d8ae04185d72ecbbc7db63978d5af747a493d53895aa6bfa3|10264229896|Apache-2.0"
   "mtp_assistant_12b|google/gemma-4-12B-it-qat-q4_0-unquantized-assistant|18934064dd4c5c6cc3621f6381e7d377fc8cb7bd|${model_root}/models--google--gemma-4-12B-it-qat-q4_0-unquantized-assistant/snapshots/18934064dd4c5c6cc3621f6381e7d377fc8cb7bd|model.safetensors|67f1420cf24aa5065089aaed175223f7c245ccfda16111b6c56765afd7280db6|845719296|Apache-2.0"
   "mtp_target_12b|google/gemma-4-12B-it-qat-q4_0-unquantized|b6ed86275a6a5735884e208bfed95b445a684ca2|${model_root}/models--google--gemma-4-12B-it-qat-q4_0-unquantized/snapshots/b6ed86275a6a5735884e208bfed95b445a684ca2|model.safetensors|26f2cee4292298a3f9f92209643c37c80e34e011381e22434088870d9439a0a0|23919549408|Apache-2.0"
@@ -59,7 +60,7 @@ for entry in "${models[@]}"; do
   selected_file_count=$((selected_file_count + 1))
   actual_file="${target}/${filename}"
   if [[ -f "${actual_file}" ]] \
-    && [[ "$(stat -c '%s' "${actual_file}")" == "${bytes}" ]]; then
+    && [[ "$(stat -Lc '%s' "${actual_file}")" == "${bytes}" ]]; then
     reusable_weight_bytes=$((reusable_weight_bytes + bytes))
     reusable_file_count=$((reusable_file_count + 1))
   else

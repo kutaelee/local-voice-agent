@@ -1,5 +1,8 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('e4b', '12b')]
+    [string]$ModelSize = 'e4b',
+
     [ValidateRange(0, 100)]
     [int]$Priority = 80,
 
@@ -12,6 +15,7 @@ $repoRoot = 'C:\Dev\Repos\local-voice-agent'
 $gpuq = 'C:\Dev\Tools\CodexCLI\gpuq.cmd'
 $supervisor = '/mnt/c/Dev/Repos/local-voice-agent/scripts/run-gpu-voice-stack.sh'
 $statusPath = 'E:\Data\LocalVoiceAgent\runtime\status\gpu-voice-stack.json'
+$requestedVramMiB = if ($ModelSize -eq 'e4b') { 19000 } else { 25000 }
 
 if (-not (Test-Path -LiteralPath $gpuq -PathType Leaf)) {
     throw "gpuq is unavailable: $gpuq"
@@ -60,7 +64,7 @@ if ($LASTEXITCODE -eq 0 -and $existing.Count -gt 0) {
 
 $jobId = (
     & $gpuq run `
-        --vram 25000 `
+        --vram $requestedVramMiB `
         --eta 3600 `
         --priority $Priority `
         --max-runtime $MaxRuntimeSeconds `
@@ -68,7 +72,7 @@ $jobId = (
         --workload local-voice-agent-interactive-qa `
         --cwd $repoRoot `
         -- `
-        wsl.exe -d Ubuntu -- bash $supervisor
+        wsl.exe -d Ubuntu -- env "LVA_VOICE_LLM_SIZE=$ModelSize" bash $supervisor
 ).Trim()
 $parsedJobId = [Guid]::Empty
 if (-not [Guid]::TryParse($jobId, [ref]$parsedJobId)) {
@@ -83,7 +87,8 @@ New-Item -ItemType Directory -Path (Split-Path -Parent $statusPath) -Force |
     state = 'submitted'
     gpuq_job_id = $jobId
     workload = 'local-voice-agent-interactive-qa'
-    requested_vram_mib = 25000
+    model_size = $ModelSize
+    requested_vram_mib = $requestedVramMiB
     priority = $Priority
     max_runtime_seconds = $MaxRuntimeSeconds
     submitted_at = (Get-Date).ToUniversalTime().ToString('o')

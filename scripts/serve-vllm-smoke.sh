@@ -14,11 +14,18 @@ language_model_only="${VLLM_SMOKE_LANGUAGE_MODEL_ONLY:-0}"
 kv_cache_memory="${VLLM_SMOKE_KV_CACHE_MEMORY_BYTES:-}"
 max_num_seqs="${VLLM_SMOKE_MAX_NUM_SEQS:-}"
 cpu_offload_gb="${VLLM_SMOKE_CPU_OFFLOAD_GB:-0}"
+safetensors_load_strategy="${VLLM_SMOKE_SAFETENSORS_LOAD_STRATEGY:-prefetch}"
 # WSL did not expose CUDA UVA to vLLM's V2 runner on this workstation.
 # vLLM 0.25.1 officially supports forcing the V1 runner with this variable.
 export VLLM_USE_V2_MODEL_RUNNER="${VLLM_USE_V2_MODEL_RUNNER:-0}"
 
 case "${model_size}" in
+  e4b)
+    target="${model_root}/models--google--gemma-4-E4B-it-qat-mobile-ct/snapshots/3624117cf04528e099519f93839f0f0b7a18913d"
+    mtp_target=""
+    assistant=""
+    served_name="gemma4-e4b"
+    ;;
   12b)
     target="${model_root}/models--google--gemma-4-12B-it-qat-w4a16-ct/snapshots/1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee"
     mtp_target="${model_root}/models--google--gemma-4-12B-it-qat-q4_0-unquantized/snapshots/b6ed86275a6a5735884e208bfed95b445a684ca2"
@@ -32,7 +39,7 @@ case "${model_size}" in
     served_name="gemma4-31b"
     ;;
   *)
-    echo "model size must be 12b or 31b" >&2
+    echo "model size must be e4b, 12b, or 31b" >&2
     exit 2
     ;;
 esac
@@ -61,6 +68,13 @@ fi
   echo "VLLM_SMOKE_CPU_OFFLOAD_GB must be an integer from 0 to 48" >&2
   exit 11
 }
+case "${safetensors_load_strategy}" in
+  lazy|eager|prefetch) ;;
+  *)
+    echo "VLLM_SMOKE_SAFETENSORS_LOAD_STRATEGY must be lazy, eager, or prefetch" >&2
+    exit 12
+    ;;
+esac
 
 case "${mtp_mode}" in
   off)
@@ -70,6 +84,10 @@ case "${mtp_mode}" in
     speculative_args=()
     ;;
   exact-off)
+    [[ "${model_size}" != "e4b" ]] || {
+      echo "E4B MTP is not enabled before its exact assistant pair is validated." >&2
+      exit 13
+    }
     runtime_root="${mtp_runtime_root}"
     max_model_len="${VLLM_SMOKE_MAX_MODEL_LEN:-2048}"
     gpu_memory_utilization="${VLLM_SMOKE_GPU_MEMORY_UTILIZATION:-0.90}"
@@ -78,6 +96,10 @@ case "${mtp_mode}" in
     speculative_args=()
     ;;
   on)
+    [[ "${model_size}" != "e4b" ]] || {
+      echo "E4B MTP is not enabled before its exact assistant pair is validated." >&2
+      exit 13
+    }
     runtime_root="${mtp_runtime_root}"
     max_model_len="${VLLM_SMOKE_MAX_MODEL_LEN:-2048}"
     gpu_memory_utilization="${VLLM_SMOKE_GPU_MEMORY_UTILIZATION:-0.90}"
@@ -114,6 +136,17 @@ fi
   exit 4
 }
 
+# Gemma 4 E4B's Humming launcher is JIT-linked on first use. WSL exposes the
+# driver stub under /usr/lib/wsl/lib, which is on the runtime loader path but
+# not always on GNU ld's search path.
+if [[ "${model_size}" == "e4b" ]]; then
+  [[ -f /usr/lib/wsl/lib/libcuda.so ]] || {
+    echo "WSL CUDA driver stub is unavailable for the E4B Humming launcher." >&2
+    exit 14
+  }
+  export LIBRARY_PATH="/usr/lib/wsl/lib${LIBRARY_PATH:+:${LIBRARY_PATH}}"
+fi
+
 args=(
   serve "${target}"
   --host "${host}"
@@ -124,6 +157,7 @@ args=(
   --chat-template "${target}/chat_template.jinja"
   --chat-template-content-format auto
   --generation-config vllm
+  --safetensors-load-strategy "${safetensors_load_strategy}"
   --enable-auto-tool-choice
   --tool-call-parser gemma4
   --reasoning-parser gemma4
@@ -156,7 +190,7 @@ if [[ "${cpu_offload_gb}" != "0" ]]; then
 fi
 
 echo \
-  "Starting ${served_name} MTP=${mtp_mode} runtime=${runtime_root} runner_v2=${VLLM_USE_V2_MODEL_RUNNER} enforce_eager=${enforce_eager} language_model_only=${language_model_only} cpu_offload_gb=${cpu_offload_gb} on ${host}:${port}" \
+  "Starting ${served_name} MTP=${mtp_mode} runtime=${runtime_root} runner_v2=${VLLM_USE_V2_MODEL_RUNNER} enforce_eager=${enforce_eager} language_model_only=${language_model_only} cpu_offload_gb=${cpu_offload_gb} safetensors_load_strategy=${safetensors_load_strategy} on ${host}:${port}" \
   >&2
 for variable_name in "${!VLLM_SMOKE_@}"; do
   unset "${variable_name}"

@@ -35,6 +35,7 @@ def test_vllm_launcher_uses_official_environment_key() -> None:
     assert '--header "Authorization: Bearer' not in start
     assert "free_mib < minimum_free_mib" in start
     assert "minimum_free_mib=22000" in start
+    assert "minimum_free_mib=12000" in start
     assert "minimum_free_mib=27000" in start
     assert "minimum_free_mib=28500" in start
     assert '31b:on)' in start
@@ -47,6 +48,27 @@ def test_vllm_launcher_uses_official_environment_key() -> None:
     assert "12b:exact-off)" in start
     assert '--cpu-offload-gb "${cpu_offload_gb}"' in serve
     assert "integer from 0 to 48" in serve
+    assert "models--google--gemma-4-E4B-it-qat-mobile-ct" in serve
+    assert 'served_name="gemma4-e4b"' in serve
+    assert 'export LIBRARY_PATH="/usr/lib/wsl/lib${LIBRARY_PATH:+:${LIBRARY_PATH}}"' in serve
+    assert "WSL CUDA driver stub is unavailable" in serve
+    assert 'VLLM_SMOKE_SAFETENSORS_LOAD_STRATEGY:-prefetch' in serve
+    assert '--safetensors-load-strategy "${safetensors_load_strategy}"' in serve
+    assert "must be lazy, eager, or prefetch" in serve
+
+
+def test_voice_stack_supports_e4b_and_prefetches_canonical_tts_weights() -> None:
+    stack = script("run-gpu-voice-stack.sh")
+    tts = script("run-vllm-omni-tts.sh")
+
+    assert 'voice_llm_size="${LVA_VOICE_LLM_SIZE:-e4b}"' in stack
+    assert "e4b|12b" in stack
+    assert 'LVA_VLLM_MODEL_SIZE="${voice_llm_size}"' in stack
+    assert 'LVA_VLLM_EXPECTED_MODEL_SIZE="${voice_llm_size}"' in stack
+    assert 'LVA_TTS_PREFETCH_WEIGHTS:-0' in tts
+    assert 'root.rglob("*.safetensors")' in tts
+    assert "no second on-disk model copy" in tts
+    assert "added 11.52s" in tts
 
 
 def test_vllm_stop_validates_owned_model_identity() -> None:
@@ -80,11 +102,15 @@ def test_pc_server_voice_mode_is_explicit_and_self_contained() -> None:
     assert "$InstanceName -ne 'web-qa'" in start
     assert "-not $isLoopback" in start
     assert "Required audio worker socket is unavailable" in start
+    assert "$env:LVA_TTS_ADAPTER = 'vllm-omni'" in start
+    assert "Required vLLM-Omni TTS endpoint is unavailable." in start
+    assert "$env:LVA_TTS_ADAPTER -ne 'vllm-omni'" in start
+    assert "$env:LVA_SALON_TTS_ENABLED = '1'" in start
     assert "scripts/audio-worker-health.py" in start
     assert "Required audio worker failed health" in start
     assert "$reportedComponent -ne $worker.component" in start
     assert "$env:LVA_VOICE_ENABLED = '1'" in start
-    assert "$env:LVA_VLLM_MODEL = 'gemma4-12b'" in start
+    assert "$env:LVA_VLLM_MODEL = 'gemma4-e4b'" in start
     assert "$env:LVA_VLLM_BASE_URL = 'http://127.0.0.1:46322/v1'" in start
     assert "voice_enabled = $env:LVA_VOICE_ENABLED -eq '1'" in start
 

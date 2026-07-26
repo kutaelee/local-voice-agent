@@ -1669,7 +1669,7 @@ def _salon_call_coordinator_from_environment() -> SalonCallCoordinator | None:
                 "LVA_VLLM_BASE_URL",
                 "http://127.0.0.1:46322/v1",
             ),
-            model=os.environ.get("LVA_VLLM_MODEL", "gemma4-12b"),
+            model=os.environ.get("LVA_VLLM_MODEL", "gemma4-e4b"),
             api_key=os.environ.get("LVA_VLLM_API_KEY", ""),
             timeout_seconds=float(
                 os.environ.get("LVA_SALON_LLM_TIMEOUT_SECONDS", "30")

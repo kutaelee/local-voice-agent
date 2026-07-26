@@ -2,6 +2,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet(
+        'salon_default_e4b',
         'default_target_12b',
         'mtp_assistant_12b',
         'mtp_target_12b',
@@ -17,6 +18,12 @@ $stateRoot = 'E:\Cache\LocalVoiceAgent\download-state'
 $modelRoot = 'E:\AI\Models\HuggingFace\hub'
 
 $specs = @{
+    salon_default_e4b = @{
+        Model = 'google/gemma-4-E4B-it-qat-mobile-ct'
+        Revision = '3624117cf04528e099519f93839f0f0b7a18913d'
+        Directory = Join-Path $modelRoot 'models--google--gemma-4-E4B-it-qat-mobile-ct\snapshots\3624117cf04528e099519f93839f0f0b7a18913d'
+        Files = @(@{ Name = 'model.safetensors'; Bytes = 3734269116 })
+    }
     default_target_12b = @{
         Model = 'google/gemma-4-12B-it-qat-w4a16-ct'
         Revision = '1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee'

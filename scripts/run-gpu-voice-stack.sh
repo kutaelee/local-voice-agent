@@ -15,6 +15,14 @@ omni_tts_pid=""
 shutdown_requested=0
 omni_tts_port="${LVA_VLLM_OMNI_TTS_PORT:-46329}"
 log_root="/mnt/e/Data/LocalVoiceAgent/runtime/logs"
+voice_llm_size="${LVA_VOICE_LLM_SIZE:-e4b}"
+case "${voice_llm_size}" in
+  e4b|12b) ;;
+  *)
+    echo "LVA_VOICE_LLM_SIZE must be e4b or 12b for the interactive voice stack." >&2
+    exit 2
+    ;;
+esac
 
 if [[ ! -r "${worker_token_file}" ]]; then
   echo "Audio worker token is unavailable." >&2
@@ -41,7 +49,7 @@ cleanup() {
     bash "${repo}/scripts/stop-audio-workers.sh"
   fi
   if ((vllm_started == 1)); then
-    LVA_VLLM_EXPECTED_MODEL_SIZE=12b \
+    LVA_VLLM_EXPECTED_MODEL_SIZE="${voice_llm_size}" \
       bash "${repo}/scripts/stop-vllm.sh"
   fi
   unset LVA_AUDIO_WORKER_TOKEN
@@ -56,7 +64,7 @@ trap cleanup EXIT
 trap request_shutdown INT TERM
 
 export \
-  LVA_VLLM_MODEL_SIZE=12b \
+  LVA_VLLM_MODEL_SIZE="${voice_llm_size}" \
   LVA_VLLM_MTP_MODE=off \
   LVA_VLLM_PORT=46322 \
   LVA_VLLM_STARTUP_TIMEOUT_SECONDS=600

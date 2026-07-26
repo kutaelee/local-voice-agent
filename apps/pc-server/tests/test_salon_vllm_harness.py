@@ -59,7 +59,7 @@ def test_model_drives_turn_with_persona_context_and_closed_schema() -> None:
     )
     decision = asyncio.run(
         adapter.decide(
-            user_message="커트하려고요",
+            user_message="커트 예약하고 싶어요",
             state={"awaiting_confirmation": False},
             history=(),
             now=datetime.fromisoformat("2026-07-25T12:00:00+09:00"),
@@ -70,11 +70,12 @@ def test_model_drives_turn_with_persona_context_and_closed_schema() -> None:
     assert decision.service_id == "haircut"
     assert decision.starts_at is None
     assert decision.phone is None
-    assert decision.reply != "커트하려고요"
+    assert decision.reply != "커트 예약하고 싶어요"
     assert captured["temperature"] == 0.35
     assert captured["response_format"]["json_schema"]["strict"] is True
     assert "고객 문장을 그대로 되풀이" in captured["messages"][0]["content"]
     assert '"다음주 수요일":"2026-07-29"' in captured["messages"][1]["content"]
+    assert '"action_hint":"book"' in captured["messages"][1]["content"]
     assert captured["chat_template_kwargs"] == {"enable_thinking": False}
 
 

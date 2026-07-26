@@ -6,8 +6,8 @@ status_file="/mnt/e/Data/LocalVoiceAgent/runtime/status/vllm.json"
 model_root="/mnt/e/AI/Models/HuggingFace/hub"
 expected_model_size="${LVA_VLLM_EXPECTED_MODEL_SIZE:-}"
 if [[ -n "${expected_model_size}" ]] \
-  && [[ "${expected_model_size}" != "12b" && "${expected_model_size}" != "31b" ]]; then
-  echo "LVA_VLLM_EXPECTED_MODEL_SIZE must be 12b or 31b." >&2
+  && [[ "${expected_model_size}" != "e4b" && "${expected_model_size}" != "12b" && "${expected_model_size}" != "31b" ]]; then
+  echo "LVA_VLLM_EXPECTED_MODEL_SIZE must be e4b, 12b, or 31b." >&2
   exit 2
 fi
 [[ -f "${pid_file}" ]] || {
@@ -30,7 +30,8 @@ if ! kill -0 "${pid}" 2>/dev/null; then
 fi
 command="$(tr '\0' ' ' <"/proc/${pid}/cmdline")"
 owned_model=false
-if [[ "${command}" == *"vllm"*"serve"*"$model_root/models--google--gemma-4-12B-it-"*"/snapshots/"* ]] \
+if [[ "${command}" == *"vllm"*"serve"*"$model_root/models--google--gemma-4-E4B-it-"*"/snapshots/"* ]] \
+  || [[ "${command}" == *"vllm"*"serve"*"$model_root/models--google--gemma-4-12B-it-"*"/snapshots/"* ]] \
   || [[ "${command}" == *"vllm"*"serve"*"$model_root/models--google--gemma-4-31B-it-"*"/snapshots/"* ]]; then
   owned_model=true
 fi
@@ -40,6 +41,7 @@ if [[ "${owned_model}" != "true" ]]; then
 fi
 if [[ -n "${expected_model_size}" ]]; then
   case "${expected_model_size}" in
+    e4b) expected_model_segment="models--google--gemma-4-E4B-it-" ;;
     12b) expected_model_segment="models--google--gemma-4-12B-it-" ;;
     31b) expected_model_segment="models--google--gemma-4-31B-it-" ;;
   esac
