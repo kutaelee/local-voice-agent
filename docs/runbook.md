@@ -670,9 +670,10 @@ gpuq run --vram 14000 --eta 300 --priority 60 `
 The TTS-only wrapper does not load STT or an LLM. Both wrappers write
 metadata-only evidence below
 `E:\Data\LocalVoiceAgent\runtime\evidence\salon` and unload their owned model
-before the scheduler job completes. The TTS wrapper defaults to the selected
-low-latency Qwen3-TTS 0.6B Base checkpoint. Set
-`LVA_QWEN3_TTS_SIZE=1.7b` only for the documented quality rollback comparison.
+before the scheduler job completes. The integrated interactive stack uses
+Qwen3-TTS 1.7B Base by default. Set `LVA_QWEN3_TTS_SIZE=0.6b` only for a
+bounded latency comparison; it is not accepted for custom-profile QA because
+it failed generated-text round-trip checks.
 
 For the raw-PCM streaming candidate, install and launch the isolated runtime:
 

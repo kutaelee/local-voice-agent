@@ -212,7 +212,7 @@ if ($InstanceName -eq 'web-qa') {
 }
 if ($EnableVoice) {
     if (-not $env:LVA_TTS_ADAPTER) {
-        $env:LVA_TTS_ADAPTER = 'vllm-omni'
+        $env:LVA_TTS_ADAPTER = 'worker'
     }
     if ($env:LVA_TTS_ADAPTER -eq 'vllm-omni') {
         if (-not $env:LVA_VLLM_OMNI_TTS_URL) {

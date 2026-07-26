@@ -36,6 +36,7 @@ def main() -> int:
     parser.add_argument("--tail-silence-ms", type=int, default=160)
     parser.add_argument("--max-cached-prompts", type=int, default=4)
     parser.add_argument("--max-code-tokens", type=int, default=384)
+    parser.add_argument("--x-vector-only-mode", action="store_true")
     args = parser.parse_args()
     if not args.model.is_dir():
         parser.error("model directory does not exist")
@@ -139,7 +140,7 @@ def main() -> int:
             prompt = model.create_voice_clone_prompt(
                 ref_audio=str(resolved),
                 ref_text=reference_text,
-                x_vector_only_mode=False,
+                x_vector_only_mode=args.x_vector_only_mode,
             )
             prompt_cache[cache_key] = prompt
             while len(prompt_cache) > args.max_cached_prompts:
@@ -202,7 +203,8 @@ def main() -> int:
                 "prompt_cache_entries": args.max_cached_prompts,
                 "tail_silence_ms": args.tail_silence_ms,
                 "max_code_tokens": args.max_code_tokens,
-                "dual_track_input": True,
+                "dual_track_input": not args.x_vector_only_mode,
+                "x_vector_only_mode": args.x_vector_only_mode,
                 "stable_speaker_seed": True,
                 "device": "cuda",
             },

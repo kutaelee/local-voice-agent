@@ -3,6 +3,9 @@ param(
     [ValidateSet('e4b', '12b')]
     [string]$ModelSize = 'e4b',
 
+    [ValidateSet('0.6b', '1.7b')]
+    [string]$TtsSize = '1.7b',
+
     [ValidateRange(0, 100)]
     [int]$Priority = 80,
 
@@ -15,7 +18,12 @@ $repoRoot = 'C:\Dev\Repos\local-voice-agent'
 $gpuq = 'C:\Dev\Tools\CodexCLI\gpuq.cmd'
 $supervisor = '/mnt/c/Dev/Repos/local-voice-agent/scripts/run-gpu-voice-stack.sh'
 $statusPath = 'E:\Data\LocalVoiceAgent\runtime\status\gpu-voice-stack.json'
-$requestedVramMiB = if ($ModelSize -eq 'e4b') { 19000 } else { 25000 }
+$requestedVramMiB = if ($ModelSize -eq 'e4b') {
+    if ($TtsSize -eq '1.7b') { 21000 } else { 17000 }
+}
+else {
+    if ($TtsSize -eq '1.7b') { 29000 } else { 25000 }
+}
 
 if (-not (Test-Path -LiteralPath $gpuq -PathType Leaf)) {
     throw "gpuq is unavailable: $gpuq"
@@ -72,7 +80,10 @@ $jobId = (
         --workload local-voice-agent-interactive-qa `
         --cwd $repoRoot `
         -- `
-        wsl.exe -d Ubuntu -- env "LVA_VOICE_LLM_SIZE=$ModelSize" bash $supervisor
+        wsl.exe -d Ubuntu -- env `
+            "LVA_VOICE_LLM_SIZE=$ModelSize" `
+            "LVA_QWEN3_TTS_SIZE=$TtsSize" `
+            bash $supervisor
 ).Trim()
 $parsedJobId = [Guid]::Empty
 if (-not [Guid]::TryParse($jobId, [ref]$parsedJobId)) {
@@ -88,6 +99,7 @@ New-Item -ItemType Directory -Path (Split-Path -Parent $statusPath) -Force |
     gpuq_job_id = $jobId
     workload = 'local-voice-agent-interactive-qa'
     model_size = $ModelSize
+    tts_size = $TtsSize
     requested_vram_mib = $requestedVramMiB
     priority = $Priority
     max_runtime_seconds = $MaxRuntimeSeconds

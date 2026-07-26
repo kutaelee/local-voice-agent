@@ -133,9 +133,10 @@ field prompt. Evidence is stored outside Git at
 `E:\Data\LocalVoiceAgent\runtime\evidence\salon-harness-live-20260725T1137.json`.
 
 `LVA_SALON_TTS_ENABLED=1` attaches the existing Qwen3-TTS worker to each
-completed salon text response. The interactive stack defaults to the 0.6B
-Base checkpoint for latency and retains `LVA_QWEN3_TTS_SIZE=1.7b` as the
-quality-comparison rollback. Startup performs one selected-profile synthesis
+completed salon text response. The interactive stack defaults to the 1.7B
+Base checkpoint because the 0.6B checkpoint failed content round-trip checks
+for newly imported reference voices. The 0.6B checkpoint remains an explicit
+latency-comparison option only. Startup performs one selected-profile synthesis
 without retaining its PCM before the stack is reported ready, so the first
 accepted call does not pay lazy decoder and prompt-cache initialization.
 One assistant response is synthesized as one unit to avoid sentence-boundary

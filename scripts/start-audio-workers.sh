@@ -8,7 +8,8 @@ cache_root="/mnt/e/Data/LocalVoiceAgent/runtime/cache"
 stt_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/stt-faster-whisper-1.2.1/.venv"
 tts_engine="${LVA_TTS_ENGINE:-qwen3}"
 skip_tts_worker="${LVA_SKIP_TTS_WORKER:-0}"
-qwen3_tts_size="${LVA_QWEN3_TTS_SIZE:-0.6b}"
+qwen3_tts_size="${LVA_QWEN3_TTS_SIZE:-1.7b}"
+qwen3_x_vector_only="${LVA_QWEN3_TTS_X_VECTOR_ONLY:-0}"
 vad_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/vad-silero-6.2.1/.venv"
 stt_model="/mnt/e/AI/Models/HuggingFace/hub/models--mobiuslabsgmbh--faster-whisper-large-v3-turbo/snapshots/0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf"
 voice_profiles_root="/mnt/e/Data/LocalVoiceAgent/voice-profiles"
@@ -56,6 +57,12 @@ case "${tts_engine}" in
       --max-cached-prompts 4
       --max-code-tokens 384
     )
+    if [[ "${qwen3_x_vector_only}" == "1" ]]; then
+      tts_extra_args+=(--x-vector-only-mode)
+    elif [[ "${qwen3_x_vector_only}" != "0" ]]; then
+      echo "LVA_QWEN3_TTS_X_VECTOR_ONLY must be 0 or 1." >&2
+      exit 3
+    fi
     ;;
   chatterbox)
     tts_runtime="/home/kutae/.local/share/local-voice-agent/runtimes/tts-chatterbox-v3-py3146/.venv"

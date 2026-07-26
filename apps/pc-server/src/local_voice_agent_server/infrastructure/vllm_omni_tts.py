@@ -148,9 +148,11 @@ class VllmOmniTtsAdapter:
                 options.reference_audio_path is not None
                 and options.reference_text is not None
             ):
-                reference = options.reference_audio_path.resolve(strict=True)
-                payload["ref_audio"] = reference.as_uri()
-                payload["ref_text"] = options.reference_text
+                raise VllmOmniTtsError(
+                    "vLLM-Omni 0.24.0 custom voice profiles are disabled "
+                    "because its Qwen3-TTS conditioning cache truncates "
+                    "repeated audio; use the Qwen3 worker adapter"
+                )
         return payload
 
     def _stream_request(self, payload: dict[str, object]) -> Iterator[bytes]:

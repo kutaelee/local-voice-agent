@@ -628,6 +628,24 @@ running 0.6B voice stack plus a separate 2 GiB Android-emulator reservation
 used 15,720 MiB total GPU memory and left 16,468 MiB free. This is a
 point-in-time coexistence observation, not a per-process VRAM attribution.
 
+## Custom-profile correctness rollback to 1.7B (2026-07-26)
+
+Two newly imported Korean reference voices were checked with their exact,
+STT-verified transcripts. Qwen3-TTS 0.6B failed to preserve requested content
+in both transcript-conditioned and speaker-vector-only modes. It copied or
+hallucinated unrelated words, so its lower latency is not usable for these
+profiles.
+
+Qwen3-TTS 1.7B Base revision `fd4b2543...` generated the same bounded test
+sentence for both profiles. Faster-Whisper transcribed both outputs exactly
+with reported confidence 1.0. Synthesis took 2.825 seconds for Sian and 2.471
+seconds for Seulki, producing 2.640 and 2.480 seconds of audio respectively.
+The integrated E4B, STT, VAD, and 1.7B TTS stack reached 22,321 MiB total
+GPU use after full warm-up, including the workstation baseline. Speaker
+similarity remains physical listening QA.
+The interactive default therefore returns to 1.7B; 0.6B remains a bounded
+latency experiment rather than a production voice-cloning path.
+
 ## Current bounded warm-path recheck (2026-07-25)
 
 The selected 0.6B wrapper was rerun through `gpuq` after aligning the salon

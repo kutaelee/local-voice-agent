@@ -161,7 +161,7 @@
       ],
       "requires_credential": false,
       "downloaded_at": "2026-07-24T14:23:00+09:00",
-      "validation_status": "sha256_and_offline_voice_clone_passed"
+      "validation_status": "sha256_and_two_custom_profile_content_round_trips_passed"
     },
     {
       "model_id": "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
@@ -183,7 +183,7 @@
       ],
       "requires_credential": false,
       "downloaded_at": "2026-07-24T15:58:45+09:00",
-      "validation_status": "sha256_and_offline_korean_clone_passed"
+      "validation_status": "sha256_passed_custom_profile_content_round_trip_failed"
     },
     {
       "model_id": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
