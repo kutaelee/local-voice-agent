@@ -18,6 +18,7 @@ from ..protocol.client_events import (
 )
 from .model_switch import ModelActivityBarrier
 from .voice_turn import (
+    NoSpeechRecognized,
     VoiceDependencyUnavailable,
     VoiceEvent,
     VoiceTurnService,
@@ -230,6 +231,18 @@ class VoiceSessionEventHandler:
                             "Wait for the GPU voice stack to become ready and retry."
                         ),
                         "component": "voice_worker",
+                        "retryable": True,
+                    },
+                )
+            ]
+        except NoSpeechRecognized as error:
+            return [
+                OutboundEvent(
+                    "error",
+                    {
+                        "error_code": "NO_SPEECH_RECOGNIZED",
+                        "message": str(error),
+                        "component": "stt",
                         "retryable": True,
                     },
                 )

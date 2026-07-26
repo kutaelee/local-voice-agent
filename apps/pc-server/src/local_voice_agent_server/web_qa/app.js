@@ -1072,6 +1072,18 @@ function handleServerEvent(envelope) {
       serverActive: false,
     });
     finishPlayback();
+  } else if (type === "error" && payload.error_code === "NO_SPEECH_RECOGNIZED") {
+    setResponseActivity();
+    state.manuallyStopped = false;
+    setAssistant("listening", "말소리가 확인되지 않아 다시 듣고 있습니다.");
+    if (
+      ui.autoContinue.checked
+      && state.connected
+      && !state.listening
+      && !state.captureStarting
+    ) {
+      setTimeout(() => startListening(), 150);
+    }
   } else if (type === "tool.approval.required") {
     showApproval(payload);
   } else if (type === "error") {

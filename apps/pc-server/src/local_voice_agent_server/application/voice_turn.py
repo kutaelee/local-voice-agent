@@ -18,6 +18,10 @@ class VoiceDependencyUnavailable(RuntimeError):
     """A required voice worker or runtime endpoint cannot serve the turn."""
 
 
+class NoSpeechRecognized(ValueError):
+    """VAD closed a turn but STT found no usable speech."""
+
+
 @dataclass(frozen=True, slots=True)
 class Transcript:
     text: str
@@ -292,7 +296,7 @@ class VoiceTurnService:
             channels=channels,
         )
         if not transcript.text.strip():
-            raise ValueError("speech recognition returned no text")
+            raise NoSpeechRecognized("speech recognition returned no text")
         transcript_payload: dict[str, object] = {
             "text": transcript.text,
             "language": transcript.language,

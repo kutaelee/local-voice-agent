@@ -31,6 +31,12 @@ class FakeStt:
         return Transcript("테스트입니다.", "ko", 0.9)
 
 
+class EmptyStt:
+    async def transcribe(self, audio: bytes, **_: object) -> Transcript:
+        assert audio == b"\x00\x01" * 160
+        return Transcript("", "ko", 0.0)
+
+
 class FakeConversation:
     async def respond(self, text: str, **_: object) -> str:
         assert text == "테스트입니다."
@@ -318,6 +324,85 @@ def test_barge_in_cancels_active_capture() -> None:
             ),
         )
         assert result[0].payload["state"] == "interrupted"
+
+    asyncio.run(scenario())
+
+
+def test_empty_stt_result_is_retryable_and_allows_next_turn() -> None:
+    def empty_factory(*_: object) -> VoiceTurnService:
+        return VoiceTurnService(
+            stt=EmptyStt(),
+            conversation=FakeConversation(),
+            tts=FakeTts(),
+        )
+
+    async def scenario() -> None:
+        handler = VoiceSessionEventHandler(empty_factory)
+        session_id = uuid4()
+        stream_id = uuid4()
+        await handler.handle(
+            session_id=session_id,
+            request_id=uuid4(),
+            event_type="audio.input.start",
+            payload=validate_client_payload(
+                "audio.input.start",
+                {
+                    "audio_stream_id": str(stream_id),
+                    "encoding": "pcm_s16le",
+                    "sample_rate_hz": 16_000,
+                    "channels": 1,
+                },
+            ),
+        )
+        await handler.handle(
+            session_id=session_id,
+            request_id=uuid4(),
+            event_type="audio.input.chunk",
+            payload=validate_client_payload(
+                "audio.input.chunk",
+                {
+                    "audio_stream_id": str(stream_id),
+                    "chunk_index": 0,
+                    "encoding": "pcm_s16le",
+                    "duration_ms": 20,
+                    "data_base64": base64.b64encode(b"\x00\x01" * 160).decode(),
+                },
+            ),
+        )
+        result = await handler.handle(
+            session_id=session_id,
+            request_id=uuid4(),
+            event_type="audio.input.end",
+            payload=validate_client_payload(
+                "audio.input.end",
+                {
+                    "audio_stream_id": str(stream_id),
+                    "reason": "vad_end",
+                },
+            ),
+        )
+
+        assert result[0].payload == {
+            "error_code": "NO_SPEECH_RECOGNIZED",
+            "message": "speech recognition returned no text",
+            "component": "stt",
+            "retryable": True,
+        }
+        restarted = await handler.handle(
+            session_id=session_id,
+            request_id=uuid4(),
+            event_type="audio.input.start",
+            payload=validate_client_payload(
+                "audio.input.start",
+                {
+                    "audio_stream_id": str(uuid4()),
+                    "encoding": "pcm_s16le",
+                    "sample_rate_hz": 16_000,
+                    "channels": 1,
+                },
+            ),
+        )
+        assert restarted[0].payload["state"] == "listening"
 
     asyncio.run(scenario())
 
