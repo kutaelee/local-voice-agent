@@ -79,10 +79,8 @@ const state = {
   captureGain: null,
   playbackSources: new Set(),
   playbackChain: Promise.resolve(),
-  playbackPreparation: Promise.resolve(),
   playbackGeneration: 0,
   nextPlaybackTime: 0,
-  playbackReadyAt: 0,
   outputAudioStreamId: null,
   playbackEndTimer: null,
   pendingApproval: null,
@@ -526,7 +524,6 @@ function beginSalonTextTurn() {
   state.turn = { startedAt: now, transcriptAt: now };
   state.outputAudioStreamId = null;
   state.nextPlaybackTime = state.audioContext?.currentTime || 0;
-  state.playbackReadyAt = state.nextPlaybackTime;
   updateMetric("llm", null);
   updateMetric("tts", null);
   updateMetric("gap", null);
@@ -613,25 +610,6 @@ async function ensureAudioContext() {
     await state.audioContext.audioWorklet.addModule("/qa/pcm-worklet.js");
   }
   if (state.audioContext.state === "suspended") await state.audioContext.resume();
-}
-
-async function primePlaybackAfterCapture(generation) {
-  await ensureAudioContext();
-  if (generation !== state.playbackGeneration) return;
-  const now = state.audioContext.currentTime;
-  const primer = state.audioContext.createBuffer(
-    1,
-    Math.max(1, Math.round(state.audioContext.sampleRate * 0.05)),
-    state.audioContext.sampleRate,
-  );
-  const source = state.audioContext.createBufferSource();
-  source.buffer = primer;
-  source.connect(state.audioContext.destination);
-  source.start(now + 0.01);
-  state.playbackReadyAt = Math.max(state.playbackReadyAt, now + 0.9);
-  addEvent("playback.device_warmup", {
-    minimum_settle_ms: 900,
-  });
 }
 
 function downsampleTo16k(input, sourceRate) {
@@ -816,29 +794,18 @@ async function stopCapture(sendEnd = true, reason = "client_stop") {
   if (sendEnd && streamId && requestId) {
     state.turn.audioEndedAt = performance.now();
     send("audio.input.end", { audio_stream_id: streamId, reason }, requestId);
-    const generation = state.playbackGeneration;
-    state.playbackPreparation = primePlaybackAfterCapture(generation)
-      .catch((error) => {
-        if (generation !== state.playbackGeneration) return;
-        state.playbackReadyAt = 0;
-        addEvent("playback.device_warmup_failed", {
-          message: error.message,
-        });
-      });
   }
 }
 
 function stopPlayback() {
   state.playbackGeneration += 1;
   state.playbackChain = Promise.resolve();
-  state.playbackPreparation = Promise.resolve();
   clearTimeout(state.playbackEndTimer);
   for (const source of state.playbackSources) {
     try { source.stop(); } catch {}
   }
   state.playbackSources.clear();
   state.nextPlaybackTime = state.audioContext?.currentTime || 0;
-  state.playbackReadyAt = 0;
   state.outputAudioStreamId = null;
   setResponseActivity();
 }
@@ -851,7 +818,6 @@ function decodePcm16(encoded) {
 }
 
 async function scheduleAudio(payload, generation) {
-  await state.playbackPreparation;
   await ensureAudioContext();
   if (generation !== state.playbackGeneration) return;
   const enqueuedAt = performance.now();
@@ -873,11 +839,7 @@ async function scheduleAudio(payload, generation) {
     state.nextPlaybackTime = now;
     state.turn.maxGapMs = 0;
   }
-  let startAt = Math.max(
-    now + 0.025,
-    state.nextPlaybackTime,
-    state.playbackReadyAt,
-  );
+  let startAt = Math.max(now + 0.025, state.nextPlaybackTime);
   if (state.nextPlaybackTime > 0 && now > state.nextPlaybackTime + 0.02) {
     const gap = (now - state.nextPlaybackTime) * 1000;
     state.turn.maxGapMs = Math.max(state.turn.maxGapMs || 0, gap);

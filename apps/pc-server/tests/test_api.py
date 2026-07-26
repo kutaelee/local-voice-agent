@@ -150,10 +150,6 @@ def test_qa_portal_is_local_static_content_without_secrets() -> None:
     assert "gpuq에 22 GiB" in app_script.text
     assert 'addEvent("playback.first_enqueued"' in app_script.text
     assert 'addEvent("playback.first_scheduled"' in app_script.text
-    assert 'addEvent("playback.device_warmup"' in app_script.text
-    assert "minimum_settle_ms: 900" in app_script.text
-    assert "await state.playbackPreparation" in app_script.text
-    assert "state.playbackReadyAt" in app_script.text
     assert "state.turn.firstPlaybackScheduledAt" in app_script.text
     start_listening = app_script.text.split(
         "async function startListening()",

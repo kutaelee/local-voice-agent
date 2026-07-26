@@ -780,12 +780,3 @@ The integrated stack and a concurrently running unrelated GPU workload used
 30,001 MiB total at the observation point. This is whole-GPU telemetry, not
 per-model attribution. The voice stack remains subject to its 19,000 MiB
 `gpuq` reservation and must not bypass the scheduler.
-
-The faster streaming path exposed a browser audio-device transition race
-that the former multi-second worker latency had hidden. A live QA turn
-observed first audio 687 ms after text while the page reopened its output
-`AudioContext` only when that first PCM arrived, immediately after closing
-microphone capture. The page now primes output as soon as capture closes,
-overlapping the device transition with STT/LLM/TTS work, and schedules the
-first audible PCM no earlier than 900 ms after priming. This adds only the
-unelapsed portion of the settle window and does not delay text-only turns.
