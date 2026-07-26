@@ -125,7 +125,10 @@ class VllmOmniTtsAdapter:
         if not language or len(language) > 32:
             raise ValueError("TTS language is invalid")
         resolved_language = "Korean" if language.lower() in {"ko", "kor"} else language
-        max_new_tokens = min(384, max(64, len(normalized) * 4))
+        # Korean endings were occasionally truncated when short response
+        # units hit the earlier 64-token floor. EOS still terminates normal
+        # generations, so the larger ceiling is only a safety bound.
+        max_new_tokens = min(512, max(96, len(normalized) * 6))
         return {
             "input": normalized,
             "voice": self._voice,

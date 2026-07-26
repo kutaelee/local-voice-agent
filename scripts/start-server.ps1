@@ -203,6 +203,9 @@ if ($InstanceName -eq 'web-qa') {
     if (-not $env:LVA_SALON_QA_SEED) {
         $env:LVA_SALON_QA_SEED = '1'
     }
+    if ($EnableVoice -and -not $env:LVA_SALON_LLM_ENABLED) {
+        $env:LVA_SALON_LLM_ENABLED = '1'
+    }
 }
 if ($EnableVoice) {
     $audioWorkers = @(

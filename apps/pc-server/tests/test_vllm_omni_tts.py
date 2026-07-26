@@ -45,7 +45,7 @@ def test_vllm_omni_tts_streams_pcm_and_normalizes_korean_language() -> None:
             "response_format": "pcm",
             "stream": True,
             "stream_format": "audio",
-            "max_new_tokens": 64,
+            "max_new_tokens": 96,
         }
     ]
 

@@ -698,6 +698,7 @@ Start a gateway against this candidate by setting only the invoking process:
 $env:LVA_TTS_ADAPTER = 'vllm-omni'
 $env:LVA_VLLM_OMNI_TTS_URL = 'http://127.0.0.1:46329'
 $env:LVA_VLLM_OMNI_TTS_VOICE = 'local-voice-agent-active'
+$env:LVA_SALON_LLM_ENABLED = '1'
 $env:LVA_SALON_TTS_ENABLED = '1'
 .\scripts\start-server.ps1 -Port 46326 -InstanceName web-qa `
   -ListenAddress 127.0.0.1 -EnableTools -EnableVoice `

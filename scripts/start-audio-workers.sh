@@ -123,7 +123,7 @@ nohup env \
     --socket "${vad_socket}" \
     --threshold 0.5 \
     --negative-threshold 0.35 \
-    --min-silence-ms 500 \
+    --min-silence-ms "${LVA_VAD_MIN_SILENCE_MS:-700}" \
     --min-speech-ms 100 \
   >"${log_root}/vad-worker.log" 2>&1 &
 vad_pid=$!
