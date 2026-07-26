@@ -19,6 +19,8 @@ import socket
 import subprocess
 import time
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal
+from urllib.parse import urlparse
+from urllib.request import urlopen
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -1467,6 +1469,11 @@ def _qa_runtime_status_provider_from_environment(
         ),
     }
     worker_token = os.environ.get("LVA_AUDIO_WORKER_TOKEN", "")
+    tts_adapter = os.environ.get("LVA_TTS_ADAPTER", "worker")
+    streaming_tts_url = os.environ.get(
+        "LVA_VLLM_OMNI_TTS_URL",
+        "http://127.0.0.1:46329",
+    )
 
     def observe() -> dict[str, object]:
         runtime: dict[str, object] = {
@@ -1496,12 +1503,49 @@ def _qa_runtime_status_provider_from_environment(
             )
             for name, path in socket_paths.items()
         }
+        streaming_tts_configured = tts_adapter == "vllm-omni"
+        streaming_tts_ready = (
+            streaming_tts_configured
+            and _is_streaming_tts_healthy(streaming_tts_url)
+        )
+        if streaming_tts_ready:
+            workers["tts"] = True
         return {
             "runtime": runtime,
             "workers": workers,
+            "streaming_tts": {
+                "configured": streaming_tts_configured,
+                "ready": streaming_tts_ready,
+                "runtime": (
+                    "vllm-omni-0.24.0"
+                    if streaming_tts_configured
+                    else None
+                ),
+            },
         }
 
     return observe
+
+
+def _is_streaming_tts_healthy(base_url: str) -> bool:
+    parsed = urlparse(base_url)
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        return False
+    try:
+        with urlopen(
+            base_url.rstrip("/") + "/health",
+            timeout=0.75,
+        ) as response:
+            return response.status == 200
+    except (OSError, TimeoutError):
+        return False
 
 
 def _model_switch_coordinator_from_environment(

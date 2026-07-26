@@ -169,6 +169,9 @@ def test_qa_portal_is_local_static_content_without_secrets() -> None:
     assert 'state.modelControlPhase !== "ready"' in app_script.text
     assert '"VOICE_WORKER_UNAVAILABLE"' in app_script.text
     assert 'api("/v1/qa/runtime-status")' in app_script.text
+    assert 'tts_ready: "TTS QA 사용 가능"' in app_script.text
+    assert "body.streaming_tts?.ready" in app_script.text
+    assert "vLLM-Omni TTS 실행 중" in app_script.text
     assert "if (!state.connected) return;" in app_script.text
     assert 'stopCapture(false, "voice_stack_unavailable")' in app_script.text
     assert client().get("/qa/styles.css").status_code == 200

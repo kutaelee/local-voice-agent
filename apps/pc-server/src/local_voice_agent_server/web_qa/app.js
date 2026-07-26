@@ -8,6 +8,7 @@ const ui = {
   diagnoseButton: $("diagnoseButton"),
   diagnostics: $("diagnostics"),
   modelControlStatus: $("modelControlStatus"),
+  modelControlDetail: $("modelControlDetail"),
   modelStartButton: $("modelStartButton"),
   modelStopButton: $("modelStopButton"),
   conversation: $("conversation"),
@@ -87,6 +88,7 @@ const state = {
   salonCallId: null,
   modelControlBusy: false,
   modelControlPhase: "stopped",
+  streamingTtsReady: false,
   modelStatusPollTimer: null,
 };
 
@@ -177,7 +179,10 @@ function showToast(message) {
 
 function setConnection(connected, label = connected ? "연결됨" : "연결 안 됨") {
   state.connected = connected;
-  if (!connected) state.modelControlPhase = "stopped";
+  if (!connected) {
+    state.modelControlPhase = "stopped";
+    state.streamingTtsReady = false;
+  }
   ui.connectionBadge.textContent = label;
   ui.connectionBadge.className = `badge ${connected ? "online" : "offline"}`;
   ui.connectButton.textContent = connected ? "연결 해제" : "연결";
@@ -226,17 +231,19 @@ function updateModelControlButtons() {
   const voiceTurnActive = state.listening || state.responseInterruptible;
   ui.modelStartButton.disabled = (
     unavailable
-    || ["starting", "ready"].includes(state.modelControlPhase)
+    || ["starting", "ready", "tts_ready"].includes(state.modelControlPhase)
   );
   ui.modelStopButton.disabled = (
     unavailable
     || state.modelControlPhase === "stopped"
+    || state.modelControlPhase === "tts_ready"
     || voiceTurnActive
   );
   const labels = {
     stopped: "중지됨",
     starting: "gpuq 예약·로딩 중",
     ready: "사용 가능",
+    tts_ready: "TTS QA 사용 가능",
     stopping: "정리 중",
     degraded: "일부 구성요소만 실행 중",
     error: "제어 오류",
@@ -244,6 +251,9 @@ function updateModelControlButtons() {
   ui.modelControlStatus.textContent = (
     labels[state.modelControlPhase] || state.modelControlPhase
   );
+  ui.modelControlDetail.textContent = state.streamingTtsReady
+    ? "vLLM-Omni TTS 실행 중 · Gemma/VAD/STT는 중지됨"
+    : "Gemma 4 12B · VAD · STT · Qwen3-TTS";
   updateVoiceStartButton();
 }
 
@@ -255,8 +265,11 @@ function applyRuntimeStatus(body) {
   );
   const runtimeReady = body.runtime?.state === "ready";
   const voiceStackReady = runtimeReady && allWorkersReady;
+  state.streamingTtsReady = body.streaming_tts?.ready === true;
   if (voiceStackReady) {
     state.modelControlPhase = "ready";
+  } else if (state.streamingTtsReady) {
+    state.modelControlPhase = "tts_ready";
   } else if (
     !["starting", "stopping"].includes(state.modelControlPhase)
   ) {
@@ -1050,6 +1063,8 @@ async function refreshDiagnostics() {
     runtimeStatus.then((body) => (
       body.runtime.state === "ready"
         ? `${body.runtime.model_id} · MTP ${body.runtime.mtp_mode}`
+        : body.streaming_tts?.ready
+          ? `${body.streaming_tts.runtime} · TTS 전용`
         : "런타임 사용 불가"
     )),
     runtimeStatus.then((body) => (

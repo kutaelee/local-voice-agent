@@ -72,3 +72,37 @@ def test_runtime_status_provider_rejects_stale_worker_sockets(
 
     assert status["runtime"]["state"] == "unavailable"
     assert status["workers"] == {"vad": False, "stt": False, "tts": False}
+    assert status["streaming_tts"] == {
+        "configured": False,
+        "ready": False,
+        "runtime": None,
+    }
+
+
+def test_runtime_status_provider_reports_streaming_tts(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("LVA_TTS_ADAPTER", "vllm-omni")
+    monkeypatch.setenv(
+        "LVA_VLLM_OMNI_TTS_URL",
+        "http://127.0.0.1:46329",
+    )
+    monkeypatch.setenv(
+        "LVA_VLLM_STATUS_PATH",
+        str(tmp_path / "missing-vllm-status.json"),
+    )
+    monkeypatch.setattr(
+        "local_voice_agent_server.api._is_streaming_tts_healthy",
+        lambda url: url == "http://127.0.0.1:46329",
+    )
+
+    status = _qa_runtime_status_provider_from_environment()()
+
+    assert status["runtime"]["state"] == "unavailable"
+    assert status["workers"]["tts"] is True
+    assert status["streaming_tts"] == {
+        "configured": True,
+        "ready": True,
+        "runtime": "vllm-omni-0.24.0",
+    }
