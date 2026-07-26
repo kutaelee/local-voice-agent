@@ -780,3 +780,12 @@ The integrated stack and a concurrently running unrelated GPU workload used
 30,001 MiB total at the observation point. This is whole-GPU telemetry, not
 per-model attribution. The voice stack remains subject to its 19,000 MiB
 `gpuq` reservation and must not bypass the scheduler.
+
+Listening comparison found no quality difference between the raw streamed
+PCM and complete-waveform output; the latter only differed in sampled
+prosody. The gateway had been splitting otherwise clean 24 kHz PCM into
+8 KiB, approximately 170 ms Web Audio buffers. Coalescing transport reads to
+32 KiB reduced the same live greeting from 15 browser buffers to 5, retained
+`reason=completed`, and reached first audio in 797.095 ms. Subjective
+confirmation that the initial browser playback remains consistently clean is
+still a user QA gate.

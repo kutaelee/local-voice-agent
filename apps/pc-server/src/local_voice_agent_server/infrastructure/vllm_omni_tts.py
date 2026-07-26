@@ -21,6 +21,7 @@ class VllmOmniTtsError(RuntimeError):
 
 StreamTransport = Callable[[dict[str, object]], Iterator[bytes]]
 _STREAM_END = object()
+_PLAYBACK_STABLE_CHUNK_BYTES = 32 * 1024
 
 
 class VllmOmniTtsAdapter:
@@ -178,8 +179,10 @@ class VllmOmniTtsAdapter:
             raise VllmOmniTtsError("vLLM-Omni TTS request failed") from error
         try:
             reader: BinaryIO = response
-            read = getattr(reader, "read1", reader.read)
-            while chunk := read(8 * 1024):
+            # Avoid exposing small transport fragments as independent Web
+            # Audio buffers. A 32 KiB PCM chunk is about 683 ms at 24 kHz and
+            # keeps the first browser resampling window acoustically stable.
+            while chunk := reader.read(_PLAYBACK_STABLE_CHUNK_BYTES):
                 yield bytes(chunk)
         except (HTTPError, URLError, TimeoutError, OSError) as error:
             raise VllmOmniTtsError("vLLM-Omni TTS stream failed") from error

@@ -1,9 +1,11 @@
 import asyncio
+import io
 from pathlib import Path
 
 import pytest
 
 from local_voice_agent_server.infrastructure.vllm_omni_tts import (
+    _PLAYBACK_STABLE_CHUNK_BYTES,
     VllmOmniTtsAdapter,
     VllmOmniTtsError,
 )
@@ -131,3 +133,26 @@ def test_vllm_omni_tts_uses_registered_custom_profile_voice(
     assert payloads[0]["voice"] == "lva-selected-profile"
     assert "ref_audio" not in payloads[0]
     assert "ref_text" not in payloads[0]
+
+
+def test_vllm_omni_transport_coalesces_pcm_for_stable_web_playback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pcm = b"\x01\x02" * (_PLAYBACK_STABLE_CHUNK_BYTES + 17)
+
+    class Response(io.BytesIO):
+        pass
+
+    monkeypatch.setattr(
+        "local_voice_agent_server.infrastructure.vllm_omni_tts.urlopen",
+        lambda *_args, **_kwargs: Response(pcm),
+    )
+    adapter = VllmOmniTtsAdapter(
+        base_url="http://127.0.0.1:46329",
+        voice="registered-voice",
+    )
+
+    chunks = list(adapter._stream_request({"input": "test"}))
+
+    assert len(chunks[0]) == _PLAYBACK_STABLE_CHUNK_BYTES
+    assert b"".join(chunks) == pcm
