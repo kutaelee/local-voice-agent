@@ -655,3 +655,63 @@ used and 9,322 MiB free; scheduler telemetry later recorded 22,974 MiB peak
 total GPU use. These values cover the whole GPU at those instants, not
 per-model attribution. The model remains loaded for user QA, and no new TTS
 latency claim is made from this lifecycle-control check.
+
+## vLLM-Omni raw-PCM streaming PoC (2026-07-26)
+
+The canonical Qwen3-TTS 0.6B Base snapshot was reused without another model
+download. A separate WSL environment pins vLLM-Omni 0.24.0, vLLM 0.24.0,
+PyTorch 2.11.0+cu130, and the exact dependency lock. The reference speaker is
+uploaded once and restored from the runtime cache. The client consumes raw
+24 kHz PCM as the HTTP response arrives instead of waiting for a complete
+waveform.
+
+| Configuration | Runs | Server TTFA p50/p95 | Complete p50/p95 | RTF p50 | Peak total GPU |
+|---|---:|---:|---:|---:|---:|
+| 12% per stage, concurrency 1 | 5 | 64/68 ms | 712/736 ms | 0.198 | 14,888 MiB |
+| 12% per stage, concurrency 4 | 8 | 179/210 ms | 1,284/1,303 ms | 0.357 | 14,888 MiB |
+| 12% per stage, sequential reliability | 1,000 | 61/67 ms | 692/732 ms | 0.192 | 14,888 MiB |
+| 18% per stage, concurrency 1 | 5 | 64/76 ms | 702/734 ms | 0.195 | 16,431 MiB |
+| 30% per stage, concurrency 1 | 5 | 62/235 ms | 702/929 ms | 0.195 | 23,302 MiB |
+
+The 12% configuration met the PoC server-TTFA gate at concurrency 1 and 4,
+with PCM16 frame alignment and no adjacent duplicate chunks in these samples.
+Compared with 18%, it reduced measured peak total GPU use by 1,543 MiB
+without a material single-request latency regression. Compared with the
+official-derived 30% starting configuration, it reduced the observed peak by
+8,414 MiB. These are whole-GPU peaks recorded by `gpuq`, not model-only
+allocations.
+
+The first request after a process restart triggers kernel compilation and is
+excluded from warm distributions. CLI evidence measures t5 request send, t6
+first PCM byte, and t9 stream completion. Web QA now records t7 first enqueue
+and the Web Audio scheduled onset for t8 separately. A scheduled onset is the
+best browser-side monotonic estimate; physical speaker onset still requires
+user listening or loopback measurement.
+
+Evidence:
+
+- `E:\Data\LocalVoiceAgent\runtime\evidence\vllm-omni-tts-12pct-c1.json`
+  (SHA-256 `717335d43b1e863589f7085beccdaffb35fb07117a672360ff542cb92ae1f3a6`)
+- `E:\Data\LocalVoiceAgent\runtime\evidence\vllm-omni-tts-12pct-c4.json`
+  (SHA-256 `3454bd57490fe70d11ab412116ae33c501521d41a5edc24a710acb6966a5c2e2`)
+
+The corrected 1,000-request sequential run passed with 1,000/1,000 responses,
+PCM16 frame alignment, zero adjacent duplicate chunks, TTFA maximum 122 ms,
+and no HTTP or OOM failure. Its evidence is
+`E:\Data\LocalVoiceAgent\runtime\evidence\vllm-omni-tts-12pct-reliability-1000-v2.json`
+(SHA-256 `cf4771f88dc8bac1f889b1e5e8952b0d4581d86ab0eb25bd58a480bc37a20add`).
+An earlier nominal concurrency-one run was rejected after two task-owned
+clients were found; the rejection record is
+`vllm-omni-tts-rejected-concurrent-run.json` (SHA-256
+`de1e35040ccdaa8a5873750103cd8262fe785580f322da36fb1289ea05a4da6a`).
+
+The live salon projection then reached its first emitted PCM at 70.100 ms and
+72.817 ms for two normal Korean receptionist replies. Complete stream times
+were 906.313 ms and 1,105.158 ms. The actual loopback gateway WebSocket
+greeting emitted 23 ordered chunks, reached first PCM 175.589 ms after
+connection setup, and closed with `reason=completed`. Direct projection
+evidence:
+`E:\Data\LocalVoiceAgent\runtime\evidence\salon\salon-vllm-omni-tts-20260726T024800Z.json`
+(SHA-256 `c3d71e621845f4e5b05d6bf898c6ece0f7391c64057ba7bafd159d03f0c251a5`).
+Subjective speaker identity, final phoneme, and physical playback latency
+remain final user QA gates.

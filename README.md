@@ -53,16 +53,19 @@ registered Notepad windows. The Android 0.6.9 client records and streams PCM,
 plays ordered PCM output, supports client-side interruption, and keeps pairing
 tokens in Android Keystore-backed storage. Its authenticated Voice settings
 screen selects a consented local reference profile and records its exact
-transcript and tone. Qwen3-TTS 1.7B Base is the quality-first primary clone
-engine; the 0.6B Base checkpoint remains a lower-VRAM comparison option. The
-worker caches four local tone prompts but production keeps one selected
-speaker reference stable across sentences. Talker and sub-talker use the same
-temperature and a profile-bound deterministic seed. Streaming coalesces short
+transcript and tone. Qwen3-TTS 0.6B Base is the selected low-latency clone
+checkpoint; 1.7B remains a quality comparison and Chatterbox V3 remains a
+rollback fallback. The primary serving candidate is isolated vLLM-Omni
+0.24.0 with raw PCM streaming; the authenticated Unix-socket worker is
+retained for rollback. The runtime reuses the workstation-wide canonical
+model snapshot and keeps one consented speaker reference stable across
+sentences. Streaming coalesces short
 sentences into 32-character-or-longer semantic speech units, prefers natural
 clause boundaries after 40 characters, binds short list markers to their text,
 and expands an isolated number into a complete spoken phrase. Each generated
-unit gets a 24 ms release and 90 ms breath pause; the final 110 ms tail keeps
-the completed-response pause at 200 ms. Chatterbox V3 is retained as rollback fallback. Reference audio stays under external
+unit gets a bounded release and breath pause; the completed-response tail is
+held until the stream closes so Korean final phonemes are not truncated.
+Reference audio stays under external
 application data and never enters Git or the APK. The
 installed SGLang 0.5.15.post1
 runtime now passes the 12B base text, tool/schema, streaming, image, thinking,

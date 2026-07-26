@@ -34,6 +34,21 @@ delete the runtime root. Re-run the locked installer to recreate only the
 selected environment, validate health, and retain the retired copy until the
 replacement is proven.
 
+### vLLM-Omni TTS candidate
+
+Run `scripts\stop-vllm-omni-tts.ps1`. It cancels only the job ID recorded for
+the `local-voice-agent-vllm-omni-tts-poc` workload. Verify that
+`127.0.0.1:46329` no longer listens. Restart the gateway without
+`LVA_TTS_ADAPTER=vllm-omni`; the retained Unix-socket Qwen worker remains the
+fallback. Do not delete the canonical Hugging Face snapshot because both
+runtimes share it.
+
+To roll back only the memory tuning, restore
+`gpu_memory_utilization: 0.18` for both stages in
+`configs/vllm-omni-qwen3-tts.yaml`, restart through the registered script,
+and repeat the warm c1/c4 gates. The measured 18% fallback passed with a
+16,431 MiB whole-GPU peak.
+
 ## Android SDK and emulator
 
 The project did not install Android Studio or change system PATH. The SDK is

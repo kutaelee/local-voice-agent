@@ -674,6 +674,40 @@ before the scheduler job completes. The TTS wrapper defaults to the selected
 low-latency Qwen3-TTS 0.6B Base checkpoint. Set
 `LVA_QWEN3_TTS_SIZE=1.7b` only for the documented quality rollback comparison.
 
+For the raw-PCM streaming candidate, install and launch the isolated runtime:
+
+```powershell
+wsl.exe -d Ubuntu -- bash `
+  /mnt/c/Dev/Repos/local-voice-agent/scripts/install-wsl.sh `
+  --install-vllm-omni-tts
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\start-vllm-omni-tts.ps1
+```
+
+The launcher submits `local-voice-agent-vllm-omni-tts-poc` to `gpuq`; it does
+not start a model outside the reservation. Wait for
+`http://127.0.0.1:46329/health`, prepare the selected consented voice once,
+and run `scripts\benchmark-vllm-omni-tts.py` before accepting a call. The
+prepared speaker is restored from
+`E:\Data\LocalVoiceAgent\runtime\cache\vllm-omni-speakers`.
+
+Start a gateway against this candidate by setting only the invoking process:
+
+```powershell
+$env:LVA_TTS_ADAPTER = 'vllm-omni'
+$env:LVA_VLLM_OMNI_TTS_URL = 'http://127.0.0.1:46329'
+$env:LVA_VLLM_OMNI_TTS_VOICE = 'local-voice-agent-active'
+$env:LVA_SALON_TTS_ENABLED = '1'
+.\scripts\start-server.ps1 -Port 46326 -InstanceName web-qa `
+  -ListenAddress 127.0.0.1 -EnableTools -EnableVoice `
+  -AllowVoiceWorkersUnavailable
+```
+
+Stop with `scripts\stop-vllm-omni-tts.ps1`. This cancels only its registered
+job. Omit `LVA_TTS_ADAPTER` when restarting the gateway to return to the
+retained worker.
+
 Restore procedure:
 
 1. Stop both registered gateway instances and verify their listeners are

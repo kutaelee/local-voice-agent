@@ -174,6 +174,14 @@ model repositories, and upstream release notes are used for selections.
     WSL environment. Its 194-package check, RTX 5090 CUDA smoke, and 12B
     comparison pass. The bounded 31B failures are recorded separately from
     shared-GPU admission yields; no foreign process was stopped.
+13. The proposed vLLM-Omni `0.24.1` package was not available from the
+    official stable PyPI channel on 2026-07-26. The separately isolated PoC
+    therefore pins official stable `vllm-omni==0.24.0`,
+    `vllm==0.24.0`, and PyTorch `2.11.0+cu130`. Current official Speech API
+    documentation supports online serving, Qwen3-TTS 0.6B Base voice
+    cloning, and raw PCM streaming. Older Qwen repository wording that says
+    vLLM supports only offline inference is treated as stale documentation,
+    not as the runtime capability source. No unversioned nightly was used.
 
 ## Official references
 
@@ -198,6 +206,9 @@ model repositories, and upstream release notes are used for selections.
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
 - [Chatterbox](https://github.com/resemble-ai/chatterbox)
 - [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS)
+- [vLLM-Omni GPU installation](https://docs.vllm.ai/projects/vllm-omni/en/stable/getting_started/installation/gpu/)
+- [vLLM-Omni Speech API](https://docs.vllm.ai/projects/vllm-omni/en/stable/serving/speech_api/)
+- [vLLM-Omni 0.24.0 package](https://pypi.org/project/vllm-omni/0.24.0/)
 - [Android 17](https://developer.android.com/about/versions/17)
 - [Android foreground-service types](https://developer.android.com/develop/background-work/services/fgs/service-types)
 - [PostgreSQL 18 documentation](https://www.postgresql.org/docs/current/)

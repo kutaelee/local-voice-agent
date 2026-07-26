@@ -25,6 +25,11 @@ $runtimeDefinitions = @(
         package = 'vllm'
     },
     [pscustomobject]@{
+        id = 'vllm-omni-0.24.0'
+        python = '/home/kutae/.local/share/local-voice-agent/runtimes/vllm-omni-0.24.0/.venv/bin/python'
+        package = 'vllm-omni'
+    },
+    [pscustomobject]@{
         id = 'sglang-0.5.15.post1'
         python = '/home/kutae/.local/share/local-voice-agent/runtimes/sglang-0.5.15.post1/.venv/bin/python'
         package = 'sglang'
@@ -159,6 +164,35 @@ $server = [ordered]@{
     listening = $false
     health = 'not_running'
 }
+
+$streamingTts = [ordered]@{
+    host = '127.0.0.1'
+    port = 46329
+    listening = $false
+    health = 'not_running'
+}
+$ttsClient = [System.Net.Sockets.TcpClient]::new()
+try {
+    $connect = $ttsClient.ConnectAsync($streamingTts.host, $streamingTts.port)
+    if ($connect.Wait(500) -and $ttsClient.Connected) {
+        $streamingTts.listening = $true
+        try {
+            $response = Invoke-WebRequest -UseBasicParsing `
+                -Uri "http://$($streamingTts.host):$($streamingTts.port)/health" `
+                -TimeoutSec 2
+            $streamingTts.health = "http_$($response.StatusCode)"
+        }
+        catch {
+            $streamingTts.health = 'port_open_health_failed'
+        }
+    }
+}
+catch {
+    $streamingTts.health = 'not_running'
+}
+finally {
+    $ttsClient.Dispose()
+}
 $client = [System.Net.Sockets.TcpClient]::new()
 try {
     $connect = $client.ConnectAsync($server.host, $server.port)
@@ -191,4 +225,5 @@ finally {
     runtimes = $runtimes
     models = $models
     server = [pscustomobject]$server
+    streaming_tts = [pscustomobject]$streamingTts
 } | ConvertTo-Json -Depth 5

@@ -46,19 +46,20 @@ revision behavior are measured.
 
 ## TTS
 
-Chatterbox Multilingual V3 is the selected Korean quality runtime. Its package
-and PyTorch pins are isolated in a Blackwell-compatible environment. The
-built-in condition data may be used for testing; no personal or third-party
-voice is cloned without explicit authorization and provided reference audio.
+Qwen3-TTS 12Hz 0.6B Base is the selected Korean low-latency voice-cloning
+checkpoint. Chatterbox Multilingual V3 and Qwen3-TTS 1.7B remain isolated
+quality/fallback candidates; they are not silently substituted into a warm
+call. The primary serving candidate is vLLM-Omni 0.24.0 on loopback, using
+raw 24 kHz PCM streaming. The retained Unix-socket Qwen worker is the
+rollback path.
 
-The selected V3 revision is now installed in an isolated CUDA 13 runtime.
 Reference-voice support is consent gated: a user must confirm voice rights and
 local processing before a 3–30 second PCM WAV is accepted. The server stores
 profile data below `E:\Data\LocalVoiceAgent\voice-profiles`, stores no clip in
-Git or the APK, and passes only the selected canonical path to the
-authenticated Unix-socket worker. The worker rejects paths outside that root
-and caches active speaker conditioning across speech units. The built-in voice
-remains a virtual `default` profile.
+Git or the APK, and uploads only the selected profile to the loopback serving
+runtime. vLLM-Omni persists the prepared speaker sample below
+`E:\Data\LocalVoiceAgent\runtime\cache\vllm-omni-speakers`; source model
+weights remain in the canonical shared Hugging Face store.
 
 Voice controls are bounded to playback rate 0.85–1.25, exaggeration
 0.25–1.0, CFG weight 0–1, and temperature 0.5–1.2. Playback rate is applied
@@ -79,8 +80,9 @@ first-audio timing remains a required measurement.
 For streamed plain replies, hard sentence boundaries are always eligible. A
 comma, semicolon, or colon becomes an early synthesis boundary only after at
 least 36 characters. This reduces first-audio wait without fragmenting short
-phrases. It is an orchestration optimization, not native streaming inside
-Chatterbox.
+phrases. With vLLM-Omni, each accepted unit also streams PCM before the unit
+finishes. The gateway retains only the bounded release-fade tail, then adds
+configured terminal silence so the final Korean phoneme is not cut.
 
 ## Barge-in sequence
 
@@ -108,3 +110,25 @@ conversation recording are off by default.
 - interruption-to-silence latency;
 - dropped/duplicated/out-of-order audio chunks;
 - VRAM peaks for every concurrent combination.
+
+The canonical monotonic timeline is:
+
+| Mark | Meaning |
+|---|---|
+| t0 | user speech actually ends |
+| t1 | VAD endpoint decision |
+| t2 | final STT transcript |
+| t3 | first LLM token |
+| t4 | first stable TTS unit |
+| t5 | TTS HTTP request sent |
+| t6 | first PCM byte received |
+| t7 | client PCM enqueue |
+| t8 | scheduled/actual playback onset |
+| t9 | synthesis stream complete |
+
+The CLI PoC records t5, t6, and t9. Web QA records t7 and the Web Audio
+scheduled onset estimate for t8 as separate events. Production acceptance
+also needs t0–t4 from the voice pipeline and physical-device or loopback
+confirmation of audible t8. Warm gates are server TTFA p50 ≤300 ms and p95
+≤500 ms, scheduled playback p50 ≤600 ms and p95 ≤900 ms, plus 1,000
+sequential requests with no corrupt, repeated, or truncated PCM.

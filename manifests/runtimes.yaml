@@ -1,5 +1,5 @@
 schema_version: "1.0"
-generated_at: "2026-07-25T20:00:36+09:00"
+generated_at: "2026-07-26T11:30:00+09:00"
 runtimes:
   - id: android-client-build-0.6.9
     role: android_client_build
@@ -687,6 +687,70 @@ runtimes:
       evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\qwen3-tts-0.6b-first-unit.json'
     selection_basis: lower_vram_and_faster_warm_clone_with_official_korean_quality_near_1_7b
     rollback: set LVA_QWEN3_TTS_SIZE=1.7b and restart the owned audio workers
+  - id: vllm-omni-qwen3-tts-0.24.0
+    role: primary_streaming_tts_runtime_candidate
+    version: "0.24.0"
+    status: installed_raw_pcm_streaming_warm_c1_c4_and_1000_sequential_passed
+    environment: /home/kutae/.local/share/local-voice-agent/runtimes/vllm-omni-0.24.0/.venv
+    python: "3.12.13"
+    installed_at: "2026-07-26T10:45:00+09:00"
+    source: https://docs.vllm.ai/projects/vllm-omni/en/stable/
+    package_source: https://pypi.org/project/vllm-omni/0.24.0/
+    license: Apache-2.0
+    vllm: "0.24.0"
+    vllm_omni: "0.24.0"
+    torch: 2.11.0+cu130
+    cuda: "13.0"
+    model_id: Qwen/Qwen3-TTS-12Hz-0.6B-Base
+    model_revision: 5d83992436eae1d760afd27aff78a71d676296fc
+    model_path: 'E:\AI\Models\HuggingFace\hub\models--Qwen--Qwen3-TTS-12Hz-0.6B-Base\snapshots\5d83992436eae1d760afd27aff78a71d676296fc'
+    model_storage: shared_canonical_huggingface_snapshot_no_repo_copy
+    lock_file: scripts/requirements/vllm-omni-tts.lock
+    lock_sha256: 59f5ee15fcf9d1812571255605e31127109fb8bf9e6c12a28857a793aab997ad
+    package_wheels:
+      - file: vllm-0.24.0-cp38-abi3-manylinux_2_28_x86_64.whl
+        size_bytes: 279209310
+        sha256: 2d2831aeba311292250df0132dbc4d8e9f42c654536eaec48e6fe58acb1822cf
+      - file: vllm_omni-0.24.0-py3-none-any.whl
+        size_bytes: 5261295
+        sha256: aeeb4e881754ebc5748cd1b17dfe925edda3c552c40e6da4764b147d3fd8525f
+    transport: http_raw_pcm_stream
+    bind: "127.0.0.1:46329"
+    gpu_memory_utilization_per_stage: 0.12
+    peak_observed_total_gpu_mib: 14888
+    warm_concurrency_1:
+      runs: 5
+      server_ttfa_p50_ms: 64.296
+      server_ttfa_p95_ms: 68.143
+      completion_p50_ms: 712.055
+      realtime_factor_p50: 0.198
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\vllm-omni-tts-12pct-c1.json'
+      evidence_sha256: 717335d43b1e863589f7085beccdaffb35fb07117a672360ff542cb92ae1f3a6
+    warm_concurrency_4:
+      runs: 8
+      server_ttfa_p50_ms: 179.191
+      server_ttfa_p95_ms: 209.989
+      completion_p50_ms: 1283.586
+      realtime_factor_p50: 0.357
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\vllm-omni-tts-12pct-c4.json'
+      evidence_sha256: 3454bd57490fe70d11ab412116ae33c501521d41a5edc24a710acb6966a5c2e2
+    sequential_reliability:
+      runs: 1000
+      concurrency: 1
+      server_ttfa_p50_ms: 60.924
+      server_ttfa_p95_ms: 66.574
+      server_ttfa_max_ms: 121.825
+      completion_p50_ms: 691.904
+      completion_p95_ms: 731.796
+      pcm16_frame_aligned: true
+      adjacent_duplicate_chunks: 0
+      evidence: 'E:\Data\LocalVoiceAgent\runtime\evidence\vllm-omni-tts-12pct-reliability-1000-v2.json'
+      evidence_sha256: cf4771f88dc8bac1f889b1e5e8952b0d4581d86ab0eb25bd58a480bc37a20add
+    known_issues:
+      - first_request_after_restart_compiles_kernels_and_is_not_a_warm_measurement
+      - physical_browser_playback_and_subjective_listening_qa_pending
+      - upstream_stable_package_is_0_24_0_not_the_proposed_0_24_1
+    rollback: stop the registered gpuq job and omit LVA_TTS_ADAPTER=vllm-omni to restore the retained Unix worker
   - id: postgresql-18.4
     role: database
     version: "18.4"

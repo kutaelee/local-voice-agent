@@ -43,3 +43,12 @@ windows_fallback:
   port: 46327
   cpu_only_during_gpu_contention: true
   capabilities: [text, simple_tool_call, structured_output, recovery_diagnostics]
+tts:
+  primary_candidate: vllm-omni-qwen3-tts-0.24.0
+  fallback: qwen3-tts-12hz-0.6b-base
+  endpoint: http://127.0.0.1:46329
+  transport: http_raw_pcm_stream
+  deploy_config: configs/vllm-omni-qwen3-tts.yaml
+  selected_voice: local-voice-agent-active
+  gpu_scheduler_workload: local-voice-agent-vllm-omni-tts-poc
+  accept_calls_only_after_warmup: true

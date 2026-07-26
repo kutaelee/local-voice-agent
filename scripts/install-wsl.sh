@@ -11,6 +11,7 @@ WSL runtime installation plan
 - runtime root: ${runtime_root}
 - Python: uv-managed 3.12 per environment
 - vLLM: 0.25.1 isolated environment
+- vLLM-Omni TTS: 0.24.0 isolated environment
 - vLLM MTP fix: exact commit b2b8f679d058 isolated environment
 - SGLang: 0.5.15.post1 isolated environment
 - STT: faster-whisper 1.2.1 isolated CUDA 12/CPU environment
@@ -101,6 +102,42 @@ case "${mode}" in
       "${wheel}"
     "${environment}/.venv/bin/python" -c \
       'import torch, vllm; print(f"vllm={vllm.__version__} torch={torch.__version__} cuda={torch.version.cuda} gpu={torch.cuda.get_device_name(0)}")'
+    ;;
+
+  --install-vllm-omni-tts)
+    environment="${runtime_root}/vllm-omni-0.24.0"
+    lock_file="${script_dir}/requirements/vllm-omni-tts.lock"
+    vllm_wheel="${cache_root}/vllm-0.24.0-cp38-abi3-manylinux_2_28_x86_64.whl"
+    omni_wheel="${cache_root}/vllm_omni-0.24.0-py3-none-any.whl"
+    [[ -f "${lock_file}" ]] || {
+      echo "Missing vLLM-Omni lock file: ${lock_file}" >&2
+      exit 9
+    }
+    download_verified \
+      "https://files.pythonhosted.org/packages/00/33/3f0abda52acff437a471cf3a2bf204213eb4102975b2677512cd76f2b45e/vllm-0.24.0-cp38-abi3-manylinux_2_28_x86_64.whl" \
+      "${vllm_wheel}" \
+      "2d2831aeba311292250df0132dbc4d8e9f42c654536eaec48e6fe58acb1822cf" \
+      "279209310"
+    download_verified \
+      "https://files.pythonhosted.org/packages/fb/0d/98a30c48fd53deeaaa584ac71cdf443ee57ed2b36f04ff083a87223c1e6e/vllm_omni-0.24.0-py3-none-any.whl" \
+      "${omni_wheel}" \
+      "aeeb4e881754ebc5748cd1b17dfe925edda3c552c40e6da4764b147d3fd8525f" \
+      "5261295"
+    create_environment "${environment}"
+    "${uv_bin}" pip sync \
+      --python "${environment}/.venv/bin/python" \
+      --require-hashes \
+      --torch-backend=cu130 \
+      "${lock_file}"
+    "${uv_bin}" pip install \
+      --python "${environment}/.venv/bin/python" \
+      --no-deps \
+      --reinstall \
+      "${vllm_wheel}" \
+      "${omni_wheel}"
+    "${uv_bin}" pip check --python "${environment}/.venv/bin/python"
+    "${environment}/.venv/bin/python" -c \
+      'from importlib.metadata import version; import torch, vllm; print("vllm={} vllm-omni={} torch={} cuda={} gpu={}".format(vllm.__version__, version("vllm-omni"), torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0)))'
     ;;
 
   --install-vllm-mtp-fix)
