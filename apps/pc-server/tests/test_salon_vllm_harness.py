@@ -430,6 +430,48 @@ def test_date_only_availability_uses_requested_date_slot() -> None:
     assert decision.requested_date == date(2026, 7, 28)
 
 
+def test_refused_contact_is_treated_as_missing_instead_of_failing_turn() -> None:
+    adapter = SalonVllmConversationHarness(
+        policy=load_salon_policy(POLICY_PATH),
+        base_url="http://127.0.0.1:46322/v1",
+        model="gemma4-e4b",
+        api_key=API_KEY,
+        transport=lambda _: _response(
+            {
+                "in_scope": True,
+                "action": "book",
+                "reply": "예약 확정에는 연락 가능한 번호가 필요해요. 번호 없이 가능 여부까지만 안내해 드릴까요?",
+                "service_id": None,
+                "staff_id": None,
+                "starts_at": None,
+                "requested_date": None,
+                "customer_name": None,
+                "phone": "안 알려주고 싶어요",
+                "reservation_code": None,
+                "confirmed": False,
+            }
+        ),
+    )
+
+    decision = asyncio.run(
+        adapter.decide(
+            user_message="연락처는 안 알려주고 싶은데요",
+            state={
+                "action": "book",
+                "service_id": "digital_perm",
+                "staff_id": "minji",
+                "starts_at": "2026-07-29T14:00:00+09:00",
+                "customer_name": "이규태",
+            },
+            history=(),
+            now=datetime.fromisoformat("2026-07-25T12:00:00+09:00"),
+        )
+    )
+
+    assert decision.action == "book"
+    assert decision.phone is None
+
+
 def test_markdown_reply_is_regenerated_as_spoken_korean() -> None:
     values = iter(
         [

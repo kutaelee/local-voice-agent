@@ -93,26 +93,32 @@ class SalonVllmConversationHarness:
             schema=_TURN_SCHEMA,
             max_tokens=384,
         )
-        decision = _parse_turn(raw, timezone=self._timezone)
-        if (
-            _repeats_recent_reply(decision.reply, history)
-            or _reply_leaks_internal_state(decision.reply)
-            or _reply_is_not_spoken_korean(decision.reply)
-            or _reply_is_too_long_for_phone(decision.reply, max_sentences=3)
-        ):
+        try:
+            decision = _parse_turn(raw, timezone=self._timezone)
+            invalid_reply = (
+                _repeats_recent_reply(decision.reply, history)
+                or _reply_echoes_user(decision.reply, normalized)
+                or _reply_leaks_internal_state(decision.reply)
+                or _reply_is_not_spoken_korean(decision.reply)
+                or _reply_is_too_long_for_phone(decision.reply, max_sentences=3)
+            )
+        except SalonFaqResponderError:
+            decision = None
+            invalid_reply = True
+        if invalid_reply:
             messages.insert(
                 -1,
                 {
                     "role": "system",
                     "content": (
-                        "방금 만든 답은 최근 답변과 표현이나 내용이 너무 비슷해 최신 고객 "
-                        "질문에 답하지 못했다. 가장 최근 user 메시지를 다시 읽고 그 질문의 "
-                        "의도와 필요한 action을 새로 판단한다. 안전 범위는 그대로 지키되 "
-                        "이전 답을 요약하거나 반복하지 않는다. 거절이라면 정형적인 사과나 "
-                        "'예약 관련 안내만'이라는 문구도 반복하지 않는다. reply에는 고객에게 "
-                        "직접 말할 자연스러운 한국어만 쓰고 action, 슬롯, JSON, Note, 판단 "
-                        "과정을 절대 노출하지 않는다. 마크다운, 글머리표, 괄호, 별표, 이모지, "
-                        "줄바꿈 없이 실제 전화에서 그대로 말할 한두 문장만 쓴다."
+                        "방금 출력은 값 또는 전화 응답 형식이 유효하지 않았다. 가장 최근 user "
+                        "메시지를 다시 읽고 새로 판단한다. 전화번호는 실제 01로 시작하는 "
+                        "십 자리 또는 십일 자리 번호를 고객이 말한 경우에만 넣고, 거부하거나 "
+                        "말하지 않았다면 null로 둔다. service_id와 staff_id는 FACTS에 있는 "
+                        "식별자만 사용하고 불확실하면 null로 둔다. 답변은 고객 말을 따라 하지 "
+                        "않고 자연스러운 한국어 평문 한두 문장으로 쓴다. action, 슬롯, JSON, "
+                        "Note, 판단 과정, 마크다운, 글머리표, 괄호, 별표, 이모지, 줄바꿈을 "
+                        "노출하지 않는다."
                     ),
                 },
             )
@@ -125,6 +131,7 @@ class SalonVllmConversationHarness:
             decision = _parse_turn(raw, timezone=self._timezone)
             if (
                 _repeats_recent_reply(decision.reply, history)
+                or _reply_echoes_user(decision.reply, normalized)
                 or _reply_leaks_internal_state(decision.reply)
                 or _reply_is_not_spoken_korean(decision.reply)
                 or _reply_is_too_long_for_phone(decision.reply, max_sentences=3)
@@ -160,8 +167,13 @@ class SalonVllmConversationHarness:
                     "최대 네 개만 자연스럽게 제안하고 어느 시간이 편한지 묻는다. 내부 필드명, "
                     "JSON, 판단 과정은 말하지 않는다. 마크다운, 글머리표, 괄호, 별표, 이모지, "
                     "줄바꿈을 쓰지 않는다. 예약 가능 여부만 물은 고객에게 성함이나 전화번호를 "
-                    "미리 요구하지 않는다. 핵심 결과와 다음 질문을 합쳐 두 문장 이내로 "
-                    "말한다.\nRESULT_CONTEXT="
+                    "미리 요구하지 않는다. next_step이 request_customer_name이면 확인된 "
+                    "예약 가능 여부를 먼저 말한 뒤 성함만 묻고, request_phone이면 연락처가 "
+                    "예약 확정에 필요하다고 짧게 설명한 뒤 번호만 묻는다. "
+                    "offer_an_available_alternative이면 requested_staff_available과 "
+                    "available_staff를 정확히 보고 요청한 담당자가 불가능한 경우 다른 가능한 "
+                    "담당자를 제안하되 요청한 담당자로 가능하다고 말하지 않는다. 핵심 결과와 "
+                    "다음 질문을 합쳐 두 문장 이내로 말한다.\nRESULT_CONTEXT="
                     + json.dumps(context, ensure_ascii=False, separators=(",", ":"))
                 ),
             },
@@ -368,7 +380,10 @@ def _parse_turn(raw: object, *, timezone: tzinfo) -> SalonTurnDecision:
         if phone is not None:
             phone = re.sub(r"\D", "", phone)
             if not re.fullmatch(r"01[016789]\d{7,8}", phone):
-                raise ValueError
+                # Optional extraction failure must not discard the entire
+                # conversation turn. The coordinator will continue to require
+                # a valid contact number before any reservation mutation.
+                phone = None
         code = strings["reservation_code"]
         if code is not None:
             code = code.replace("-", "").upper()
@@ -561,6 +576,12 @@ def _repeats_recent_reply(
 
 def _comparison_text(value: str) -> str:
     return re.sub(r"[\W_]+", "", value).casefold()
+
+
+def _reply_echoes_user(reply: str, user_message: str) -> bool:
+    candidate = _comparison_text(reply)
+    source = _comparison_text(user_message)
+    return len(source) >= 4 and candidate == source
 
 
 def _reply_leaks_internal_state(reply: str) -> bool:

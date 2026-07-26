@@ -156,8 +156,10 @@ def test_qa_portal_is_local_static_content_without_secrets() -> None:
         maxsplit=1,
     )[1].split("async function stopCapture", maxsplit=1)[0]
     assert start_listening.index("getUserMedia") < start_listening.index(
-        "ensureAudioContext"
+        "const captureContext = new AudioContext"
     )
+    assert "await state.audioContext.close()" in start_listening
+    assert "state.captureAudioContext = captureContext" in start_listening
     assert "새 QA 탭을 열거나 Bluetooth 헤드셋을 다시 연결" in app_script.text
     assert 'addEvent("capture.error"' in app_script.text
     assert "!state.responseInterruptible" in app_script.text

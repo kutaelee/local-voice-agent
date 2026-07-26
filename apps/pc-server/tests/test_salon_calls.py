@@ -8,7 +8,10 @@ from local_voice_agent_server.application.salon_calls import (
     SalonFaqDecision,
     SalonTurnDecision,
 )
-from local_voice_agent_server.domain.salon_booking import SalonReservationService
+from local_voice_agent_server.domain.salon_booking import (
+    ReservationRequest,
+    SalonReservationService,
+)
 from local_voice_agent_server.infrastructure.file_reservations import (
     FileReservationStore,
 )
@@ -256,6 +259,76 @@ def test_model_booking_checks_live_availability_before_confirmation(
     asyncio.run(scenario())
 
 
+def test_model_checks_requested_staff_before_collecting_contact(
+    tmp_path: Path,
+) -> None:
+    observed = {}
+
+    class Harness:
+        async def decide(self, **kwargs) -> SalonTurnDecision:
+            return SalonTurnDecision(
+                in_scope=True,
+                action="book",
+                service_id="digital_perm",
+                staff_id="minji",
+                starts_at=datetime(
+                    2026,
+                    7,
+                    29,
+                    14,
+                    0,
+                    tzinfo=coordinator.policy.timezone,
+                ),
+                customer_name="이규태",
+                reply="민지 선생님께 예약을 도와드릴게요. 연락처를 알려주시겠어요?",
+            )
+
+        async def complete(self, **kwargs) -> str:
+            observed.update(kwargs["tool_result"])
+            return "그 시간에는 민지 선생님 예약이 어렵고 준 선생님은 가능해요. 담당자를 변경해 드릴까요?"
+
+    async def scenario() -> None:
+        nonlocal coordinator
+        coordinator = _coordinator(
+            tmp_path,
+            conversation_responder=Harness(),
+        )
+        coordinator._reservations.create(
+            ReservationRequest(
+                customer_name="기존 고객",
+                phone="01011112222",
+                service_id="digital_perm",
+                staff_id="minji",
+                starts_at=datetime(
+                    2026,
+                    7,
+                    29,
+                    14,
+                    0,
+                    tzinfo=coordinator.policy.timezone,
+                ),
+            )
+        )
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        events = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="7월 29일 오후 2시에 민지 선생님 디지털 펌 예약할게요. 이규태입니다.",
+        )
+
+        assert observed["ok"] is False
+        assert observed["requested_staff_name"] == "민지"
+        assert observed["requested_staff_available"] is False
+        assert observed["available_staff"] == ["준"]
+        assert observed["next_step"] == "offer_an_available_alternative"
+        assert "민지 선생님 예약이 어렵고" in _texts(events)[0]
+        assert coordinator._reservations.list_reservations()[0].customer_name == "기존 고객"
+
+    coordinator: SalonCallCoordinator
+    asyncio.run(scenario())
+
+
 def test_conversation_model_echo_is_rejected(tmp_path: Path) -> None:
     class Harness:
         async def decide(self, **kwargs) -> SalonTurnDecision:
@@ -282,7 +355,8 @@ def test_conversation_model_echo_is_rejected(tmp_path: Path) -> None:
             text="오늘 커트하고 싶어요",
         )
         assert _texts(events)[0] != "오늘 커트하고 싶어요"
-        assert "연결이 원활하지 않아요" in _texts(events)[0]
+        assert "정확히 처리하지 못했어요" in _texts(events)[0]
+        assert events[0].payload["fallback"] == "model_decision_rejected"
 
     asyncio.run(scenario())
 

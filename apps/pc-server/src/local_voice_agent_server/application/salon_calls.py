@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
+import logging
 import re
 from typing import Callable, Literal, Protocol
 from uuid import UUID, uuid4
@@ -21,6 +22,7 @@ from ..domain.salon_booking import (
 
 SalonAction = Literal["availability", "book", "cancel", "modify"]
 SalonModelAction = Literal["respond", "availability", "book", "cancel", "modify"]
+logger = logging.getLogger(__name__)
 
 
 class SalonFaqResponderError(RuntimeError):
@@ -290,10 +292,32 @@ class SalonCallCoordinator:
             )
             reply = _safe_model_reply(text, decision.reply)
             self._apply_model_slots(state, decision)
-        except (SalonFaqResponderError, SalonBookingError):
-            return self._reply(
-                "잠시 연결이 원활하지 않아요. 예약 날짜나 시술을 다시 말씀해 주시겠어요?"
+        except (SalonFaqResponderError, SalonBookingError) as error:
+            logger.warning(
+                "salon conversation decision rejected",
+                extra={
+                    "salon_call_id": str(state.call_id),
+                    "salon_error_type": type(error).__name__,
+                    "salon_error_code": getattr(error, "code", None),
+                },
             )
+            self._append_history(state, "user", text)
+            fallback = self._model_recovery_reply(state)
+            self._append_history(state, "assistant", fallback)
+            return [
+                SalonEvent(
+                    "salon.assistant.message",
+                    {
+                        "text": fallback,
+                        "fallback": "model_decision_rejected",
+                        "error_code": getattr(
+                            error,
+                            "code",
+                            "MODEL_DECISION_INVALID",
+                        ),
+                    },
+                )
+            ]
 
         self._append_history(state, "user", text)
 
@@ -333,17 +357,24 @@ class SalonCallCoordinator:
         decision: SalonTurnDecision,
         reply: str,
     ) -> list[SalonEvent]:
-        missing = self._missing_model_booking_field(state)
-        if missing is not None:
+        if state.service_id is None or state.starts_at is None:
             return self._model_reply(state, reply)
+
+        # Never let the language model promise a slot before the authoritative
+        # file-backed schedule has been checked. This intentionally happens
+        # before collecting customer identity or contact details.
         if not state.awaiting_confirmation:
             availability = self._model_availability_result(state)
-            availability["next_step"] = (
-                "request_booking_confirmation"
-                if availability["ok"]
-                else "offer_an_available_alternative"
-            )
+            missing = self._missing_model_booking_field(state)
             if not availability["ok"]:
+                availability["next_step"] = "offer_an_available_alternative"
+            elif missing == "customer_name":
+                availability["next_step"] = "request_customer_name"
+            elif missing == "phone":
+                availability["next_step"] = "request_phone"
+            else:
+                availability["next_step"] = "request_booking_confirmation"
+            if missing is not None or not availability["ok"]:
                 return await self._complete_model_tool(
                     state,
                     text,
@@ -466,16 +497,37 @@ class SalonCallCoordinator:
             service_id=state.service_id,
             starts_at=state.starts_at,
         )
+        requested_staff = (
+            self.policy.staff_member(state.staff_id)
+            if state.staff_id is not None
+            else None
+        )
+        requested_staff_available = (
+            requested_staff is None
+            or any(member.staff_id == requested_staff.staff_id for member in staff)
+        )
         return {
-            "ok": bool(staff),
+            "ok": bool(staff) and requested_staff_available,
             "operation": "availability",
             "service_name": service.name,
             "starts_at": state.starts_at.isoformat(),
             "available_staff": [member.name for member in staff],
+            "requested_staff_name": (
+                requested_staff.name if requested_staff is not None else None
+            ),
+            "requested_staff_available": requested_staff_available,
             "message": (
-                "예약 가능한 담당자가 있습니다."
-                if staff
-                else "해당 시간에는 예약 가능한 담당자가 없습니다."
+                "요청한 담당자와 시간으로 예약할 수 있습니다."
+                if requested_staff is not None and requested_staff_available
+                else (
+                    "요청한 담당자는 해당 시간에 예약이 어렵습니다."
+                    if requested_staff is not None
+                    else (
+                        "예약 가능한 담당자가 있습니다."
+                        if staff
+                        else "해당 시간에는 예약 가능한 담당자가 없습니다."
+                    )
+                )
             ),
         }
 
@@ -645,6 +697,25 @@ class SalonCallCoordinator:
             "reservation_code": state.reservation_code,
             "awaiting_confirmation": state.awaiting_confirmation,
         }
+
+    def _model_recovery_reply(self, state: SalonCallState) -> str:
+        """Preserve the current call context when a bounded model turn fails."""
+
+        if state.action == "book":
+            if state.service_id is None:
+                return "원하시는 세부 시술을 한 번만 더 말씀해 주시겠어요?"
+            if state.starts_at is None:
+                return "원하시는 날짜와 시간을 한 번만 더 말씀해 주시겠어요?"
+            if state.customer_name is None:
+                return "예약자 성함을 알려주시겠어요?"
+            if state.phone is None:
+                return (
+                    "예약 확정에는 연락 가능한 휴대전화 번호가 필요해요. "
+                    "번호 없이 예약 가능 여부까지만 안내해 드릴까요?"
+                )
+        if state.awaiting_confirmation:
+            return "말씀드린 내용으로 진행할지 다시 한번 확인해 주시겠어요?"
+        return "제가 방금 말씀을 정확히 처리하지 못했어요. 마지막 요청을 한 번만 다시 말씀해 주시겠어요?"
 
     @staticmethod
     def _missing_model_booking_field(state: SalonCallState) -> str | None:

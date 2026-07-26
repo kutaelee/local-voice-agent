@@ -73,6 +73,7 @@ const state = {
   serverOperationActive: false,
   mediaStream: null,
   audioContext: null,
+  captureAudioContext: null,
   captureSource: null,
   captureNode: null,
   captureGain: null,
@@ -677,6 +678,15 @@ async function startListening() {
   stopPlayback();
   let media = null;
   try {
+    // The output context may have been created while a Bluetooth headset was
+    // in its high-quality A2DP profile. Close it before opening the microphone
+    // so capture and playback do not share a context across the HFP/A2DP
+    // transition. Playback creates a fresh context after capture has stopped.
+    if (state.audioContext && state.audioContext.state !== "closed") {
+      await state.audioContext.close();
+    }
+    state.audioContext = null;
+    state.nextPlaybackTime = 0;
     // Acquire the capture profile before opening Web Audio output. Bluetooth
     // headsets can reject HFP capture when an A2DP output context is opened
     // first, and a fresh tab can recover a stale browser capture session.
@@ -688,7 +698,10 @@ async function startListening() {
         autoGainControl: true,
       },
     });
-    await ensureAudioContext();
+    const captureContext = new AudioContext({ latencyHint: "interactive" });
+    await captureContext.audioWorklet.addModule("/qa/pcm-worklet.js");
+    if (captureContext.state === "suspended") await captureContext.resume();
+    state.captureAudioContext = captureContext;
     const streamId = crypto.randomUUID();
     const requestId = crypto.randomUUID();
     if (!send("audio.input.start", {
@@ -705,16 +718,16 @@ async function startListening() {
     state.inputChunkIndex = 0;
     state.mediaStream = media;
     state.turn = { startedAt: performance.now() };
-    const source = state.audioContext.createMediaStreamSource(media);
-    const worklet = new AudioWorkletNode(state.audioContext, "lva-pcm-capture");
-    const silent = state.audioContext.createGain();
+    const source = captureContext.createMediaStreamSource(media);
+    const worklet = new AudioWorkletNode(captureContext, "lva-pcm-capture");
+    const silent = captureContext.createGain();
     silent.gain.value = 0;
-    source.connect(worklet).connect(silent).connect(state.audioContext.destination);
+    source.connect(worklet).connect(silent).connect(captureContext.destination);
     worklet.port.onmessage = ({ data }) => {
       if (!state.listening || !state.inputStreamId) return;
       const downsampled = downsampleTo16k(
         new Float32Array(data),
-        state.audioContext.sampleRate,
+        captureContext.sampleRate,
       );
       const bytes = floatToPcm16(downsampled);
       const durationMs = Math.max(1, Math.round(downsampled.length / 16));
@@ -762,9 +775,16 @@ async function stopCapture(sendEnd = true, reason = "client_stop") {
   state.captureSource?.disconnect();
   state.captureGain?.disconnect();
   state.mediaStream?.getTracks().forEach((track) => track.stop());
+  if (
+    state.captureAudioContext
+    && state.captureAudioContext.state !== "closed"
+  ) {
+    try { await state.captureAudioContext.close(); } catch {}
+  }
   state.captureNode = null;
   state.captureSource = null;
   state.captureGain = null;
+  state.captureAudioContext = null;
   state.mediaStream = null;
   ui.micMeter.style.width = "0";
   ui.startButton.classList.remove("active");
