@@ -14,7 +14,9 @@ connectors:
       connector_get_max_wait: 300
       codec_chunk_frames: 25
       codec_left_context_frames: 72
-      initial_codec_chunk_frames: 1
+      # One frame minimizes TTFA but audibly changes timbre while the codec
+      # accumulates context. Start with one normal chunk for stable quality.
+      initial_codec_chunk_frames: 25
       decode_cudagraph_capture_sizes: [25, 73, 97, 169, 325]
 
 stages:

@@ -337,8 +337,26 @@ class SalonCallCoordinator:
         if missing is not None:
             return self._model_reply(state, reply)
         if not state.awaiting_confirmation:
+            availability = self._model_availability_result(state)
+            availability["next_step"] = (
+                "request_booking_confirmation"
+                if availability["ok"]
+                else "offer_an_available_alternative"
+            )
+            if not availability["ok"]:
+                return await self._complete_model_tool(
+                    state,
+                    text,
+                    history,
+                    availability,
+                )
             state.awaiting_confirmation = True
-            return self._model_reply(state, reply)
+            return await self._complete_model_tool(
+                state,
+                text,
+                history,
+                availability,
+            )
         if not decision.confirmed or not _is_positive_confirmation(text):
             if _is_negative_confirmation(text):
                 state.clear_transaction()

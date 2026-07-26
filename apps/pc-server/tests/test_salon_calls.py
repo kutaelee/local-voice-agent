@@ -202,6 +202,60 @@ def test_model_date_only_availability_returns_real_schedule_slots(
     asyncio.run(scenario())
 
 
+def test_model_booking_checks_live_availability_before_confirmation(
+    tmp_path: Path,
+) -> None:
+    observed = {}
+
+    class Harness:
+        async def decide(self, **kwargs) -> SalonTurnDecision:
+            return SalonTurnDecision(
+                in_scope=True,
+                action="book",
+                service_id="haircut",
+                starts_at=datetime(
+                    2026,
+                    7,
+                    26,
+                    14,
+                    0,
+                    tzinfo=coordinator.policy.timezone,
+                ),
+                customer_name="김규태",
+                phone="01012345678",
+                reply="가능합니다. 바로 예약해 드릴게요.",
+            )
+
+        async def complete(self, **kwargs) -> str:
+            observed.update(kwargs["tool_result"])
+            return "해당 시간은 예약 가능합니다. 이 내용으로 예약을 진행할까요?"
+
+    async def scenario() -> None:
+        nonlocal coordinator
+        coordinator = _coordinator(
+            tmp_path,
+            conversation_responder=Harness(),
+        )
+        session_id = uuid4()
+        await coordinator.handle(session_id=session_id, event_type="salon.call.start")
+        events = await coordinator.handle(
+            session_id=session_id,
+            event_type="salon.call.message",
+            text="7월 26일 오후 2시에 커트 예약할게요. 김규태, 010-1234-5678입니다.",
+        )
+
+        assert observed["operation"] == "availability"
+        assert observed["ok"] is True
+        assert observed["next_step"] == "request_booking_confirmation"
+        assert _texts(events) == [
+            "해당 시간은 예약 가능합니다. 이 내용으로 예약을 진행할까요?"
+        ]
+        assert coordinator._reservations.list_reservations() == ()
+
+    coordinator: SalonCallCoordinator
+    asyncio.run(scenario())
+
+
 def test_conversation_model_echo_is_rejected(tmp_path: Path) -> None:
     class Harness:
         async def decide(self, **kwargs) -> SalonTurnDecision:

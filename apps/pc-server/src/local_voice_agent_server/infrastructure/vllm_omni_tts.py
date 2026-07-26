@@ -128,7 +128,7 @@ class VllmOmniTtsAdapter:
         # Korean endings were occasionally truncated when short response
         # units hit the earlier 64-token floor. EOS still terminates normal
         # generations, so the larger ceiling is only a safety bound.
-        max_new_tokens = min(512, max(96, len(normalized) * 6))
+        max_new_tokens = min(768, max(160, len(normalized) * 8))
         return {
             "input": normalized,
             "voice": self._voice,
