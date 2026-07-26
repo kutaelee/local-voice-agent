@@ -96,6 +96,15 @@ class TextToSpeechPort(Protocol):
     async def synthesize(self, text: str, *, language: str) -> SynthesizedAudio: ...
 
 
+class StreamingTextToSpeechPort(TextToSpeechPort, Protocol):
+    def stream_synthesize(
+        self,
+        text: str,
+        *,
+        language: str,
+    ) -> AsyncIterator[SynthesizedAudio]: ...
+
+
 class VoiceActivityPort(Protocol):
     async def analyze(
         self,
@@ -562,6 +571,16 @@ class VoiceTurnService:
         emit: VoiceEventEmitter | None,
     ) -> None:
         spoken_text = _prepare_tts_text(speech_unit)
+        stream = getattr(self._tts, "stream_synthesize", None)
+        if callable(stream):
+            await self._emit_streamed_synthesized_audio(
+                events,
+                state=state,
+                speech_unit=speech_unit,
+                outputs=stream(spoken_text, language=language),
+                emit=emit,
+            )
+            return
         output = await self._tts.synthesize(
             spoken_text,
             language=language,
@@ -571,6 +590,72 @@ class VoiceTurnService:
             state=state,
             speech_unit=speech_unit,
             output=output,
+            emit=emit,
+        )
+
+    async def _emit_streamed_synthesized_audio(
+        self,
+        events: list[VoiceEvent],
+        speech_unit: str,
+        outputs: AsyncIterator[SynthesizedAudio],
+        *,
+        state: _AudioOutputState,
+        emit: VoiceEventEmitter | None,
+    ) -> None:
+        del speech_unit
+        pending_tail = b""
+        output_format: tuple[int, int] | None = None
+        async for output in outputs:
+            current_format = (output.sample_rate_hz, output.channels)
+            if output_format is None:
+                output_format = current_format
+            elif output_format != current_format:
+                raise ValueError("TTS output format changed within one response")
+            if state.output_format is None:
+                state.output_format = current_format
+            elif state.output_format != current_format:
+                raise ValueError("TTS output format changed within one response")
+            frame_bytes = output.channels * 2
+            if len(output.pcm_s16le) % frame_bytes:
+                raise ValueError("TTS output is not frame aligned")
+            hold_bytes = (
+                round(
+                    output.sample_rate_hz
+                    * self._output_release_fade_ms
+                    / 1_000
+                )
+                * frame_bytes
+            )
+            combined = pending_tail + output.pcm_s16le
+            if hold_bytes and len(combined) > hold_bytes:
+                ready = combined[:-hold_bytes]
+                pending_tail = combined[-hold_bytes:]
+            elif hold_bytes:
+                ready = b""
+                pending_tail = combined
+            else:
+                ready = combined
+                pending_tail = b""
+            await self._emit_pcm_chunks(
+                events,
+                state=state,
+                pcm=ready,
+                emit=emit,
+            )
+        if output_format is None:
+            raise ValueError("TTS returned no audio")
+        sample_rate_hz, channels = output_format
+        final_pcm = _finish_pcm16_speech_unit(
+            pending_tail,
+            sample_rate_hz=sample_rate_hz,
+            channels=channels,
+            release_fade_ms=self._output_release_fade_ms,
+            silence_ms=self._output_unit_silence_ms,
+        )
+        await self._emit_pcm_chunks(
+            events,
+            state=state,
+            pcm=final_pcm,
             emit=emit,
         )
 

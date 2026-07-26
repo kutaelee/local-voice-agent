@@ -774,6 +774,7 @@ function decodePcm16(encoded) {
 async function scheduleAudio(payload, generation) {
   await ensureAudioContext();
   if (generation !== state.playbackGeneration) return;
+  const enqueuedAt = performance.now();
   const pcm = decodePcm16(payload.data_base64);
   const buffer = state.audioContext.createBuffer(
     payload.channels,
@@ -792,10 +793,6 @@ async function scheduleAudio(payload, generation) {
     state.nextPlaybackTime = now;
     state.turn.maxGapMs = 0;
   }
-  if (!state.turn.firstAudioAt) {
-    state.turn.firstAudioAt = performance.now();
-    updateMetric("tts", state.turn.firstAudioAt - (state.turn.firstTextAt || state.turn.transcriptAt || state.turn.audioEndedAt));
-  }
   let startAt = Math.max(now + 0.025, state.nextPlaybackTime);
   if (state.nextPlaybackTime > 0 && now > state.nextPlaybackTime + 0.02) {
     const gap = (now - state.nextPlaybackTime) * 1000;
@@ -812,6 +809,25 @@ async function scheduleAudio(payload, generation) {
   source.connect(state.audioContext.destination);
   source.onended = () => state.playbackSources.delete(source);
   source.start(startAt);
+  if (!state.turn.firstAudioEnqueuedAt) {
+    const scheduledDelayMs = Math.max(0, (startAt - now) * 1000);
+    state.turn.firstAudioEnqueuedAt = enqueuedAt;
+    state.turn.firstPlaybackScheduledAt = enqueuedAt + scheduledDelayMs;
+    updateMetric(
+      "tts",
+      state.turn.firstPlaybackScheduledAt
+        - (state.turn.firstTextAt || state.turn.transcriptAt || state.turn.audioEndedAt),
+    );
+    addEvent("playback.first_enqueued", {
+      client_enqueue_ms: Math.round(enqueuedAt - state.turn.startedAt),
+    });
+    addEvent("playback.first_scheduled", {
+      actual_playback_start_ms: Math.round(
+        state.turn.firstPlaybackScheduledAt - state.turn.startedAt,
+      ),
+      scheduling_delay_ms: Math.round(scheduledDelayMs),
+    });
+  }
   state.playbackSources.add(source);
   state.nextPlaybackTime = startAt + buffer.duration / source.playbackRate.value;
 }

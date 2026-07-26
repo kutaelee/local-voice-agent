@@ -251,6 +251,55 @@ def test_voice_turn_emits_first_sentence_audio_before_synthesizing_next() -> Non
     asyncio.run(scenario())
 
 
+def test_voice_turn_forwards_streamed_pcm_before_tts_finishes() -> None:
+    timeline: list[str] = []
+
+    class StreamingTts:
+        async def synthesize(self, text: str, *, language: str):
+            raise AssertionError("streaming path should be selected")
+
+        async def stream_synthesize(self, text: str, *, language: str):
+            assert text
+            assert language == "ko"
+            timeline.append("tts:first")
+            yield SynthesizedAudio(b"\x01\x02" * 2_000, 24_000)
+            timeline.append("tts:second")
+            yield SynthesizedAudio(b"\x03\x04" * 2_000, 24_000)
+
+    async def scenario() -> None:
+        service = VoiceTurnService(
+            stt=FakeStt(),
+            conversation=FakeConversation(),
+            tts=StreamingTts(),
+            output_chunk_bytes=1_024,
+            output_release_fade_ms=24,
+        )
+        stream_id = uuid4()
+        service.start(
+            stream_id=stream_id,
+            encoding="pcm_s16le",
+            sample_rate_hz=16_000,
+            channels=1,
+        )
+        service.append(
+            stream_id=stream_id,
+            chunk_index=0,
+            encoding="pcm_s16le",
+            data=b"\x00\x00" * 160,
+            duration_ms=10,
+        )
+
+        async def emit(event) -> None:
+            if event.type == "audio.output.chunk":
+                timeline.append("client:audio")
+
+        await service.finish(stream_id=stream_id, emit=emit)
+
+    asyncio.run(scenario())
+
+    assert timeline.index("client:audio") < timeline.index("tts:second")
+
+
 def test_streamed_tts_failure_terminates_the_open_audio_stream() -> None:
     class SentenceConversation:
         async def respond(self, text: str, *, language: str) -> str:

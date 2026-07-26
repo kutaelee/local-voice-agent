@@ -31,3 +31,24 @@ def test_benchmark_wrapper_is_loopback_only_and_never_controls_runtime() -> None
     assert "stop-vllm" not in source
     assert "start-sglang" not in source
     assert "stop-sglang" not in source
+
+
+def test_vllm_omni_tts_benchmark_is_bounded_and_append_only() -> None:
+    source = text("benchmark-vllm-omni-tts.py")
+
+    ast.parse(source)
+    assert '{"127.0.0.1", "localhost", "::1"}' in source
+    assert "refusing to overwrite benchmark output or evidence" in source
+    assert "1 <= args.runs <= 1_000" in source
+    assert "1 <= args.concurrency <= 4" in source
+    assert '"actual_playback_start": "not_measured_by_cli_poc"' in source
+
+
+def test_salon_websocket_smoke_is_loopback_only_and_does_not_retain_pcm() -> None:
+    source = text("smoke-salon-websocket.py")
+
+    ast.parse(source)
+    assert '{"127.0.0.1", "localhost", "::1"}' in source
+    assert 'additional_headers={"Authorization": f"Bearer {token}"}' in source
+    assert "audio.output.chunk" in source
+    assert "data_base64" not in source

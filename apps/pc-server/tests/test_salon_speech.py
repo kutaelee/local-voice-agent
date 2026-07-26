@@ -112,3 +112,44 @@ def test_salon_speech_streams_first_unit_before_synthesizing_the_next() -> None:
     assert first_audio > 0
     assert emitted[first_audio].payload["chunk_index"] == 0
     assert emitted[-2].type == "audio.output.end"
+
+
+def test_salon_speech_forwards_streamed_pcm_before_generation_finishes() -> None:
+    timeline = []
+
+    class StreamingTts:
+        async def synthesize(self, text: str, *, language: str):
+            raise AssertionError("streaming path should be selected")
+
+        async def stream_synthesize(self, text: str, *, language: str):
+            assert text
+            assert language == "ko"
+            timeline.append("tts:first")
+            yield SynthesizedAudio(
+                pcm_s16le=(1000).to_bytes(2, "little", signed=True) * 2_000,
+                sample_rate_hz=24_000,
+                channels=1,
+            )
+            timeline.append("tts:second")
+            yield SynthesizedAudio(
+                pcm_s16le=(500).to_bytes(2, "little", signed=True) * 2_000,
+                sample_rate_hz=24_000,
+                channels=1,
+            )
+
+    service = SalonSpeechService(
+        tts=StreamingTts(),
+        output_chunk_bytes=1_024,
+        release_fade_ms=24,
+    )
+
+    async def scenario() -> None:
+        async def emit(event) -> None:
+            if event.type == "audio.output.chunk":
+                timeline.append("client:audio")
+
+        await service.synthesize("바로 확인해 드리겠습니다.", emit=emit)
+
+    asyncio.run(scenario())
+
+    assert timeline.index("client:audio") < timeline.index("tts:second")

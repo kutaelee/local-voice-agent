@@ -148,6 +148,9 @@ def test_qa_portal_is_local_static_content_without_secrets() -> None:
     assert 'controlModel("start")' in app_script.text
     assert 'controlModel("stop")' in app_script.text
     assert "gpuq에 22 GiB" in app_script.text
+    assert 'addEvent("playback.first_enqueued"' in app_script.text
+    assert 'addEvent("playback.first_scheduled"' in app_script.text
+    assert "state.turn.firstPlaybackScheduledAt" in app_script.text
     start_listening = app_script.text.split(
         "async function startListening()",
         maxsplit=1,

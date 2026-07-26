@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import base64
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from .salon_calls import SalonEvent
 from .voice_turn import (
+    SynthesizedAudio,
     TextToSpeechPort,
     _finish_pcm16_speech_unit,
     _prepare_tts_text,
@@ -83,23 +84,65 @@ class SalonSpeechService:
         speaking = False
         try:
             for unit_index, speech_unit in enumerate(speech_units):
-                output = await self._tts.synthesize(
+                output_format: tuple[int, int] | None = None
+                pending_tail = b""
+                async for output in self._speech_audio(
                     _prepare_tts_text(speech_unit),
                     language="ko",
-                )
-                if (
-                    output.sample_rate_hz < 8_000
-                    or output.sample_rate_hz > 192_000
-                    or output.channels not in {1, 2}
                 ):
-                    raise ValueError("salon TTS output format is invalid")
-                if not speaking:
-                    await publish(SalonEvent("assistant.state", {"state": "speaking"}))
-                    speaking = True
-                pcm = _finish_pcm16_speech_unit(
-                    output.pcm_s16le,
-                    sample_rate_hz=output.sample_rate_hz,
-                    channels=output.channels,
+                    if (
+                        output.sample_rate_hz < 8_000
+                        or output.sample_rate_hz > 192_000
+                        or output.channels not in {1, 2}
+                    ):
+                        raise ValueError("salon TTS output format is invalid")
+                    current_format = (output.sample_rate_hz, output.channels)
+                    if output_format is None:
+                        output_format = current_format
+                    elif output_format != current_format:
+                        raise ValueError(
+                            "salon TTS output format changed within one unit"
+                        )
+                    if not speaking:
+                        await publish(
+                            SalonEvent("assistant.state", {"state": "speaking"})
+                        )
+                        speaking = True
+                    frame_bytes = output.channels * 2
+                    if len(output.pcm_s16le) % frame_bytes:
+                        raise ValueError("salon TTS output is not frame aligned")
+                    hold_bytes = (
+                        round(
+                            output.sample_rate_hz
+                            * self._release_fade_ms
+                            / 1_000
+                        )
+                        * frame_bytes
+                    )
+                    combined = pending_tail + output.pcm_s16le
+                    if hold_bytes and len(combined) > hold_bytes:
+                        ready = combined[:-hold_bytes]
+                        pending_tail = combined[-hold_bytes:]
+                    elif hold_bytes:
+                        ready = b""
+                        pending_tail = combined
+                    else:
+                        ready = combined
+                        pending_tail = b""
+                    chunk_index = await self._publish_pcm(
+                        ready,
+                        output_format=current_format,
+                        stream_id=stream_id,
+                        chunk_index=chunk_index,
+                        publish=publish,
+                    )
+                if output_format is None:
+                    raise ValueError("salon TTS returned no audio")
+                sample_rate_hz, channels = output_format
+                final_pcm = _finish_pcm16_speech_unit(
+                    pending_tail,
+                    sample_rate_hz=sample_rate_hz,
+                    channels=channels,
                     release_fade_ms=self._release_fade_ms,
                     silence_ms=(
                         self._final_silence_ms
@@ -107,27 +150,13 @@ class SalonSpeechService:
                         else self._unit_silence_ms
                     ),
                 )
-                bytes_per_second = output.sample_rate_hz * output.channels * 2
-                for offset in range(0, len(pcm), self._output_chunk_bytes):
-                    chunk = pcm[offset : offset + self._output_chunk_bytes]
-                    await publish(
-                        SalonEvent(
-                            "audio.output.chunk",
-                            {
-                                "audio_stream_id": str(stream_id),
-                                "chunk_index": chunk_index,
-                                "encoding": "pcm_s16le",
-                                "sample_rate_hz": output.sample_rate_hz,
-                                "channels": output.channels,
-                                "duration_ms": max(
-                                    1,
-                                    round(len(chunk) * 1_000 / bytes_per_second),
-                                ),
-                                "data_base64": base64.b64encode(chunk).decode("ascii"),
-                            },
-                        )
-                    )
-                    chunk_index += 1
+                chunk_index = await self._publish_pcm(
+                    final_pcm,
+                    output_format=output_format,
+                    stream_id=stream_id,
+                    chunk_index=chunk_index,
+                    publish=publish,
+                )
         except Exception:
             await publish(
                 SalonEvent(
@@ -151,3 +180,49 @@ class SalonSpeechService:
         )
         await publish(SalonEvent("assistant.state", {"state": resume_state}))
         return tuple(events)
+
+    async def _speech_audio(
+        self,
+        text: str,
+        *,
+        language: str,
+    ) -> AsyncIterator[SynthesizedAudio]:
+        stream = getattr(self._tts, "stream_synthesize", None)
+        if callable(stream):
+            async for output in stream(text, language=language):
+                yield output
+            return
+        yield await self._tts.synthesize(text, language=language)
+
+    async def _publish_pcm(
+        self,
+        pcm: bytes,
+        *,
+        output_format: tuple[int, int],
+        stream_id: UUID,
+        chunk_index: int,
+        publish: Callable[[SalonEvent], Awaitable[None]],
+    ) -> int:
+        sample_rate_hz, channels = output_format
+        bytes_per_second = sample_rate_hz * channels * 2
+        for offset in range(0, len(pcm), self._output_chunk_bytes):
+            chunk = pcm[offset : offset + self._output_chunk_bytes]
+            await publish(
+                SalonEvent(
+                    "audio.output.chunk",
+                    {
+                        "audio_stream_id": str(stream_id),
+                        "chunk_index": chunk_index,
+                        "encoding": "pcm_s16le",
+                        "sample_rate_hz": sample_rate_hz,
+                        "channels": channels,
+                        "duration_ms": max(
+                            1,
+                            round(len(chunk) * 1_000 / bytes_per_second),
+                        ),
+                        "data_base64": base64.b64encode(chunk).decode("ascii"),
+                    },
+                )
+            )
+            chunk_index += 1
+        return chunk_index

@@ -17,6 +17,9 @@ from local_voice_agent_server.infrastructure.audio_workers import (
     TtsWorkerAdapter,
     UnixJsonWorkerClient,
 )
+from local_voice_agent_server.infrastructure.vllm_omni_tts import (
+    VllmOmniTtsAdapter,
+)
 from local_voice_agent_server.infrastructure.voice_profiles import VoiceProfileStore
 
 
@@ -30,14 +33,20 @@ WARMUP_TEXT = "잠시만요, 확인해 볼게요."
 async def run(args: argparse.Namespace) -> dict[str, object]:
     token = os.environ.get("LVA_AUDIO_WORKER_TOKEN", "")
     profiles = VoiceProfileStore(args.voice_profiles_root)
-    tts = TtsWorkerAdapter(
-        UnixJsonWorkerClient(
-            socket_path=args.socket,
-            token=token,
-            timeout_seconds=180,
-        ),
-        options_provider=profiles.synthesis_options,
-    )
+    if args.engine == "vllm-omni-0.24.0":
+        tts = VllmOmniTtsAdapter(
+            base_url=args.vllm_omni_url,
+            voice=args.vllm_omni_voice,
+        )
+    else:
+        tts = TtsWorkerAdapter(
+            UnixJsonWorkerClient(
+                socket_path=args.socket,
+                token=token,
+                timeout_seconds=180,
+            ),
+            options_provider=profiles.synthesis_options,
+        )
     service = SalonSpeechService(
         tts=tts,
         release_fade_ms=24,
@@ -58,8 +67,16 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
     results = []
     for text in TEXTS:
         started = perf_counter()
-        events = await service.synthesize(text)
-        latency_ms = round((perf_counter() - started) * 1_000, 3)
+        first_audio_at: float | None = None
+
+        async def observe(event) -> None:
+            nonlocal first_audio_at
+            if event.type == "audio.output.chunk" and first_audio_at is None:
+                first_audio_at = perf_counter()
+
+        events = await service.synthesize(text, emit=observe)
+        completed_at = perf_counter()
+        latency_ms = round((completed_at - started) * 1_000, 3)
         chunks = [
             event
             for event in events
@@ -68,6 +85,11 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
         encoded = "".join(str(item.payload["data_base64"]) for item in chunks)
         result = {
             "text_sha256": sha256(text.encode("utf-8")).hexdigest(),
+            "first_audio_ms": (
+                round((first_audio_at - started) * 1_000, 3)
+                if first_audio_at is not None
+                else None
+            ),
             "latency_ms": latency_ms,
             "chunk_count": len(chunks),
             "duration_ms": sum(
@@ -110,8 +132,17 @@ def parse_args() -> argparse.Namespace:
         choices=(
             "qwen3-tts-12hz-0.6b-base",
             "qwen3-tts-12hz-1.7b-base",
+            "vllm-omni-0.24.0",
         ),
         default="qwen3-tts-12hz-0.6b-base",
+    )
+    parser.add_argument(
+        "--vllm-omni-url",
+        default="http://127.0.0.1:46329",
+    )
+    parser.add_argument(
+        "--vllm-omni-voice",
+        default="local-voice-agent-active",
     )
     parser.add_argument("--output", type=Path, required=True)
     return parser.parse_args()

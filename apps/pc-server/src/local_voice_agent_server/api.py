@@ -48,7 +48,7 @@ from .application.salon_speech import SalonSpeechService
 from .application.salon_voice import SalonVoiceConversation
 from .application.tool_execution_lifecycle import DurableToolExecutionLifecycle
 from .application.tool_planner import ToolPlanner
-from .application.voice_turn import VoiceTurnService
+from .application.voice_turn import TextToSpeechPort, VoiceTurnService
 from .infrastructure.audio_workers import (
     SttWorkerAdapter,
     TtsWorkerAdapter,
@@ -56,6 +56,7 @@ from .infrastructure.audio_workers import (
     VadWorkerAdapter,
 )
 from .infrastructure.vllm_conversation import VllmConversationAdapter
+from .infrastructure.vllm_omni_tts import VllmOmniTtsAdapter
 from .infrastructure.registered_vllm_runtime import (
     RegisteredVllmRuntimeAdapter,
     RegisteredVllmSettings,
@@ -1642,22 +1643,7 @@ def _salon_speech_service_from_environment(
 ) -> SalonSpeechService | None:
     if os.environ.get("LVA_SALON_TTS_ENABLED", "0") != "1":
         return None
-    worker_token = os.environ.get("LVA_AUDIO_WORKER_TOKEN", "")
-    if len(worker_token) < 32:
-        raise RuntimeError("audio worker credentials are required for salon TTS")
-    tts = TtsWorkerAdapter(
-        UnixJsonWorkerClient(
-            socket_path=Path(
-                os.environ.get(
-                    "LVA_TTS_SOCKET",
-                    "/home/kutae/.local/share/local-voice-agent/run/tts.sock",
-                )
-            ),
-            token=worker_token,
-            timeout_seconds=180,
-        ),
-        options_provider=voice_profile_store.synthesis_options,
-    )
+    tts = _tts_adapter_from_environment(voice_profile_store)
     return SalonSpeechService(
         tts=tts,
         release_fade_ms=int(
@@ -1668,6 +1654,48 @@ def _salon_speech_service_from_environment(
         ),
         final_silence_ms=int(
             os.environ.get("LVA_SALON_TTS_FINAL_SILENCE_MS", "300")
+        ),
+    )
+
+
+def _tts_adapter_from_environment(
+    voice_profile_store: VoiceProfileStore | None,
+) -> TextToSpeechPort:
+    adapter = os.environ.get("LVA_TTS_ADAPTER", "worker")
+    if adapter == "vllm-omni":
+        return VllmOmniTtsAdapter(
+            base_url=os.environ.get(
+                "LVA_VLLM_OMNI_TTS_URL",
+                "http://127.0.0.1:46329",
+            ),
+            voice=os.environ.get(
+                "LVA_VLLM_OMNI_TTS_VOICE",
+                "local-voice-agent-active",
+            ),
+            timeout_seconds=float(
+                os.environ.get("LVA_TTS_TIMEOUT_SECONDS", "180")
+            ),
+        )
+    if adapter != "worker":
+        raise RuntimeError("LVA_TTS_ADAPTER must be worker or vllm-omni")
+    worker_token = os.environ.get("LVA_AUDIO_WORKER_TOKEN", "")
+    if len(worker_token) < 32:
+        raise RuntimeError("audio worker credentials are required for TTS")
+    return TtsWorkerAdapter(
+        UnixJsonWorkerClient(
+            socket_path=Path(
+                os.environ.get(
+                    "LVA_TTS_SOCKET",
+                    "/home/kutae/.local/share/local-voice-agent/run/tts.sock",
+                )
+            ),
+            token=worker_token,
+            timeout_seconds=180,
+        ),
+        options_provider=(
+            voice_profile_store.synthesis_options
+            if voice_profile_store is not None
+            else None
         ),
     )
 
@@ -1743,23 +1771,7 @@ def _event_handler_from_environment(
             timeout_seconds=10,
         )
     )
-    tts = TtsWorkerAdapter(
-        UnixJsonWorkerClient(
-            socket_path=Path(
-                os.environ.get(
-                    "LVA_TTS_SOCKET",
-                    "/home/kutae/.local/share/local-voice-agent/run/tts.sock",
-                )
-            ),
-            token=worker_token,
-            timeout_seconds=180,
-        ),
-        options_provider=(
-            voice_profile_store.synthesis_options
-            if voice_profile_store is not None
-            else None
-        ),
-    )
+    tts = _tts_adapter_from_environment(voice_profile_store)
     base_url = os.environ.get(
         "LVA_VLLM_BASE_URL",
         "http://127.0.0.1:46322/v1",

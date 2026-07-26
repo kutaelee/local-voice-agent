@@ -337,3 +337,16 @@ Structured evidence:
 | Repository checks | Passed | 31 platform-neutral root tests and all 10 repository validators passed |
 | Full Windows suite | Environment-limited | The full Windows invocation reached existing AF_UNIX/WSL-only and large parametrized cases; focused changed-area tests passed. The canonical full suite remains a WSL run |
 | Live voice retry | Not run | The shared GPU job remained queued behind another workload; no reservation was bypassed or cancelled |
+
+## 2026-07-26 vLLM-Omni streaming TTS candidate
+
+| Check | Result | Evidence |
+|---|---|---|
+| Isolated runtime | Passed | Official stable vLLM-Omni/vLLM 0.24.0, PyTorch 2.11.0+cu130, Python 3.12.13; `pip check` passed |
+| Warm raw PCM | Passed | c1 TTFA p50/p95 64/68 ms; c4 179/210 ms |
+| Sequential reliability | Passed | Corrected single-client run completed 1,000/1,000; TTFA p50/p95/max 60.924/66.574/121.825 ms, PCM16 aligned, adjacent duplicate chunks 0 |
+| Salon projection | Passed | Two real Korean replies reached first emitted PCM in 70.100 ms and 72.817 ms |
+| Loopback gateway | Passed | Live WebSocket salon greeting emitted 23 ordered chunks, first PCM after connection in 175.589 ms, and closed `completed` |
+| GPU bound | Passed | `gpuq` job `5278876b-d423-467a-a94b-9de845eaecc7` peaked at 14,888 MiB total GPU use and was stopped after tests; queued work was not bypassed |
+| Regression suites | Passed | PC server 256 passed/two skipped; root scripts 33 passed plus three isolated TLS tests; repository validators 10/10 |
+| User listening | Pending | Speaker identity, Korean final phonemes, sentence continuity, and physical playback onset remain the final QA gate |
